@@ -284,6 +284,7 @@ def migrate(conn):
         conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('allow_negative_stock','1')")
         conn.execute("INSERT INTO settings(key,value) VALUES('negative_stock_policy_v1','1')")
     additions = {
+        'quantity_prices': {'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},
         'products': {'supplier_code': "TEXT NOT NULL DEFAULT ''", 'alias': "TEXT NOT NULL DEFAULT ''"},
         'stock_movements': {'user_id': 'INTEGER REFERENCES users(id)', 'old_qty': 'REAL'},
         'sale_items': {'net_total_cents': 'INTEGER', 'qty_multiplier': 'REAL NOT NULL DEFAULT 1', 'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},

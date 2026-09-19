@@ -76,6 +76,14 @@ class CoreTests(unittest.TestCase):
   create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
   self.assertEqual(self.stock(),-4)
  def test_zero_price(self):self.assertEqual(self.sell(price=0)['total_cents'],0)
+ def test_bundle_groups_remainder_and_refund(self):
+  with db.connect() as c:
+   c.execute("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,3,2500,'BUNDLE')",(self.pid,))
+  for qty,total in [(1,1000),(2,2000),(3,2500),(4,3500),(6,5000),(7,6000)]:
+   self.assertEqual(line_total(resolve_unit_price(self.pid,qty),qty),total)
+  sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=3)],'CASH',2500)
+  refunds=[create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])['total_cents'] for _ in range(3)]
+  self.assertEqual(sum(refunds),2500)
  def test_invalid_discount(self):
   for d in [-1,1001]:
    with self.assertRaises(ValueError):self.sell(discount=d)

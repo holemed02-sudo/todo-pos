@@ -10,6 +10,7 @@ from services.cash import get_open_session
 from services.money import fmt, to_cents, allocate
 from services.images import abs_image
 from services.receipts import build_receipt, print_receipt_windows
+from screens.payment import PaymentDialog
 try:
     from PIL import Image, ImageTk
 except ImportError:
@@ -41,6 +42,11 @@ class SaleFrame(ttk.Frame):
         self.query=tk.StringVar()
         self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
         self.entry.pack(side='left',fill='x',expand=True)
+        ttk.Label(searchbar,text='Qté / الكمية').pack(side='left',padx=(12,4))
+        self.scan_quantity=tk.StringVar(value='1')
+        self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))
+        self.quantity_entry.pack(side='left')
+        self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
         self.entry.bind('<Return>',self.confirm_search)
         self.entry.bind('<KeyRelease>',self.schedule_search)
         self.entry.bind('<Down>',self.focus_catalog)
@@ -136,13 +142,14 @@ class SaleFrame(ttk.Frame):
             window.destroy();command()
         commands=[('Duplicata / نسخة التيكي',self.duplicate_receipt),
                   ('Modifier quantité / الكمية',self.set_qty),
+                  ('Modifier prix / الثمن',self.set_price),
                   ('Remise ticket / تخفيض',self.discount),
                   ('Remise ligne',self.line_discount),
                   ('Attente / انتظار',self.hold),
                   ("Liste d’attente / المعلقات",self.show_held)]
         for index,(label,command) in enumerate(commands):
             ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//2,column=index%2,padx=10,pady=10,ipadx=12,ipady=20,sticky='ew')
-        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=3,column=0,columnspan=2,pady=12)
+        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=(len(commands)+1)//2,column=0,columnspan=2,pady=12)
         window.bind('<Escape>',lambda e:run(self.focus_search))
 
     def duplicate_receipt(self):
@@ -275,6 +282,7 @@ class SaleFrame(ttk.Frame):
 
     def add_product(self,pid,barcode_id=None,qty=1,barcode=''):
         try:
+            qty=float(qty)*float(self.scan_quantity.get().replace(',','.'))
             if not math.isfinite(float(qty)) or float(qty)<=0:
                 raise ValueError('Quantité invalide')
             with connect() as conn:
@@ -284,13 +292,15 @@ class SaleFrame(ttk.Frame):
                 index=next((i for i,x in enumerate(self.cart) if x['product_id']==pid and x.get('barcode_id')==barcode_id),None)
                 new_qty=float(qty)+(self.cart[index]['qty'] if index is not None else 0)
                 unit=resolve_unit_price(pid,new_qty,barcode_id,conn)
+                if index is not None and self.cart[index].get('manual_unit_price'):
+                    unit=Decimal(self.cart[index]['unit_price_cents'])
                 barcode_row=conn.execute('SELECT qty_multiplier,price_override_cents FROM product_barcodes WHERE id=?',(barcode_id,)).fetchone() if barcode_id else None
                 step=barcode_row['qty_multiplier'] if barcode_row and barcode_row['price_override_cents'] is not None else 1
                 if index is None:
                     self.cart.append(dict(product_id=pid,name=p['name'],qty=new_qty,barcode_id=barcode_id,barcode=barcode,unit_price_cents=str(unit),qty_multiplier=step,base_price_cents=p['sale_price_cents'],image_path=p['image_path'],allow_fraction=p['allow_fraction'],discount_cents=0))
                     index=len(self.cart)-1
                 else:self.cart[index].update(qty=new_qty,unit_price_cents=str(unit))
-            self.query.set('');self.refresh(index);self.focus_search()
+            self.query.set('');self.scan_quantity.set('1');self.refresh(index);self.focus_search()
             self.status.config(text=f"Ajouté : {p['name']}")
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
@@ -332,7 +342,7 @@ class SaleFrame(ttk.Frame):
         else:
             if not x.get('allow_fraction',False) and not float(qty).is_integer():
                 messagebox.showerror('ToDo','Quantité entière requise.',parent=self);return
-            try:unit=resolve_unit_price(x['product_id'],qty,x.get('barcode_id'))
+            try:unit=Decimal(x['unit_price_cents']) if x.get('manual_unit_price') else resolve_unit_price(x['product_id'],qty,x.get('barcode_id'))
             except ValueError as e:
                 messagebox.showerror('ToDo',str(e),parent=self);return
             x.update(qty=qty,unit_price_cents=str(unit))
@@ -370,6 +380,25 @@ class SaleFrame(ttk.Frame):
         if amount is not None:
             x['discount_cents']=to_cents(amount)
             self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0]);self.refresh(index)
+        self.focus_search()
+
+    def set_price(self):
+        index=self.selected()
+        if index is None:return
+        line=self.cart[index]
+        if line.get('qty_multiplier',1)!=1:
+            messagebox.showinfo('ToDo','Pour un pack, utilisez la remise ligne.',parent=self);return
+        amount=simpledialog.askstring('Modifier prix',f"{line['name']}\nNouveau prix unitaire (DH) :",initialvalue=f"{Decimal(line['unit_price_cents'])/100:.2f}",parent=self)
+        if amount is None:return
+        try:
+            price=to_cents(amount)
+            if price<0:raise ValueError('Prix invalide')
+            line['unit_price_cents']=str(price)
+            line['manual_unit_price']=True
+            line['discount_cents']=min(line.get('discount_cents',0),line_total(price,line['qty']))
+            self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0])
+            self.refresh(index)
+        except Exception as error:messagebox.showerror('ToDo',str(error),parent=self)
         self.focus_search()
 
     def set_payment(self,method):
@@ -418,18 +447,17 @@ class SaleFrame(ttk.Frame):
         self.busy=True
         try:
             total=self.totals()[1]
-            if self.payment=='CASH':
-                paid=simpledialog.askfloat('Encaissement',f'Total : {fmt(total,self.currency)}\nMontant reçu :',initialvalue=total/100,parent=self,minvalue=0)
-                if paid is None:return
-                paid=to_cents(paid)
-            else:
-                if not messagebox.askyesno('Carte',f'Confirmer le paiement de {fmt(total,self.currency)} ?',parent=self):return
-                paid=total
+            dialog=PaymentDialog(self,total,self.currency,self.payment)
+            self.wait_window(dialog)
+            if dialog.result is None:return
+            self.payment,paid,print_ticket=dialog.result
+            self.payment_label.config(text='Paiement : '+self.payment)
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
-            self.status.config(text=f"{result['sale_no']} · Monnaie : {fmt(result['change_cents'],self.currency)}")
-            try:self.show_receipt(result)
+            self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")
+            try:
+                if print_ticket:print_receipt_windows(result['id'])
             except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)

@@ -21,7 +21,13 @@ def resolve_unit_price(product_id, qty, barcode_id=None, conn=None):
             if not math.isfinite(packs) or abs(packs-round(packs))>1e-9:
                 raise ValueError('La quantité doit respecter le pack/carton.')
             return Decimal(b['price_override_cents'])/Decimal(str(b['qty_multiplier']))
-    rule=conn.execute('SELECT unit_price_cents FROM quantity_prices WHERE product_id=? AND active=1 AND min_qty<=? ORDER BY min_qty DESC,id DESC LIMIT 1',(product_id,float(qty))).fetchone()
+    rule=conn.execute('SELECT unit_price_cents,min_qty,pricing_mode FROM quantity_prices WHERE product_id=? AND active=1 AND min_qty<=? ORDER BY min_qty DESC,id DESC LIMIT 1',(product_id,float(qty))).fetchone()
+    if rule and rule['pricing_mode']=='BUNDLE':
+        count=Decimal(str(qty));size=Decimal(str(rule['min_qty']))
+        if size<=0:raise ValueError('Quantité offre invalide')
+        groups=count//size;remainder=count-groups*size
+        # Complete groups use the advertised total; leftover units keep the normal price.
+        return (groups*rule['unit_price_cents']+remainder*p[0])/count
     return Decimal(rule[0] if rule else p[0])
 
 def line_total(unit,qty):
