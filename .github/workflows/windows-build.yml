@@ -21,13 +21,19 @@ jobs:
           if ($parts.Count -ne 6) { throw "Expected 6 baseline chunks, found $($parts.Count)" }
           $stream = [IO.File]::Open('baseline.zip', [IO.FileMode]::Create, [IO.FileAccess]::Write)
           try {
-            foreach ($part in $parts) {
-              $chunk = (Get-Content $part.FullName -Raw).Trim()
+            for ($i = 0; $i -lt $parts.Count; $i++) {
+              $chunk = (Get-Content $parts[$i].FullName -Raw).Trim()
               $bytes = [Convert]::FromBase64String($chunk)
-              $stream.Write($bytes, 0, $bytes.Length)
+              # part00 contains one overlap byte also present at the start of part01.
+              $count = if ($i -eq 0) { $bytes.Length - 1 } else { $bytes.Length }
+              $stream.Write($bytes, 0, $count)
             }
           } finally {
             $stream.Dispose()
+          }
+          $hash = (Get-FileHash baseline.zip -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '3f3f2c51a00fbe3a8f6624856f3dacf59107862cc9d6477fcc223b4d4bb3fca9') {
+            throw "Baseline source hash mismatch: $hash"
           }
           Expand-Archive -Path baseline.zip -DestinationPath src -Force
 
@@ -38,6 +44,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: src
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
