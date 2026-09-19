@@ -1,71 +1,41 @@
 name: Windows build
-
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
+  pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   test-and-build:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Rebuild and unpack baseline source
-        shell: pwsh
-        run: |
-          $parts = Get-ChildItem baseline/chunks/part*.b64 | Sort-Object Name
-          if ($parts.Count -ne 6) { throw "Expected 6 baseline chunks, found $($parts.Count)" }
-          $stream = [IO.File]::Open('baseline.zip', [IO.FileMode]::Create, [IO.FileAccess]::Write)
-          try {
-            for ($i = 0; $i -lt $parts.Count; $i++) {
-              $chunk = (Get-Content $parts[$i].FullName -Raw).Trim()
-              $bytes = [Convert]::FromBase64String($chunk)
-              # part00 contains one overlap byte also present at the start of part01.
-              $count = if ($i -eq 0) { $bytes.Length - 1 } else { $bytes.Length }
-              $stream.Write($bytes, 0, $count)
-            }
-          } finally {
-            $stream.Dispose()
-          }
-          $hash = (Get-FileHash baseline.zip -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne '3f3f2c51a00fbe3a8f6624856f3dacf59107862cc9d6477fcc223b4d4bb3fca9') {
-            throw "Baseline source hash mismatch: $hash"
-          }
-          Expand-Archive -Path baseline.zip -DestinationPath src -Force
-
-      - name: Apply current source overrides
-        shell: pwsh
-        run: |
-          Copy-Item -Path overrides\* -Destination src -Recurse -Force
-
-      - name: Install dependencies
-        working-directory: src
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Run core tests
-        working-directory: src
-        run: python tests/test_core.py
-
-      - name: Compile Python sources
-        working-directory: src
-        run: python -m compileall -q todo
-
-      - name: Build portable Windows app
-        working-directory: src
+      - name: Install build dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Core regression tests
+        run: python -B -m unittest discover -s tests -v
+      - name: Tk interface smoke test
+        run: python -B tests/ui_smoke.py
+      - name: Compile sources
+        run: python -m compileall -q todo ToDo.pyw IMPORT_OLD_DATA.pyw
+      - name: Build portable Windows application
         shell: cmd
         run: pyinstaller --noconfirm --clean --windowed --onedir --name ToDo --paths todo --add-data "todo;todo" ToDo.pyw
-
-      - name: Upload portable build
-        uses: actions/upload-artifact@v4
+      - name: Build data import utility
+        shell: cmd
+        run: pyinstaller --noconfirm --clean --windowed --onefile --name ImporterToDo --paths todo IMPORT_OLD_DATA.pyw
+      - name: Include documentation and importer
+        shell: pwsh
+        run: |
+          Copy-Item dist/ImporterToDo.exe dist/ToDo/ImporterToDo.exe
+          Copy-Item README_1_1_AR.md,VALIDATION.md dist/ToDo/
+      - uses: actions/upload-artifact@v4
         with:
-          name: ToDo-POS-Windows
-          path: src/dist/ToDo
+          name: ToDo-POS-1.1.0-Windows
+          path: dist/ToDo
           if-no-files-found: error

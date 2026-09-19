@@ -1,0 +1,33 @@
+{
+  "products": 100000,
+  "fresh_database_init_ms": 156.54,
+  "exact_reference": {
+    "median_ms": 5.38,
+    "max_ms": 7.64
+  },
+  "substring_name": {
+    "median_ms": 37.94,
+    "max_ms": 42.57
+  },
+  "alias": {
+    "median_ms": 38.05,
+    "max_ms": 48.1
+  },
+  "barcode": {
+    "median_ms": 6.2,
+    "max_ms": 11.29
+  },
+  "short_query": {
+    "median_ms": 5.59,
+    "max_ms": 9.02
+  },
+  "scan_lookup": {
+    "median_ms": 4.79,
+    "max_ms": 7.96
+  },
+  "commit_100_items": {
+    "median_ms": 77.6,
+    "max_ms": 115.0
+  },
+  "notes": "Local synthetic database; includes connect/query or commit, excludes rendering, scanner hardware, printer and full application startup. Short search uses LIKE fallback."
+}

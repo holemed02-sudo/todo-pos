@@ -1,0 +1,343 @@
+import tkinter as tk
+import math
+from tkinter import ttk, messagebox, simpledialog
+from decimal import Decimal
+from database import connect, get_setting
+from services.catalog import search_products, scan_barcode
+from services.pricing import resolve_unit_price, line_total
+from services.sales import complete_sale, hold_sale, list_held, resume_held
+from services.cash import get_open_session
+from services.money import fmt, to_cents, allocate
+from services.images import abs_image
+from services.receipts import build_receipt, print_receipt_windows
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    Image=ImageTk=None
+
+
+class SaleFrame(ttk.Frame):
+    def __init__(self,master,app):
+        super().__init__(master,padding=16)
+        self.app=app
+        self.cart=[]
+        self.ticket_discount_cents=0
+        self.held_id=None
+        self.payment='CASH'
+        self.category=None
+        self.currency=get_setting('currency','DH')
+        self.images={}
+        self.search_job=None
+        self.busy=False
+        self.bindings=[]
+        top=ttk.Frame(self)
+        top.pack(fill='x',pady=(0,12))
+        ttk.Label(top,text='Vente / البيع',style='Title.TLabel').pack(side='left')
+        self.payment_label=ttk.Label(top,text='Paiement : CASH',style='Accent.TLabel')
+        self.payment_label.pack(side='right')
+        searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
+        searchbar.pack(fill='x',pady=(0,12))
+        ttk.Label(searchbar,text='⌕  Scanner ou rechercher',style='Card.TLabel').pack(side='left',padx=(0,12))
+        self.query=tk.StringVar()
+        self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
+        self.entry.pack(side='left',fill='x',expand=True)
+        self.entry.bind('<Return>',self.confirm_search)
+        self.entry.bind('<KeyRelease>',self.schedule_search)
+        self.entry.bind('<Down>',self.focus_catalog)
+        body=ttk.Panedwindow(self,orient='horizontal')
+        body.pack(fill='both',expand=True)
+        left=ttk.Frame(body,padding=(0,0,12,0));body.add(left,weight=5)
+        right=ttk.Frame(body,style='Card.TFrame',padding=14);body.add(right,weight=4)
+        filters=ttk.Frame(left);filters.pack(fill='x',pady=(0,8))
+        with connect() as conn:
+            categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
+        self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
+        self.cat=tk.StringVar(value='Tous')
+        combo=ttk.Combobox(filters,textvariable=self.cat,values=list(self.categories),state='readonly',width=25)
+        combo.pack(side='left');combo.bind('<<ComboboxSelected>>',lambda e:self.render_products())
+        ttk.Label(filters,text='Nom · barcode · référence · alias').pack(side='right')
+        self.products=ttk.Treeview(left,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
+        self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
+        for key,label in [('price','PRIX'),('stock','STOCK')]:
+            self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
+        self.products.pack(fill='both',expand=True)
+        self.products.bind('<Double-1>',self.add_selected_product)
+        self.products.bind('<Return>',self.add_selected_product)
+        ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
+        ttk.Label(right,text='Ticket en cours',style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
+        self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
+        self.ticket.heading('#0',text='ARTICLE');self.ticket.column('#0',width=170,minwidth=100)
+        for key,label,width in [('qty','QTÉ',55),('price','P.U.',70),('discount','REMISE',75),('total','NET',85)]:
+            self.ticket.heading(key,text=label);self.ticket.column(key,width=width,minwidth=40,anchor='e')
+        self.ticket.tag_configure('offer',background='#DCFCE7',foreground='#166534')
+        self.ticket.pack(fill='both',expand=True)
+        self.ticket.bind('<Delete>',lambda e:self.remove())
+        actions=ttk.Frame(right,style='Card.TFrame');actions.pack(fill='x',pady=8)
+        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
+            ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
+        self.subtotal_label=ttk.Label(right,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
+        self.total_label=ttk.Label(right,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
+        ttk.Button(right,text='Encaisser  F5',style='Primary.TButton',command=self.checkout).pack(fill='x',ipady=8)
+        footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
+        for label,command in [('F2 Espèces',lambda:self.set_payment('CASH')),('F3 Carte',lambda:self.set_payment('CARD')),('F4 Attente',self.hold),('Liste attente',self.show_held),('F7 Remise',self.discount),('ESC Annuler',self.cancel)]:
+            ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
+        self.status=ttk.Label(self,text='Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter')
+        self.status.pack(anchor='w',pady=(8,0))
+        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':self.checkout,'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
+        for sequence,command in commands.items():
+            binding=app.bind(sequence,lambda e,c=command:self.shortcut(e,c),add='+')
+            self.bindings.append((sequence,binding))
+        self.render_products();self.refresh();self.after_idle(self.focus_search)
+
+    def shortcut(self,event,command):
+        if self.winfo_viewable() and event.widget.winfo_toplevel()==self.app:
+            command();return 'break'
+
+    def destroy(self):
+        if self.search_job:
+            self.after_cancel(self.search_job)
+        for sequence,binding in self.bindings:
+            self.app.unbind(sequence,binding)
+        super().destroy()
+
+    def focus_search(self):
+        self.entry.focus_set();self.entry.selection_range(0,'end')
+
+    def focus_catalog(self,event=None):
+        rows=self.products.get_children()
+        if rows:
+            self.products.focus_set();self.products.selection_set(rows[0]);self.products.focus(rows[0])
+        return 'break'
+
+    def schedule_search(self,event=None):
+        if event and event.keysym in ('Return','Down','Up','Escape'):return
+        if self.search_job:self.after_cancel(self.search_job)
+        self.search_job=self.after(120,self.render_products)
+
+    def thumbnail(self,row):
+        key=(row['id'],row['image_path'])
+        if key not in self.images and Image:
+            path=abs_image(row['image_path']) if row['image_path'] else None
+            if path:
+                try:
+                    with Image.open(path) as source:
+                        im=source.copy();im.thumbnail((40,40))
+                    self.images[key]=ImageTk.PhotoImage(im,master=self)
+                except (OSError,ValueError):pass
+        return self.images.get(key,'')
+
+    def render_products(self):
+        self.search_job=None
+        rows=search_products(self.query.get(),self.categories[self.cat.get()])
+        self.products.delete(*self.products.get_children())
+        self.product_rows={str(r['id']):r for r in rows}
+        for row in rows:
+            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
+
+    def confirm_search(self,event=None):
+        if self.search_job:
+            self.after_cancel(self.search_job);self.search_job=None
+        code=self.query.get().strip()
+        if not code:return 'break'
+        rows=scan_barcode(code)
+        if len(rows)==1:
+            r=rows[0];self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
+        elif len(rows)>1:self.pick_barcode(rows)
+        else:
+            rows=search_products(code,limit=2)
+            if len(rows)==1:self.add_product(rows[0]['id'])
+            else:
+                self.render_products();self.focus_catalog()
+                self.status.config(text='Choisissez un produit puis Entrée.' if rows else 'Aucun produit trouvé.')
+        return 'break'
+
+    def pick_barcode(self,rows):
+        w=tk.Toplevel(self);w.title('Choisir le produit / اختار المنتوج');w.transient(self);w.grab_set()
+        tree=ttk.Treeview(w,columns=('pack','price'),show='tree headings',height=8)
+        tree.heading('#0',text='Produit');tree.heading('pack',text='Unités');tree.heading('price',text='Prix sélection')
+        tree.pack(fill='both',expand=True,padx=12,pady=12)
+        with connect() as conn:
+            for i,r in enumerate(rows):
+                price=resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn)
+                tree.insert('','end',iid=str(i),text=r['name'],values=(r['qty_multiplier'],fmt(line_total(price,r['qty_multiplier']))))
+        def choose(event=None):
+            if not tree.selection():return
+            r=rows[int(tree.selection()[0])];w.destroy()
+            self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
+        tree.bind('<Return>',choose);tree.bind('<Double-1>',choose)
+        ttk.Button(w,text='Choisir',command=choose).pack(pady=8)
+        tree.selection_set('0');tree.focus('0');tree.focus_set()
+
+    def add_selected_product(self,event=None):
+        if self.products.selection():self.add_product(int(self.products.selection()[0]))
+        return 'break'
+
+    def add_product(self,pid,barcode_id=None,qty=1,barcode=''):
+        try:
+            if not math.isfinite(float(qty)) or float(qty)<=0:
+                raise ValueError('Quantité invalide')
+            with connect() as conn:
+                p=conn.execute('SELECT * FROM products WHERE id=? AND active=1',(pid,)).fetchone()
+                if not p:raise ValueError('Article introuvable')
+                if not p['allow_fraction'] and not float(qty).is_integer():raise ValueError('Quantité entière requise')
+                index=next((i for i,x in enumerate(self.cart) if x['product_id']==pid and x.get('barcode_id')==barcode_id),None)
+                new_qty=float(qty)+(self.cart[index]['qty'] if index is not None else 0)
+                unit=resolve_unit_price(pid,new_qty,barcode_id,conn)
+                barcode_row=conn.execute('SELECT qty_multiplier,price_override_cents FROM product_barcodes WHERE id=?',(barcode_id,)).fetchone() if barcode_id else None
+                step=barcode_row['qty_multiplier'] if barcode_row and barcode_row['price_override_cents'] is not None else 1
+                if index is None:
+                    self.cart.append(dict(product_id=pid,name=p['name'],qty=new_qty,barcode_id=barcode_id,barcode=barcode,unit_price_cents=str(unit),qty_multiplier=step,base_price_cents=p['sale_price_cents'],image_path=p['image_path'],allow_fraction=p['allow_fraction'],discount_cents=0))
+                    index=len(self.cart)-1
+                else:self.cart[index].update(qty=new_qty,unit_price_cents=str(unit))
+            self.query.set('');self.refresh(index);self.focus_search()
+            self.status.config(text=f"Ajouté : {p['name']}")
+        except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
+
+    def selected(self):
+        selected=self.ticket.selection()
+        return int(selected[0]) if selected else (len(self.cart)-1 if self.cart else None)
+
+    def totals(self):
+        sub=sum(line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in self.cart)
+        return sub,max(0,sub-self.ticket_discount_cents)
+
+    def refresh(self,index=None):
+        if index is None:index=self.selected()
+        self.ticket.delete(*self.ticket.get_children())
+        sub,total=self.totals()
+        weights=[line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in self.cart]
+        nets=allocate(total,weights)
+        for i,(x,net) in enumerate(zip(self.cart,nets)):
+            gross=line_total(x['unit_price_cents'],x['qty'])
+            offer=Decimal(str(x['unit_price_cents']))<x.get('base_price_cents',0) or gross>net
+            thumb=self.thumbnail({'id':x['product_id'],'image_path':x.get('image_path','')})
+            step=x.get('qty_multiplier',1)
+            name=x['name']+(f' · pack ×{step:g}' if step!=1 else '')
+            quantity=f"{x['qty']/step:g}p" if step!=1 else f"{x['qty']:g}"
+            price=fmt(line_total(x['unit_price_cents'],step),'')
+            self.ticket.insert('','end',iid=str(i),text=name,image=thumb,values=(quantity,price,fmt(gross-net,''),fmt(net,'')),tags=('offer',) if offer else ())
+        if self.cart:
+            chosen=str(min(index if index is not None else len(self.cart)-1,len(self.cart)-1))
+            self.ticket.selection_set(chosen);self.ticket.see(chosen)
+        self.subtotal_label.config(text=f'Sous-total {fmt(sub,self.currency)}  ·  Remise ticket {fmt(self.ticket_discount_cents,self.currency)}')
+        self.total_label.config(text=fmt(total,self.currency))
+        self.app.update_customer_display(self.cart,total)
+
+    def update_quantity(self,index,qty):
+        if not math.isfinite(float(qty)):
+            messagebox.showerror('ToDo','Quantité invalide.',parent=self);return
+        x=self.cart[index]
+        if qty<=0:self.cart.pop(index)
+        else:
+            if not x.get('allow_fraction',False) and not float(qty).is_integer():
+                messagebox.showerror('ToDo','Quantité entière requise.',parent=self);return
+            try:unit=resolve_unit_price(x['product_id'],qty,x.get('barcode_id'))
+            except ValueError as e:
+                messagebox.showerror('ToDo',str(e),parent=self);return
+            x.update(qty=qty,unit_price_cents=str(unit))
+            x['discount_cents']=min(x.get('discount_cents',0),line_total(unit,qty))
+        self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0])
+        self.refresh(index);self.focus_search()
+
+    def change(self,delta):
+        index=self.selected()
+        if index is not None:self.update_quantity(index,self.cart[index]['qty']+delta*self.cart[index].get('qty_multiplier',1))
+
+    def set_qty(self):
+        index=self.selected()
+        if index is None:return
+        step=self.cart[index].get('qty_multiplier',1)
+        qty=simpledialog.askfloat('Quantité','Nombre de packs:' if step!=1 else 'Nouvelle quantité:',initialvalue=self.cart[index]['qty']/step,parent=self,minvalue=0.001)
+        if qty is not None:self.update_quantity(index,qty*step)
+        self.focus_search()
+
+    def remove(self):
+        index=self.selected()
+        if index is not None:self.update_quantity(index,0)
+
+    def discount(self):
+        if not self.cart:return
+        amount=simpledialog.askfloat('Remise ticket','Montant de la remise:',parent=self,minvalue=0,maxvalue=self.totals()[0]/100)
+        if amount is not None:self.ticket_discount_cents=to_cents(amount);self.refresh()
+        self.focus_search()
+
+    def line_discount(self):
+        index=self.selected()
+        if index is None:return
+        x=self.cart[index]
+        amount=simpledialog.askfloat('Remise ligne','Montant de la remise:',parent=self,minvalue=0,maxvalue=line_total(x['unit_price_cents'],x['qty'])/100)
+        if amount is not None:
+            x['discount_cents']=to_cents(amount)
+            self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0]);self.refresh(index)
+        self.focus_search()
+
+    def set_payment(self,method):
+        self.payment=method;self.payment_label.config(text='Paiement : '+method);self.focus_search()
+
+    def clear(self):
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.refresh();self.focus_search()
+
+    def cancel(self):
+        if self.cart and not messagebox.askyesno('Annuler','Vider le ticket en cours ? Un ticket en attente reste sauvegardé.',parent=self):return
+        self.clear()
+
+    def hold(self):
+        if not self.cart:return
+        label=simpledialog.askstring('Attente','Nom ou numéro du ticket:',parent=self)
+        if label is None:return
+        try:
+            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id)
+            self.clear();self.status.config(text='Ticket et remise sauvegardés.')
+        except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
+
+    def show_held(self):
+        if self.cart:
+            messagebox.showinfo('ToDo','Mettez le ticket actuel en attente avant de reprendre un autre.',parent=self);return
+        rows=list_held()
+        if not rows:
+            messagebox.showinfo('ToDo','Aucun ticket en attente.',parent=self);return
+        w=tk.Toplevel(self);w.title('Tickets en attente');w.transient(self);w.grab_set()
+        tree=ttk.Treeview(w,columns=('date','discount'),show='tree headings')
+        tree.heading('#0',text='Ticket');tree.heading('date',text='Date');tree.heading('discount',text='Remise')
+        tree.pack(fill='both',expand=True,padx=12,pady=12)
+        for r in rows:tree.insert('','end',iid=str(r['id']),text=r['label'],values=(r['created_at'],fmt(r['discount_cents'])))
+        def resume(event=None):
+            if not tree.selection():return
+            state=resume_held(int(tree.selection()[0]))
+            self.cart=state['cart'];self.ticket_discount_cents=state['discount_cents'];self.held_id=state['held_id']
+            self.refresh();w.destroy();self.focus_search()
+        tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
+        ttk.Button(w,text='Reprendre',command=resume).pack(pady=8)
+
+    def checkout(self):
+        if not self.cart or self.busy:return
+        session=get_open_session()
+        if not session:
+            messagebox.showinfo('ToDo','Ouvrez la caisse avant de vendre.',parent=self);return
+        self.busy=True
+        try:
+            total=self.totals()[1]
+            if self.payment=='CASH':
+                paid=simpledialog.askfloat('Encaissement',f'Total : {fmt(total,self.currency)}\nMontant reçu :',initialvalue=total/100,parent=self,minvalue=0)
+                if paid is None:return
+                paid=to_cents(paid)
+            else:
+                if not messagebox.askyesno('Carte',f'Confirmer le paiement de {fmt(total,self.currency)} ?',parent=self):return
+                paid=total
+            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id)
+            # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
+            self.clear()
+            self.status.config(text=f"{result['sale_no']} · Monnaie : {fmt(result['change_cents'],self.currency)}")
+            try:self.show_receipt(result)
+            except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
+            self.render_products()
+        except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
+        finally:self.busy=False;self.focus_search()
+
+    def show_receipt(self,result):
+        w=tk.Toplevel(self);w.title(result['sale_no']);w.geometry('450x560');w.transient(self)
+        text=tk.Text(w,font=('Consolas',11),padx=16,pady=16)
+        text.pack(fill='both',expand=True);text.insert('1.0',build_receipt(result['id']));text.config(state='disabled')
+        ttk.Button(w,text='Imprimer',command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
+        ttk.Button(w,text='Fermer',command=w.destroy).pack(side='right',padx=12,pady=12)
+        w.bind('<Escape>',lambda e:w.destroy())
