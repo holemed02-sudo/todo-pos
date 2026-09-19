@@ -19,8 +19,16 @@ jobs:
         run: |
           $parts = Get-ChildItem baseline/chunks/part*.b64 | Sort-Object Name
           if ($parts.Count -ne 6) { throw "Expected 6 baseline chunks, found $($parts.Count)" }
-          $b64 = ($parts | ForEach-Object { Get-Content $_.FullName -Raw }) -join ''
-          [IO.File]::WriteAllBytes('baseline.zip', [Convert]::FromBase64String($b64))
+          $stream = [IO.File]::Open('baseline.zip', [IO.FileMode]::Create, [IO.FileAccess]::Write)
+          try {
+            foreach ($part in $parts) {
+              $chunk = (Get-Content $part.FullName -Raw).Trim()
+              $bytes = [Convert]::FromBase64String($chunk)
+              $stream.Write($bytes, 0, $bytes.Length)
+            }
+          } finally {
+            $stream.Dispose()
+          }
           Expand-Archive -Path baseline.zip -DestinationPath src -Force
 
       - name: Apply current source overrides
