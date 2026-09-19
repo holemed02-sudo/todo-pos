@@ -184,7 +184,7 @@ class SaleFrame(ttk.Frame):
             else:
                 qtxt=f"{x['qty']:g}";ptxt=fmt(x["unit_price_cents"],"")
             self.t.insert("", "end",values=(x["name"],qtxt,ptxt,fmt(lt,"")),tags=(str(idx),))
-        sub,total=self.totals();self.total.config(text=f"TOTAL ;fmt(total,get_setting('currency','DH'))}")
+        sub,total=self.totals();self.total.config(text=f"TOTAL {fmt(total,get_setting('currency','DH'))}")
         self.app.update_customer_display(self.cart,total)
 
     def hold(self):
