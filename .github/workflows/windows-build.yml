@@ -13,10 +13,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Unpack source
+      - name: Unpack baseline source
         shell: pwsh
         run: |
           Expand-Archive -Path baseline/ToDo_POS_1_0_2-source.zip -DestinationPath src -Force
+      - name: Apply current source overrides
+        shell: pwsh
+        run: |
+          Copy-Item -Path overrides\* -Destination src -Recurse -Force
       - name: Install dependencies
         working-directory: src
         run: |
@@ -26,6 +30,9 @@ jobs:
       - name: Run core tests
         working-directory: src
         run: python tests/test_core.py
+      - name: Compile Python sources
+        working-directory: src
+        run: python -m compileall -q todo
       - name: Build portable Windows app
         working-directory: src
         shell: cmd
