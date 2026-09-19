@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.db
+*.db-wal
+*.db-shm
+launch_error.txt
+build/
+dist/
+*.spec
+.todo/
