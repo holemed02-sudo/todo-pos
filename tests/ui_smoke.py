@@ -38,5 +38,23 @@ with connect() as c:
  assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==15
  row=c.execute('SELECT * FROM stock_movements ORDER BY id DESC LIMIT 1').fetchone()
  assert row['old_qty']==10 and row['stock_after']==15 and row['user_id']==app.user['id']
+editor=ProductEditor(app)
+editor.withdraw();editor.name.set('Photo only');editor.sell.set('7.50');editor.cat.set('New family')
+editor.save();app.update_idletasks()
+with connect() as c:
+ photo=c.execute("SELECT id FROM products WHERE name='Photo only'").fetchone()[0]
+ assert not c.execute('SELECT 1 FROM product_barcodes WHERE product_id=?',(photo,)).fetchone()
+sale.render_products();assert 'New family' in sale.categories
+sale.add_product(photo);assert len(sale.cart)==2
+sale.query.set('987654321999999');sale.confirm_search();app.update_idletasks()
+import tkinter as tk
+dialogs=[w for w in sale.winfo_children() if isinstance(w,tk.Toplevel)]
+unknown=next(w for w in dialogs if 'Produit inconnu' in w.title())
+assert unknown.cget('bg')=='#DC2626'
+app.tk.call(unknown.protocol('WM_DELETE_WINDOW'))
+app.update_idletasks();assert len(sale.cart)==2 and sale.query.get()==''
+sale.functions();app.update_idletasks()
+for w in sale.winfo_children():
+ if isinstance(w,tk.Toplevel):w.destroy()
 app.destroy();temp.cleanup()
 print('UI SMOKE PASSED: login, scan, quantity, navigation, all screens, direct stock edit with ledger')

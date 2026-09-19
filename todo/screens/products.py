@@ -28,7 +28,10 @@ class ProductEditor(tk.Toplevel):
         right=ttk.LabelFrame(root,text="Image produit",padding=8);right.pack(side="right",fill="y")
         self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
         self.e_name=labeled_entry(left,"Article / المنتوج",self.name,1)
-        self.e_cat=labeled_entry(left,"Famille",self.cat,2)
+        ttk.Label(left,text="Famille").grid(row=2,column=0,sticky='w')
+        self.e_cat=ttk.Combobox(left,textvariable=self.cat)
+        self.e_cat.grid(row=2,column=1,sticky='ew',pady=5)
+        self.refresh_categories()
         ttk.Button(left,text="+ Famille",command=self.add_category).grid(row=2,column=2,padx=6)
         self.e_buy=labeled_entry(left,"Prix achat",self.buy,3)
         self.e_sell=labeled_entry(left,"Prix vente",self.sell,4)
@@ -93,10 +96,15 @@ class ProductEditor(tk.Toplevel):
         name=name.strip()
         try:
             with connect() as conn:
+                require_admin(conn)
                 conn.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(name,));conn.commit()
-            self.cat.set(name);self.e_cat.focus_set()
+            self.refresh_categories();self.cat.set(name);self.e_cat.focus_set()
         except Exception as error:
             messagebox.showerror("ToDo",str(error),parent=self)
+
+    def refresh_categories(self):
+        with connect() as conn:
+            self.e_cat['values']=[r['name'] for r in conn.execute('SELECT name FROM categories WHERE active=1 ORDER BY sort_order,name')]
 
     def preview_image(self,p):
         if not PIL:return
@@ -124,7 +132,6 @@ class ProductEditor(tk.Toplevel):
     def save(self):
         try:
             barcode=self.bar.get().strip();name=self.name.get().strip()
-            if not barcode:raise ValueError("سكانِي الباركود أولاً.")
             if not name:raise ValueError("اسم المنتوج إجباري.")
             buy=to_cents(self.buy.get());sell=to_cents(self.sell.get());stock=float(self.stock.get() or 0);alert=float(self.alert.get() or 0)
             if not all(math.isfinite(x) for x in (stock,alert)) or min(buy,sell,alert)<0:
@@ -150,8 +157,11 @@ class ProductEditor(tk.Toplevel):
                 c.execute('UPDATE products SET sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?',(self.sku.get().strip(),self.alias.get().strip(),self.supplier_code.get().strip(),int(self.fraction.get()),pid))
                 audit(c,'PRODUCT_SAVE',pid)
                 first=c.execute("SELECT id FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(pid,)).fetchone()
-                if first:c.execute("UPDATE product_barcodes SET barcode=? WHERE id=?",(barcode,first["id"]))
-                else:c.execute("INSERT INTO product_barcodes(product_id,barcode) VALUES(?,?)",(pid,barcode))
+                if barcode:
+                    if first:c.execute("UPDATE product_barcodes SET barcode=? WHERE id=?",(barcode,first["id"]))
+                    else:c.execute("INSERT INTO product_barcodes(product_id,barcode) VALUES(?,?)",(pid,barcode))
+                elif first:
+                    raise ValueError('Pour retirer un code existant, utilisez la gestion des codes-barres.')
                 c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents) VALUES(?,?,?)",[(pid,q,p) for q,p in rules])
                 c.commit()

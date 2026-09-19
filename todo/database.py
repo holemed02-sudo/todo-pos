@@ -223,7 +223,7 @@ CREATE TABLE IF NOT EXISTS cash_movements (
 INSERT OR IGNORE INTO settings(key,value) VALUES
 ('shop_name','ToDo'),
 ('currency','DH'),
-('allow_negative_stock','0'),
+('allow_negative_stock','1'),
 ('receipt_footer','Merci pour votre visite'),
 ('backup_on_close','1');
 """
@@ -278,6 +278,11 @@ def set_setting(key, value):
 
 
 def migrate(conn):
+    # Agreed shop policy: keep checkout available when stock counts lag behind.
+    # Apply once to existing installations; subsequent explicit settings survive.
+    if not conn.execute("SELECT 1 FROM settings WHERE key='negative_stock_policy_v1'").fetchone():
+        conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('allow_negative_stock','1')")
+        conn.execute("INSERT INTO settings(key,value) VALUES('negative_stock_policy_v1','1')")
     additions = {
         'products': {'supplier_code': "TEXT NOT NULL DEFAULT ''", 'alias': "TEXT NOT NULL DEFAULT ''"},
         'stock_movements': {'user_id': 'INTEGER REFERENCES users(id)', 'old_qty': 'REAL'},

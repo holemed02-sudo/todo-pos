@@ -49,13 +49,32 @@ class CoreTests(unittest.TestCase):
   with self.assertRaises(ValueError):create_return(sale['id'],self.session,self.uid,[(item,1),(item,1)])
   self.assertEqual(self.stock(),19)
  def test_atomic_rollback(self):
+  db.set_setting('allow_negative_stock','0')
   with self.assertRaises(ValueError):complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=15,unit_price_cents=100)]*2,'CASH',10000)
   self.assertEqual(self.stock(),20)
   with db.connect() as c:
    self.assertEqual(c.execute('SELECT count(*) FROM sales').fetchone()[0],0)
    self.assertEqual(c.execute("SELECT count(*) FROM stock_movements WHERE movement_type='SALE'").fetchone()[0],0)
  def test_negative_stock(self):
-  db.set_setting('allow_negative_stock','1');self.sell(21);self.assertEqual(self.stock(),-1)
+  self.assertEqual(db.get_setting('allow_negative_stock'),'1')
+  self.sell(20);self.assertEqual(self.stock(),0)
+  self.sell();self.assertEqual(self.stock(),-1)
+  self.sell(2);self.assertEqual(self.stock(),-3)
+  with db.connect() as c:
+   movement=c.execute("SELECT old_qty,stock_after FROM stock_movements WHERE movement_type='SALE' ORDER BY id DESC LIMIT 1").fetchone()
+   self.assertEqual(tuple(movement),(-1,-3))
+ def test_negative_stock_policy_upgrade_once(self):
+  with db.connect() as c:
+   c.execute("DELETE FROM settings WHERE key='negative_stock_policy_v1'")
+   c.execute("UPDATE settings SET value='0' WHERE key='allow_negative_stock'")
+  db.init_db();self.assertEqual(db.get_setting('allow_negative_stock'),'1')
+  db.set_setting('allow_negative_stock','0')
+  db.init_db();self.assertEqual(db.get_setting('allow_negative_stock'),'0')
+ def test_return_improves_negative_stock_with_strict_setting(self):
+  sale=self.sell(25)
+  db.set_setting('allow_negative_stock','0')
+  create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
+  self.assertEqual(self.stock(),-4)
  def test_zero_price(self):self.assertEqual(self.sell(price=0)['total_cents'],0)
  def test_invalid_discount(self):
   for d in [-1,1001]:
@@ -80,6 +99,7 @@ class CoreTests(unittest.TestCase):
   self.assertEqual(sale['total_cents'],800);self.assertEqual(len(list_held()),0)
   with self.assertRaises(ValueError):complete_sale(self.session,self.uid,state['cart'],'CASH',800,200,hid)
  def test_failed_held_kept(self):
+  db.set_setting('allow_negative_stock','0')
   hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=100,unit_price_cents=1000)])
   with self.assertRaises(ValueError):complete_sale(self.session,self.uid,resume_held(hid)['cart'],'CASH',100000,0,hid)
   self.assertEqual(len(list_held()),1)

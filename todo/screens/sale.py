@@ -46,8 +46,8 @@ class SaleFrame(ttk.Frame):
         self.entry.bind('<Down>',self.focus_catalog)
         body=ttk.Panedwindow(self,orient='horizontal')
         body.pack(fill='both',expand=True)
-        left=ttk.Frame(body,padding=(0,0,12,0));body.add(left,weight=5)
         right=ttk.Frame(body,style='Card.TFrame',padding=14);body.add(right,weight=4)
+        left=ttk.Frame(body,padding=(12,0,0,0));body.add(left,weight=6)
         filters=ttk.Frame(left);filters.pack(fill='x',pady=(0,8))
         with connect() as conn:
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
@@ -55,6 +55,7 @@ class SaleFrame(ttk.Frame):
         self.cat=tk.StringVar(value='Tous')
         combo=ttk.Combobox(filters,textvariable=self.cat,values=list(self.categories),state='readonly',width=25)
         combo.pack(side='left');combo.bind('<<ComboboxSelected>>',lambda e:self.render_products())
+        self.category_combo=combo
         ttk.Label(filters,text='Nom · barcode · référence · alias').pack(side='right')
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
@@ -71,6 +72,7 @@ class SaleFrame(ttk.Frame):
         self.card_inner.bind('<Configure>',lambda e:self.card_canvas.configure(scrollregion=self.card_canvas.bbox('all')))
         self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
         self.card_canvas.configure(yscrollcommand=self.card_scroll.set)
+        self.card_canvas.bind('<Configure>',self.layout_cards)
         self.card_canvas.pack(side='left',fill='both',expand=True);self.card_scroll.pack(side='right',fill='y')
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
@@ -84,6 +86,7 @@ class SaleFrame(ttk.Frame):
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
         actions=ttk.Frame(right,style='Card.TFrame');actions.pack(fill='x',pady=8)
+        ttk.Button(right,text='Fonctions / الوظائف',command=self.functions).pack(fill='x',pady=4)
         for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(right,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
@@ -121,38 +124,83 @@ class SaleFrame(ttk.Frame):
             self.products.focus_set();self.products.selection_set(rows[0]);self.products.focus(rows[0])
         return 'break'
 
+    def layout_cards(self,event=None):
+        columns=max(1,self.card_canvas.winfo_width()//167)
+        for index,card in enumerate(self.card_inner.winfo_children()):
+            card.grid_configure(row=index//columns,column=index%columns)
+
+    def functions(self):
+        window=tk.Toplevel(self);window.title('Fonctions / الوظائف')
+        window.transient(self.winfo_toplevel());window.grab_set()
+        def run(command):
+            window.destroy();command()
+        commands=[('Duplicata / نسخة التيكي',self.duplicate_receipt),
+                  ('Modifier quantité / الكمية',self.set_qty),
+                  ('Remise ticket / تخفيض',self.discount),
+                  ('Remise ligne',self.line_discount),
+                  ('Attente / انتظار',self.hold),
+                  ("Liste d’attente / المعلقات",self.show_held)]
+        for index,(label,command) in enumerate(commands):
+            ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//2,column=index%2,padx=10,pady=10,ipadx=12,ipady=20,sticky='ew')
+        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=3,column=0,columnspan=2,pady=12)
+        window.bind('<Escape>',lambda e:run(self.focus_search))
+
+    def duplicate_receipt(self):
+        with connect() as conn:
+            rows=conn.execute('SELECT id,sale_no,total_cents,created_at FROM sales ORDER BY id DESC LIMIT 100').fetchall()
+        window=tk.Toplevel(self);window.title('Duplicata — choisir un ticket')
+        window.transient(self.winfo_toplevel());window.grab_set()
+        tree=ttk.Treeview(window,columns=('number','date','total'),show='headings',height=12)
+        for key,label in [('number','Ticket'),('date','Date'),('total','Total')]:tree.heading(key,text=label)
+        tree.pack(fill='both',expand=True,padx=12,pady=12)
+        for row in rows:tree.insert('','end',iid=str(row['id']),values=(row['sale_no'],row['created_at'],fmt(row['total_cents'],self.currency)))
+        def choose(event=None):
+            if not tree.selection():return
+            sid=int(tree.selection()[0]);row=next(r for r in rows if r['id']==sid)
+            window.destroy();self.show_receipt(row)
+        ttk.Button(window,text='Voir / Imprimer',command=choose).pack(pady=10)
+        tree.bind('<Return>',choose);tree.bind('<Double-1>',choose)
+        window.bind('<Escape>',lambda e:window.destroy())
+        if rows:tree.selection_set(str(rows[0]['id']));tree.focus_set()
+
     def schedule_search(self,event=None):
         if event and event.keysym in ('Return','Down','Up','Escape'):return
         if self.search_job:self.after_cancel(self.search_job)
         self.search_job=self.after(120,self.render_products)
 
-    def thumbnail(self,row):
-        key=(row['id'],row['image_path'])
+    def thumbnail(self,row,size=40):
+        key=(row['id'],row['image_path'],size)
         if key not in self.images and Image:
             path=abs_image(row['image_path']) if row['image_path'] else None
             if path:
                 try:
                     with Image.open(path) as source:
-                        im=source.copy();im.thumbnail((40,40))
+                        im=source.copy();im.thumbnail((size,size))
                     self.images[key]=ImageTk.PhotoImage(im,master=self)
                 except (OSError,ValueError):pass
         return self.images.get(key,'')
 
     def render_products(self):
         self.search_job=None
+        with connect() as conn:
+            categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
+        self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
+        self.category_combo['values']=list(self.categories)
+        if self.cat.get() not in self.categories:self.cat.set('Tous')
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
-        for row in rows:
+        columns=max(1,self.card_canvas.winfo_width()//167)
+        for index,row in enumerate(rows):
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
-            card.grid(row=len(self.card_inner.winfo_children())//4,column=len(self.card_inner.winfo_children())%4,padx=6,pady=6);card.grid_propagate(False)
-            thumb=self.thumbnail(row)
+            card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
+            thumb=self.thumbnail(row,90)
             picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
             tk.Label(card,text=row['name'],bg='white',font=('Segoe UI',9,'bold'),wraplength=140).pack()
             tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='white',fg='#2563EB').pack()
-            for widget in [card,picture]:
+            for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
     def confirm_search(self,event=None):
@@ -170,7 +218,39 @@ class SaleFrame(ttk.Frame):
             else:
                 self.render_products();self.focus_catalog()
                 self.status.config(text='Choisissez un produit puis Entrée.' if rows else 'Aucun produit trouvé.')
+                if not rows:self.unknown_product(code)
         return 'break'
+
+    def unknown_product(self,code):
+        from services.security import require_admin
+        from screens.products import ProductEditor
+        window=tk.Toplevel(self)
+        window.title('منتوج غير معروف — Produit inconnu')
+        window.configure(bg='#DC2626');window.geometry('640x340')
+        window.transient(self.winfo_toplevel());window.grab_set()
+        self.bell()
+        tk.Label(window,text='!  منتوج غير معروف',bg='#DC2626',fg='white',font=('Segoe UI',30,'bold')).pack(pady=(28,8))
+        tk.Label(window,text='Produit inconnu',bg='#DC2626',fg='white',font=('Segoe UI',18)).pack()
+        tk.Label(window,text=code,bg='#DC2626',fg='white',font=('Segoe UI',20),wraplength=580).pack(pady=18)
+        def close():
+            window.destroy();self.query.set('');self.render_products();self.after_idle(self.focus_search)
+        def create():
+            try:
+                with connect() as conn:require_admin(conn)
+            except PermissionError as error:
+                messagebox.showerror('ToDo',str(error),parent=window);return
+            window.destroy()
+            editor=ProductEditor(self,on_saved=self.render_products)
+            editor.bar.set(code)
+            self.wait_window(editor)
+            self.query.set('');self.render_products();self.focus_search()
+        buttons=tk.Frame(window,bg='#DC2626');buttons.pack(pady=12)
+        ttk.Button(buttons,text='إضافة المنتوج / Ajouter',command=create).pack(side='left',padx=8,ipady=10)
+        back=ttk.Button(buttons,text='رجوع للبيع / Retour',command=close)
+        back.pack(side='left',padx=8,ipady=10);back.focus_set()
+        window.protocol('WM_DELETE_WINDOW',close)
+        window.bind('<Escape>',lambda e:close())
+        window.bind('<Return>',lambda e:close())
 
     def pick_barcode(self,rows):
         w=tk.Toplevel(self);w.title('Choisir le produit / اختار المنتوج');w.transient(self);w.grab_set()

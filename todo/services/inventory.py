@@ -17,7 +17,7 @@ def apply_stock_movement(conn, product_id, qty_delta, movement_type,
     old=float(row['stock_qty']);new=old+delta
     if not math.isfinite(new):
         raise ValueError('Quantité invalide')
-    if new < -1e-9 and get_setting('allow_negative_stock','0',conn)!='1':
+    if delta < 0 and new < -1e-9 and get_setting('allow_negative_stock','1',conn)!='1':
         raise ValueError(f"Stock insuffisant: {row['name']} (disponible {old:g})")
     uid=user_id or current_user.get()
     conn.execute('UPDATE products SET stock_qty=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',(new,product_id))
