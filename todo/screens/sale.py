@@ -56,11 +56,22 @@ class SaleFrame(ttk.Frame):
         combo=ttk.Combobox(filters,textvariable=self.cat,values=list(self.categories),state='readonly',width=25)
         combo.pack(side='left');combo.bind('<<ComboboxSelected>>',lambda e:self.render_products())
         ttk.Label(filters,text='Nom · barcode · référence · alias').pack(side='right')
-        self.products=ttk.Treeview(left,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
+        self.catalog_tabs=ttk.Notebook(left)
+        self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
+        self.catalog_tabs.add(self.photo_page,text='Photos / بيع بدون باركود');self.catalog_tabs.add(self.list_page,text='Liste')
+        self.catalog_tabs.pack(fill='both',expand=True)
+        self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
         self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
         for key,label in [('price','PRIX'),('stock','STOCK')]:
             self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
         self.products.pack(fill='both',expand=True)
+        self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
+        self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
+        self.card_inner=ttk.Frame(self.card_canvas)
+        self.card_inner.bind('<Configure>',lambda e:self.card_canvas.configure(scrollregion=self.card_canvas.bbox('all')))
+        self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
+        self.card_canvas.configure(yscrollcommand=self.card_scroll.set)
+        self.card_canvas.pack(side='left',fill='both',expand=True);self.card_scroll.pack(side='right',fill='y')
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
         ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
@@ -104,6 +115,7 @@ class SaleFrame(ttk.Frame):
         self.entry.focus_set();self.entry.selection_range(0,'end')
 
     def focus_catalog(self,event=None):
+        self.catalog_tabs.select(self.list_page)
         rows=self.products.get_children()
         if rows:
             self.products.focus_set();self.products.selection_set(rows[0]);self.products.focus(rows[0])
@@ -130,9 +142,18 @@ class SaleFrame(ttk.Frame):
         self.search_job=None
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
+        for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
+            card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
+            card.grid(row=len(self.card_inner.winfo_children())//4,column=len(self.card_inner.winfo_children())%4,padx=6,pady=6);card.grid_propagate(False)
+            thumb=self.thumbnail(row)
+            picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
+            tk.Label(card,text=row['name'],bg='white',font=('Segoe UI',9,'bold'),wraplength=140).pack()
+            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='white',fg='#2563EB').pack()
+            for widget in [card,picture]:
+                widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
     def confirm_search(self,event=None):
         if self.search_job:

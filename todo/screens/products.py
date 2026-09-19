@@ -29,6 +29,7 @@ class ProductEditor(tk.Toplevel):
         self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
         self.e_name=labeled_entry(left,"Article / المنتوج",self.name,1)
         self.e_cat=labeled_entry(left,"Famille",self.cat,2)
+        ttk.Button(left,text="+ Famille",command=self.add_category).grid(row=2,column=2,padx=6)
         self.e_buy=labeled_entry(left,"Prix achat",self.buy,3)
         self.e_sell=labeled_entry(left,"Prix vente",self.sell,4)
         self.e_stock=labeled_entry(left,"Stock",self.stock,5)
@@ -37,10 +38,13 @@ class ProductEditor(tk.Toplevel):
         self.e_bar.bind("<Return>",lambda e:self.e_name.focus_set())
         chain=[(self.e_name,self.e_cat),(self.e_cat,self.e_buy),(self.e_buy,self.e_sell),(self.e_sell,self.e_stock),(self.e_stock,self.e_alert)]
         for a,b in chain:a.bind("<Return>",lambda e,n=b:n.focus_set())
-        ttk.Label(left,text="Prix UNITAIRE dès quantité — ex: 2=11 ; 6=10",font=("Segoe UI",10,"bold")).grid(row=7,column=0,columnspan=2,sticky="w",pady=(16,4))
-        self.rules=tk.Text(left,height=5,font=("Consolas",11));self.rules.grid(row=8,column=0,columnspan=2,sticky="ew")
-        ttk.Label(left,text="Barcode secondaire / pack: من بعد الحفظ يمكن إضافته من لائحة المنتجات.").grid(row=9,column=0,columnspan=2,sticky="w",pady=8)
-        b=ttk.Frame(left);b.grid(row=10,column=0,columnspan=2,sticky="e",pady=16)
+        ttk.Label(left,text="Promotions et prix par quantité",font=("Segoe UI",10,"bold")).grid(row=7,column=0,columnspan=2,sticky="w",pady=(16,4))
+        self.offer_rows=[]
+        self.offers_frame=ttk.Frame(left);self.offers_frame.grid(row=8,column=0,columnspan=2,sticky="ew")
+        self.add_offer_row()
+        ttk.Button(left,text="+ Ajouter une offre",command=self.add_offer_row).grid(row=9,column=0,columnspan=2,sticky="w",pady=4)
+        ttk.Label(left,text="Les prix sont saisis comme par le caissier : quantité minimale et prix unitaire.").grid(row=10,column=0,columnspan=2,sticky="w",pady=6)
+        b=ttk.Frame(left);b.grid(row=11,column=0,columnspan=2,sticky="e",pady=16)
         ttk.Button(b,text="Enregistrer",command=self.save).pack(side="left",padx=4)
         ttk.Button(b,text="Annuler",command=self.destroy).pack(side="left")
         self.preview=tk.Label(right,text="Aucune image",bg="white",relief="groove",width=25,height=13);self.preview.pack()
@@ -57,9 +61,42 @@ class ProductEditor(tk.Toplevel):
 
         self.after(100,self.e_bar.focus_force)
 
+    def add_offer_row(self, minimum="", price=""):
+        row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
+        minimum_var=tk.StringVar(value=str(minimum));price_var=tk.StringVar(value=str(price))
+        ttk.Label(row,text="Dès",width=6).pack(side="left")
+        ttk.Entry(row,textvariable=minimum_var,width=9).pack(side="left",padx=4)
+        ttk.Label(row,text="unités : prix",width=14).pack(side="left")
+        ttk.Entry(row,textvariable=price_var,width=12).pack(side="left",padx=4)
+        def remove():
+            if len(self.offer_rows)>1:
+                row.destroy();self.offer_rows.remove((minimum_var,price_var))
+        ttk.Button(row,text="×",width=3,command=remove).pack(side="left")
+        self.offer_rows.append((minimum_var,price_var))
+
+    def read_offers(self):
+        values=[]
+        for minimum_var,price_var in self.offer_rows:
+            if not minimum_var.get().strip() and not price_var.get().strip():continue
+            q=float(minimum_var.get());price=to_cents(price_var.get())
+            if not math.isfinite(q) or q<=0 or price<0:raise ValueError("Offre invalide")
+            values.append((q,price))
+        return values
+
     def choose_image(self):
         p=filedialog.askopenfilename(parent=self,filetypes=[("Images","*.png *.jpg *.jpeg *.webp *.bmp"),("Tous","*.*")])
         if p:self.img_source=p;self.preview_image(p)
+
+    def add_category(self):
+        name=simpledialog.askstring("Famille","Nom de la nouvelle famille :",parent=self)
+        if not name or not name.strip():return
+        name=name.strip()
+        try:
+            with connect() as conn:
+                conn.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(name,));conn.commit()
+            self.cat.set(name);self.e_cat.focus_set()
+        except Exception as error:
+            messagebox.showerror("ToDo",str(error),parent=self)
 
     def preview_image(self,p):
         if not PIL:return
@@ -77,7 +114,10 @@ class ProductEditor(tk.Toplevel):
         self.buy.set(f"{p['purchase_price_cents']/100:.2f}");self.sell.set(f"{p['sale_price_cents']/100:.2f}")
         self.stock.set(f"{p['stock_qty']:g}");self.alert.set(f"{p['alert_qty']:g}");self.img_rel=p["image_path"] or ""
         self.loaded_stock=float(p['stock_qty'])
-        self.rules.insert("1.0","\n".join(f"{r['min_qty']:g}={r['unit_price_cents']/100:.2f}" for r in rs))
+        for child in self.offers_frame.winfo_children():child.destroy()
+        self.offer_rows=[]
+        for r in rs:self.add_offer_row(r['min_qty'],f"{r['unit_price_cents']/100:.2f}")
+        if not self.offer_rows:self.add_offer_row()
         q=abs_image(self.img_rel)
         if q:self.preview_image(q)
 
@@ -90,12 +130,7 @@ class ProductEditor(tk.Toplevel):
             if not all(math.isfinite(x) for x in (stock,alert)) or min(buy,sell,alert)<0:
                 raise ValueError('Valeurs invalides')
             cat=self.cat.get().strip() or "Général"
-            rules=[]
-            for line in self.rules.get("1.0","end").replace(";","\n").splitlines():
-                if not line.strip():continue
-                q,p=line.split("=",1);q=float(q.strip());p=to_cents(p.strip())
-                if not math.isfinite(q) or q<=0 or p<0:raise ValueError('Tarif quantité invalide')
-                rules.append((q,p))
+            rules=self.read_offers()
             img=self.img_rel
             if self.img_source:img=import_image(self.img_source)
             with connect() as c:

@@ -125,55 +125,22 @@ class ToDoApp(tk.Tk):
         height=min(820,self.winfo_screenheight()-80)
         self.geometry(f'{width}x{height}')
         self.minsize(min(1100,width),min(640,height))
-
-        self.shell = ttk.Frame(self)
-        self.shell.pack(fill="both", expand=True)
-
-        side = ttk.Frame(self.shell, padding=12,style="Sidebar.TFrame")
-        side.pack(side="left", fill="y")
-
-        ttk.Label(
-            side,
-            text=get_setting("shop_name", "ToDo"),
-            font=("Segoe UI", 20, "bold"),style="Sidebar.TLabel",
-        ).pack(pady=(6, 12))
-
-        nav = [
-            ("Accueil", "home"),
-            ("Vente / البيع", "sale"),
-            ("Articles", "products"),
-            ("Caisse", "cash"),
-            ("Stock", "stock"),
-            ("Réceptions", "purchases"),
-            ("Retours", "returns"),
-            ("Journal", "journal"),
-            ("Paramètres", "settings"),
-        ]
-        for txt, key in nav:
+        # The shop workflow uses a compact blue module bar like the reference
+        # screen: the cashier sees the current module immediately and has more
+        # room for the product table and the cart than with a permanent sidebar.
+        self.shell=ttk.Frame(self);self.shell.pack(fill="both",expand=True)
+        bar=tk.Frame(self.shell,bg="#0878C9",height=58)
+        bar.pack(fill="x");bar.pack_propagate(False)
+        tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
+        nav=[("Accueil","home"),("Vente","sale"),("Articles","products"),("Caisse","cash"),("Stock","stock"),("Achats","purchases"),("Retours","returns"),("Journal","journal"),("Paramètres","settings")]
+        self.nav_buttons={}
+        for txt,key in nav:
             if self.user["role"]!="admin" and key in ("products","purchases","settings","journal"):continue
-            ttk.Button(
-                side,
-                text=txt,style="Sidebar.TButton",
-                command=lambda k=key: self.show(k),
-            ).pack(fill="x", pady=2)
-
-        ttk.Separator(side).pack(fill="x", pady=8)
-        ttk.Button(
-            side,
-            text="Écran client",style="Sidebar.TButton",
-            command=self.toggle_customer_display,
-        ).pack(fill="x")
-
-        ttk.Label(
-            side,
-            text=f"{self.user['display_name']}\n({self.user['role']})",
-            justify="center",style="Sidebar.TLabel",
-        ).pack(side="bottom", pady=10)
-
-        ttk.Separator(self.shell, orient="vertical").pack(side="left", fill="y")
-
-        self.content = ttk.Frame(self.shell)
-        self.content.pack(side="left", fill="both", expand=True)
+            b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
+            b.pack(side="left",fill="y");self.nav_buttons[key]=b
+        tk.Button(bar,text="Écran client",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
+        tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",font=("Segoe UI",9)).pack(side="right",padx=8)
+        self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
 
     def show(self, key):
         if self.user['role']!='admin' and key in ('products','purchases','settings','journal'):
@@ -185,6 +152,7 @@ class ToDoApp(tk.Tk):
             self.current=self.sale_frame
             self.current.pack(fill='both',expand=True)
             self.current.render_products();self.current.focus_search()
+            self._mark_nav(key)
             return
 
         makers = {
@@ -202,6 +170,11 @@ class ToDoApp(tk.Tk):
         self.current = makers[key]()
         if key=="sale":self.sale_frame=self.current
         self.current.pack(fill="both", expand=True)
+        self._mark_nav(key)
+
+    def _mark_nav(self,key):
+        for name,button in getattr(self,'nav_buttons',{}).items():
+            button.configure(bg="#075B96" if name==key else "#0878C9")
 
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
