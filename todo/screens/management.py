@@ -1,25 +1,34 @@
 from tkinter import ttk, messagebox
 
 class ManagementFrame(ttk.Frame):
-    """Reference entries, with explicit status for unfinished workflows."""
+    """Gestion — stock, fournisseurs, clients, dépenses."""
     def __init__(self, master, app):
         super().__init__(master, padding=30)
         ttk.Label(self, text='Gestion', font=('Segoe UI',22,'bold')).pack(pady=(0,22))
         groups=[
             [('Réceptions','purchases'),('Sorties',None),('Inventaire',None),('Mouvements de stock','stock')],
             [('Fournisseurs','suppliers'),('Règlements fournisseurs',None),('État crédits fournisseurs',None)],
-            [('Clients',None),('Règlements clients',None),('État crédits clients',None)],
+            [('Clients','clients'),('Règlements clients','clients_payments'),('État crédits clients','clients_credits')],
             [('Dépenses','cash'),('Rendez-vous',None)],
         ]
         for row,items in enumerate(groups):
             line=ttk.Frame(self);line.pack(pady=8)
             for label,key in items:
                 def activate(k=key, title=label):
+                    if k=='clients_payments':
+                        app.show('clients')
+                        return
+                    if k=='clients_credits':
+                        from screens.clients import CreditStateWindow
+                        CreditStateWindow(app)
+                        return
                     if k:
                         app.show(k)
-                        if title == 'Dépenses':
+                        if title=='Dépenses':
                             app.current.expense()
                     else:
-                        messagebox.showinfo(title, 'Cette fonction du référentiel reste à implémenter.\nهاد الخدمة مازال ما تكملاتش.', parent=self)
-                button=ttk.Button(line,text=label if key else label+' · à compléter',width=25,command=activate)
+                        messagebox.showinfo(title,
+                            'Cette fonction du référentiel reste à implémenter.\nهاد الخدمة مازال ما تكملاتش.',
+                            parent=self)
+                button=ttk.Button(line,text=label,width=25,command=activate)
                 button.pack(side='left',padx=8,ipady=12)
