@@ -16,7 +16,7 @@ class PaymentDialog(tk.Toplevel):
         self.configure(bg='#F6F7FB')
         self.transient(master.winfo_toplevel())
         self.method = tk.StringVar(value=method)
-        self.amount = tk.StringVar(value=f'{total / 100:.2f}')
+        self.amount = tk.StringVar(value='0.00')
         self.print_ticket = tk.BooleanVar(value=False)
         tk.Label(self, text='TOTAL À PAYER / المجموع', bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
@@ -36,9 +36,17 @@ class PaymentDialog(tk.Toplevel):
         self.entry.pack(fill='x', pady=8)
         notes = ttk.Frame(body)
         notes.pack(fill='x', pady=6)
-        for value in (20, 50, 100, 200):
-            ttk.Button(notes, text=f'{value} DH', command=lambda n=value: self.set_amount(n)).pack(side='left', expand=True, fill='x', padx=3)
-        ttk.Button(body, text='Montant exact / المبلغ بالضبط', command=self.exact).pack(fill='x', pady=4)
+        for value in (200, 100, 50, 20):
+            ttk.Button(notes, text=f'{value} DH', command=lambda n=value: self.add_amount(n)).pack(side='left', expand=True, fill='x', padx=3)
+        coins = ttk.Frame(body)
+        coins.pack(fill='x', pady=(0, 6))
+        for value in (10, 5, 2, 1, 0.5):
+            label = f'{value:g} DH'
+            ttk.Button(coins, text=label, command=lambda n=value: self.add_amount(n)).pack(side='left', expand=True, fill='x', padx=3)
+        quick = ttk.Frame(body)
+        quick.pack(fill='x', pady=(0, 6))
+        ttk.Button(quick, text='Effacer / مسح', command=self.clear_amount).pack(side='left', expand=True, fill='x', padx=(0, 3))
+        ttk.Button(quick, text='Montant exact / المبلغ بالضبط', command=self.exact).pack(side='left', expand=True, fill='x', padx=(3, 0))
         self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=14)
         self.change.pack(fill='x', pady=14)
         self.error = ttk.Label(body, foreground='#DC2626', wraplength=500)
@@ -64,9 +72,19 @@ class PaymentDialog(tk.Toplevel):
         self.method.set(method)
         self.update_amount()
 
-    def set_amount(self, amount):
+    def add_amount(self, value):
         self.method.set('CASH')
-        self.amount.set(f'{amount:.2f}')
+        try:
+            current_cents = to_cents(self.amount.get())
+        except Exception:
+            current_cents = 0
+        new_cents = current_cents + to_cents(value)
+        self.amount.set(f'{new_cents / 100:.2f}')
+        self.focus_amount()
+
+    def clear_amount(self):
+        self.method.set('CASH')
+        self.amount.set('0.00')
         self.focus_amount()
 
     def exact(self):
