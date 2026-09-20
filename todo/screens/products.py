@@ -7,6 +7,7 @@ import math
 from services.money import to_cents
 from services.images import import_image, abs_image
 from screens.common import labeled_entry
+from services.catalog import list_categories, get_product_categories, set_product_categories
 try:
     from PIL import Image,ImageTk
     PIL=True
@@ -28,11 +29,13 @@ class ProductEditor(tk.Toplevel):
         right=ttk.LabelFrame(root,text="Image produit",padding=8);right.pack(side="right",fill="y")
         self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
         self.e_name=labeled_entry(left,"Article / المنتوج",self.name,1)
-        ttk.Label(left,text="Famille").grid(row=2,column=0,sticky='w')
-        self.e_cat=ttk.Combobox(left,textvariable=self.cat)
-        self.e_cat.grid(row=2,column=1,sticky='ew',pady=5)
+        ttk.Label(left,text="Familles / العائلات").grid(row=2,column=0,sticky='nw',pady=4)
+        cat_outer=ttk.Frame(left);cat_outer.grid(row=2,column=1,columnspan=2,sticky='ew',pady=4)
+        ttk.Button(cat_outer,text="+ Famille",command=self.add_category).pack(side='bottom',anchor='w',pady=(4,0))
+        self.cat_scroll_frame=tk.Frame(cat_outer,bg='white',bd=1,relief='groove')
+        self.cat_scroll_frame.pack(fill='x')
+        self.cat_vars={}
         self.refresh_categories()
-        ttk.Button(left,text="+ Famille",command=self.add_category).grid(row=2,column=2,padx=6)
         self.e_buy=labeled_entry(left,"Prix achat",self.buy,3)
         self.e_sell=labeled_entry(left,"Prix vente",self.sell,4)
         self.e_stock=labeled_entry(left,"Stock",self.stock,5)
@@ -105,8 +108,28 @@ class ProductEditor(tk.Toplevel):
             messagebox.showerror("ToDo",str(error),parent=self)
 
     def refresh_categories(self):
-        with connect() as conn:
-            self.e_cat['values']=[r['name'] for r in conn.execute('SELECT name FROM categories WHERE active=1 ORDER BY sort_order,name')]
+        for w in self.cat_scroll_frame.winfo_children():
+            w.destroy()
+        self.cat_vars.clear()
+        for cat in list_categories():
+            var = tk.BooleanVar(value=False)
+            bg  = cat['color'] or '#2563EB'
+            try:
+                r2,g2,b2 = int(bg[1:3],16),int(bg[3:5],16),int(bg[5:7],16)
+                fg = '#ffffff' if (0.299*r2+0.587*g2+0.114*b2)<140 else '#1e293b'
+            except Exception:
+                fg = '#ffffff'
+            icon = (cat['icon']+' ') if cat.get('icon') else ''
+            row  = tk.Frame(self.cat_scroll_frame, bg='white')
+            row.pack(fill='x', padx=4, pady=1)
+            cb = tk.Checkbutton(row, text=icon+cat['name'],
+                variable=var, bg='white', activebackground='white',
+                selectcolor=bg, font=('Segoe UI',9))
+            cb.pack(side='left')
+            swatch = tk.Label(row, bg=bg, text=icon or ' ', fg=fg,
+                width=3, font=('Segoe UI',8,'bold'), relief='flat')
+            swatch.pack(side='left', padx=4)
+            self.cat_vars[cat['id']] = (var, cat['name'])
 
     def preview_image(self,p):
         if not PIL:return
@@ -138,7 +161,8 @@ class ProductEditor(tk.Toplevel):
             buy=to_cents(self.buy.get());sell=to_cents(self.sell.get());stock=float(self.stock.get() or 0);alert=float(self.alert.get() or 0)
             if not all(math.isfinite(x) for x in (stock,alert)) or min(buy,sell,alert)<0:
                 raise ValueError('Valeurs invalides')
-            cat=self.cat.get().strip() or "Général"
+            selected_cats=[cid for cid,(var,_) in self.cat_vars.items() if var.get()]
+            cat=next((name for cid,(_,name) in self.cat_vars.items() if cid in selected_cats),'Général') if selected_cats else 'Général'
             rules=self.read_offers()
             img=self.img_rel
             if self.img_source:img=import_image(self.img_source)
