@@ -220,6 +220,28 @@ CREATE TABLE IF NOT EXISTS cash_movements (
     FOREIGN KEY(user_id) REFERENCES users(id)
 );
 
+
+CREATE TABLE IF NOT EXISTS clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS client_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    sale_id INTEGER,
+    amount_cents INTEGER NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(client_id) REFERENCES clients(id),
+    FOREIGN KEY(sale_id)   REFERENCES sales(id)
+);
+CREATE INDEX IF NOT EXISTS idx_client_payments_client ON client_payments(client_id);
+
 INSERT OR IGNORE INTO settings(key,value) VALUES
 ('shop_name','ToDo'),
 ('currency','DH'),
@@ -289,6 +311,7 @@ def migrate(conn):
         'stock_movements': {'user_id': 'INTEGER REFERENCES users(id)', 'old_qty': 'REAL'},
         'sale_items': {'net_total_cents': 'INTEGER', 'qty_multiplier': 'REAL NOT NULL DEFAULT 1', 'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},
         'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0'},
+        'sales': {'client_id': 'INTEGER REFERENCES clients(id)'},
     }
     for table, fields in additions.items():
         existing = {r['name'] for r in conn.execute(f'PRAGMA table_info({table})')}
