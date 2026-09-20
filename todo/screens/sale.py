@@ -3,7 +3,7 @@ import math
 from tkinter import ttk, messagebox, simpledialog, filedialog
 from decimal import Decimal
 from database import connect, get_setting
-from services.catalog import search_products, scan_barcode
+from services.catalog import search_products, scan_barcode, list_categories
 from services.pricing import resolve_unit_price, line_total
 from services.sales import complete_sale, hold_sale, list_held, resume_held
 from services.cash import get_open_session
@@ -257,8 +257,43 @@ class SaleFrame(ttk.Frame):
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         if self.cat.get() not in self.categories:self.cat.set('Tous')
         for child in self.category_buttons.winfo_children(): child.destroy()
-        for name in self.categories:
-            ttk.Button(self.category_buttons,text=name,command=lambda n=name:self.choose_category(n)).pack(side='left',padx=2)
+        # Default colours for "Tous" and fallback
+        all_colors = {'Tous': ('#1e293b', '#ffffff')}
+        for cat_row in list_categories():
+            bg = cat_row['color'] or '#2563EB'
+            # compute a readable text colour (white or black) based on luminance
+            try:
+                r2,g2,b2 = int(bg[1:3],16), int(bg[3:5],16), int(bg[5:7],16)
+                lum = (0.299*r2 + 0.587*g2 + 0.114*b2)
+                fg = '#ffffff' if lum < 140 else '#1e293b'
+            except Exception:
+                fg = '#ffffff'
+            all_colors[cat_row['name']] = (bg, fg)
+        active = self.cat.get()
+        for name, (bg, fg) in all_colors.items():
+            if name not in self.categories:
+                continue
+            icon = ''
+            for cat_row in list_categories():
+                if cat_row['name'] == name:
+                    icon = (cat_row['icon'] + ' ') if cat_row['icon'] else ''
+                    break
+            label = icon + name
+            is_active = (name == active)
+            border  = '#f59e0b' if is_active else bg
+            relief  = 'solid'   if is_active else 'flat'
+            btn = tk.Button(
+                self.category_buttons,
+                text=label,
+                bg=bg, fg=fg,
+                activebackground=bg, activeforeground=fg,
+                relief=relief, bd=2 if is_active else 0,
+                highlightbackground=border,
+                font=('Segoe UI', 9, 'bold' if is_active else 'normal'),
+                padx=10, pady=6, cursor='hand2',
+                command=lambda n=name: self.choose_category(n)
+            )
+            btn.pack(side='left', padx=3, pady=2)
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
