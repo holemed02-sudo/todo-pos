@@ -51,7 +51,7 @@ sale.add_product(photo);sale.add_product(photo)
 assert sale.cart[-1]['qty']==3 and sale.totals()[0]==4400
 sale.query.set('987654321999999');sale.confirm_search();app.update_idletasks()
 import tkinter as tk
-dialogs=[w for w in sale.winfo_children() if isinstance(w,tk.Toplevel)]
+dialogs=[w for w in app.winfo_children() if isinstance(w,tk.Toplevel)]
 unknown=next(w for w in dialogs if 'Produit inconnu' in w.title())
 assert unknown.cget('bg')=='#DC2626'
 app.tk.call(unknown.protocol('WM_DELETE_WINDOW'))
