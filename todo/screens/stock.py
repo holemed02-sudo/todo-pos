@@ -4,13 +4,15 @@ from database import connect
 from services.inventory import apply_stock_movement
 
 class StockFrame(ttk.Frame):
-    def __init__(self,master):
+    def __init__(self,master,app=None):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
         ttk.Label(top,text="Stock / المخزون",font=("Segoe UI",22,"bold")).pack(side="left")
         ttk.Label(self,text="الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في Articles.",foreground="#475569").pack(anchor="w",pady=(0,8))
         ttk.Button(top,text="Ajustement",command=self.adjust).pack(side="right")
         ttk.Button(top,text="Historique",command=self.ledger).pack(side="right",padx=8)
+        if app is not None:
+            ttk.Button(top,text="Articles / المنتجات",command=lambda: app.show("products")).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         for c,h,w in [("id","ID",50),("name","Article",320),("stock","Stock",100),("alert","Alerte",90),("last","Dernier mouvement",220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
