@@ -33,6 +33,7 @@ class ToDoApp(tk.Tk):
         self.customer_window = None
         self.customer_label = None
         self.shell = None
+        self.lock_window = None
 
         self.title("ToDo POS")
         self.geometry("460x330")
@@ -145,6 +146,8 @@ class ToDoApp(tk.Tk):
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
 
     def show(self, key):
+        if self.lock_window and self.lock_window.winfo_exists():
+            self.lock_window.lift();return
         if self.user['role']!='admin' and key in ('products','purchases','settings','journal','management','statistics'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
@@ -230,7 +233,14 @@ class ToDoApp(tk.Tk):
         )
         self.customer_label.config(text="\n".join(lines))
 
+    def lock_cashier(self):
+        from screens.cashier_tools import CashierLock
+        if not self.lock_window or not self.lock_window.winfo_exists():
+            self.lock_window=CashierLock(self)
+
     def on_close(self):
+        if self.lock_window and self.lock_window.winfo_exists():
+            self.lock_window.lift();return
         if self.sale_frame and self.sale_frame.cart:
             from services.sales import hold_sale
             try:

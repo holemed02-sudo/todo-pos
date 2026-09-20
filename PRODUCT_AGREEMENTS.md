@@ -38,3 +38,12 @@
 - Paramètres: المحل، العملة، الضرائب، التيكي، الباركود، المستخدمين، النسخ الاحتياطي، شاشة الزبون، الطابعة، السكان، الاختصارات واللغة.
 
 أي صفحة أو زر ما داخلش فهاد الخريطة أو ما باينش فالفيديو/الصور ما كيدخلش فواجهة النسخة المقبلة.
+
+## Fonctions — précisions confirmées le 20/09/2026
+- Divers : l'utilisateur confirme « produit non enregistré ou montant supplémentaire ». Saisie libellé/prix/quantité ; ligne distincte sur le ticket, sans mouvement de stock. Vente, attente/reprise et retour testés.
+- Flash : l'utilisateur ne connaît pas son rôle ; aucune fonction arbitraire ne lui est attribuée.
+- Alerte : le comportement de la fenêtre reste à préciser.
+- Calculatrice : calcul décimal local, sans modification du ticket.
+- Lock : garde le ticket et exige le PIN du caissier actif ; verrouille les changements de page et la fermeture normale.
+- Validation locale : 34 tests métier ; parcours Tk incluant Divers, calculatrice, PIN erroné/correct et conservation du panier.
+- Reste : thème, tiroir physique, rôle de Flash/Alerte, revue complète de l'exécutable et impression physique.

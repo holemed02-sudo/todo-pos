@@ -37,9 +37,13 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
             pid=int(line['product_id']);qty=float(line['qty'])
             if not math.isfinite(qty) or qty<=0:
                 raise ValueError('Quantité invalide')
-            p=conn.execute('SELECT * FROM products WHERE id=? AND active=1',(pid,)).fetchone()
+            p=conn.execute('SELECT * FROM products WHERE id=? AND (active=1 OR is_misc=1)',(pid,)).fetchone()
             if not p:
                 raise ValueError('Article introuvable')
+            if p['is_misc']:
+                p=dict(p)
+                p['name']=str(line.get('name','')).strip()
+                if not p['name'] or len(p['name'])>150:raise ValueError('Libellé Divers invalide')
             if not p['allow_fraction'] and not qty.is_integer():
                 raise ValueError('Cet article se vend en unités entières.')
             unit=line.get('unit_price_cents')
@@ -74,7 +78,8 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
             pack=pricing and pricing['pricing_mode']=='PACK'
             conn.execute('INSERT INTO sale_items(sale_id,product_id,barcode_used,name_snapshot,qty,unit_price_cents,cost_price_cents,discount_cents,line_total_cents,net_total_cents,qty_multiplier,pricing_mode) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
                          (sid,p['id'],barcode,p['name'],qty,pricing['unit_price_cents'] if pack else rounded(unit),p['purchase_price_cents'],gross-net,gross,net,pricing['qty_multiplier'] if pricing else 1,'PACK' if pack else 'UNIT'))
-            apply_stock_movement(conn,p['id'],-qty,'SALE',p['purchase_price_cents'],'sale',sid,no,user_id)
+            if not p['is_misc']:
+                apply_stock_movement(conn,p['id'],-qty,'SALE',p['purchase_price_cents'],'sale',sid,no,user_id)
         if held_id is not None:
             conn.execute('DELETE FROM held_sales WHERE id=?',(held_id,))
         audit(conn,'SALE',sid,no,user_id)
@@ -145,6 +150,8 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
         rid=conn.execute('INSERT INTO returns(return_no,sale_id,session_id,cashier_user_id,total_cents,refund_method,reason) VALUES(?,?,?,?,?,?,?)',(no,sale_id,session_id,user_id,total,refund_method,reason)).lastrowid
         for si,qty,due in validated:
             conn.execute('INSERT INTO return_items(return_id,sale_item_id,product_id,qty,unit_price_cents,line_total_cents) VALUES(?,?,?,?,?,?)',(rid,si['id'],si['product_id'],qty,si['unit_price_cents'],due))
-            apply_stock_movement(conn,si['product_id'],qty,'RETURN',si['cost_price_cents'],'return',rid,reason or no,user_id)
+            misc=conn.execute('SELECT is_misc FROM products WHERE id=?',(si['product_id'],)).fetchone()[0]
+            if not misc:
+                apply_stock_movement(conn,si['product_id'],qty,'RETURN',si['cost_price_cents'],'return',rid,reason or no,user_id)
         audit(conn,'RETURN',rid,reason,user_id)
         return dict(id=rid,return_no=no,total_cents=total)

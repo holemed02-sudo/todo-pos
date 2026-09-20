@@ -142,6 +142,7 @@ class SaleFrame(ttk.Frame):
         def run(command):
             window.destroy();command()
         commands=[('Duplicata / نسخة التيكي',self.duplicate_receipt),
+                  ('Divers / منتوج أو مبلغ إضافي',self.add_misc),
                   ('Modifier quantité / الكمية',self.set_qty),
                   ('Modifier prix / الثمن',self.set_price),
                   ('Remise ticket / تخفيض',self.discount),
@@ -153,6 +154,8 @@ class SaleFrame(ttk.Frame):
                   ('Dépenses / المصاريف',lambda:self.cash_tools('expense')),
                   ('Rapport / التقارير',lambda:self.app.show('journal')),
                   ('Raccourcis / الاختصارات',self.show_shortcuts),
+                  ('Calculatrice / الحاسبة',self.calculator),
+                  ('Lock / قفل الصندوق',self.app.lock_cashier),
                   ('Attente / انتظار',self.hold),
                   ("Liste d’attente / المعلقات",self.show_held)]
         for index,(label,command) in enumerate(commands):
@@ -164,6 +167,7 @@ class SaleFrame(ttk.Frame):
         index=self.selected()
         if index is None:return
         line=self.cart[index]
+        if line.get('is_misc'):return
         with connect() as conn:
             product=conn.execute('SELECT sale_price_cents FROM products WHERE id=?',(line['product_id'],)).fetchone()
         line['unit_price_cents']=str(product['sale_price_cents'])
@@ -171,6 +175,23 @@ class SaleFrame(ttk.Frame):
         line['discount_cents']=min(line.get('discount_cents',0),line_total(line['unit_price_cents'],line['qty']))
         self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0])
         self.refresh(index);self.focus_search()
+
+    def calculator(self):
+        from screens.cashier_tools import Calculator
+        Calculator(self)
+
+    def add_misc(self):
+        from services.misc import misc_line
+        name=simpledialog.askstring('Divers','Libellé / اسم المنتوج أو المبلغ:',parent=self)
+        if name is None:return
+        price=simpledialog.askstring('Divers','Prix unitaire (DH) / الثمن:',parent=self)
+        if price is None:return
+        quantity=simpledialog.askstring('Divers','Quantité / الكمية:',initialvalue='1',parent=self)
+        if quantity is None:return
+        try:
+            self.cart.append(misc_line(name,price,quantity));self.refresh(len(self.cart)-1)
+        except (ValueError,ArithmeticError) as error:messagebox.showerror('Divers',str(error),parent=self)
+        self.focus_search()
 
     def cash_tools(self,action=None):
         from screens.cashdesk import CashFrame

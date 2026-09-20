@@ -80,6 +80,22 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     tree=next(w for w in descendants(held) if w.winfo_class()=='Treeview')
     tree.selection_set(tree.get_children()[0]);button(held,'Reprendre').invoke()
     assert sale.cart[0]['qty']==2
+    saved=list(sale.cart)
+    app.lock_cashier();app.update()
+    lock=app.lock_window
+    app.show('products');assert app.current is sale
+    lock.pin.set('9999');lock.unlock();assert app.lock_window is lock
+    lock.pin.set('1234');lock.unlock();assert app.lock_window is None
+    assert sale.cart==saved
+    sale.calculator();app.update()
+    calc=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    calc.expression.set('12,5 * 2');button(calc,'=').invoke()
+    assert calc.expression.get()=='25'
+    button(calc,'Fermer').invoke()
+    with patch('tkinter.simpledialog.askstring',side_effect=['TEST supplement','2.50','1']):
+        sale.add_misc()
+    assert sale.cart[-1]['is_misc'] and sale.totals()[1]==850
+    sale.remove();assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askfloat',return_value=1):sale.discount()
     assert sale.totals()[1]==500
     for label in ['SOLDER avec','SOLDER sans','Fonctions']:visible(button(sale,label))
