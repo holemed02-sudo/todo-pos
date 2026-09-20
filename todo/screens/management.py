@@ -6,7 +6,8 @@ class ManagementFrame(ttk.Frame):
         super().__init__(master, padding=30)
         ttk.Label(self, text='Gestion', font=('Segoe UI',22,'bold')).pack(pady=(0,22))
         groups=[
-            [('Réceptions','purchases'),('Sorties','returns'),('Inventaire','stock'),('Mouvements de stock','stock')],
+            [('Articles / المنتجات','products'),('Réceptions','purchases'),('Sorties','returns'),('Inventaire','stock')],
+            [('Mouvements de stock','stock'),('Fournisseurs','purchases'),('Règlements fournisseurs','cash'),('État crédits fournisseurs','journal')],
             [('Fournisseurs','purchases'),('Règlements fournisseurs','cash'),('État crédits fournisseurs','journal')],
             [('Clients','returns'),('Règlements clients','cash'),('État crédits clients','journal')],
             [('Dépenses','cash'),('Rendez-vous',None)],
