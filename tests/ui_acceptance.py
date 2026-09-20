@@ -48,12 +48,35 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert c.execute('SELECT category_id FROM products WHERE id=?',(pid,)).fetchone()[0]
     app.show('purchases');app.update()
     purchase=app.current
-    purchase.supplier.set('TEST Supplier');purchase.invoice.set('TEST-001')
+    from screens.suppliers import SupplierEditor, SuppliersFrame
+    button(purchase,'+').invoke();app.update()
+    supplier_editor=next(w for w in descendants(app) if isinstance(w,SupplierEditor))
+    supplier_editor.name.set('TEST Supplier');supplier_editor.phone.set('0600000000')
+    button(supplier_editor,'Enregistrer').invoke();app.update()
+    assert purchase.supplier_id is not None
+    supplier_id=purchase.supplier_id
+    purchase.invoice.set('TEST-001')
     purchase.prod.selection_set(purchase.prod.get_children()[0])
     with patch('tkinter.simpledialog.askfloat',side_effect=[5,2]):
         purchase.addline()
     confirm=button(purchase,'VALIDER');visible(confirm);confirm.invoke();app.update()
-    with connect() as c:assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==5
+    with connect() as c:
+        assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==5
+        assert c.execute('SELECT supplier_id FROM purchases').fetchone()[0]==supplier_id
+    app.show('management');app.update()
+    assert len([w for w in descendants(app.current) if w.winfo_class()=='TButton' and w.cget('text')=='Fournisseurs'])==1
+    button(app.current,'Fournisseurs').invoke();app.update()
+    assert isinstance(app.current,SuppliersFrame)
+    app.current.tree.selection_set(str(supplier_id))
+    button(app.current,'Modifier').invoke();app.update()
+    supplier_editor=next(w for w in descendants(app) if isinstance(w,SupplierEditor))
+    supplier_editor.name.set('TEST Supplier updated');button(supplier_editor,'Enregistrer').invoke()
+    button(app.current,'Réceptions du fournisseur').invoke();app.update()
+    history=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    history_tree=next(w for w in descendants(history) if w.winfo_class()=='Treeview')
+    assert len(history_tree.get_children())==1
+    assert 'TEST-001' in history_tree.item(history_tree.get_children()[0],'values')
+    history.destroy()
     open_session(app.user['id'],10000)
     app.show('sale');app.update()
     sale=app.current

@@ -18,6 +18,7 @@ from screens.journal import JournalFrame
 from screens.settings import SettingsFrame
 from screens.management import ManagementFrame
 from screens.statistics import StatisticsFrame
+from screens.suppliers import SuppliersFrame
 
 class ToDoApp(tk.Tk):
     def __init__(self):
@@ -151,7 +152,7 @@ class ToDoApp(tk.Tk):
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
             self.lock_window.lift();return
-        if self.user['role']!='admin' and key in ('products','purchases','settings','journal','management','statistics'):
+        if self.user['role']!='admin' and key in ('products','purchases','suppliers','settings','journal','management','statistics'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
@@ -170,6 +171,7 @@ class ToDoApp(tk.Tk):
             "cash": lambda: CashFrame(self.content, self),
             "stock": lambda: StockFrame(self.content, self),
             "purchases": lambda: PurchasesFrame(self.content),
+            "suppliers": lambda: SuppliersFrame(self.content),
             "returns": lambda: ReturnsFrame(self.content, self),
             "journal": lambda: JournalFrame(self.content),
             "settings": lambda: SettingsFrame(self.content, self),

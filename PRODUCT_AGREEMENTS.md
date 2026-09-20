@@ -46,4 +46,12 @@
 - Calculatrice : calcul décimal local, sans modification du ticket.
 - Lock : garde le ticket et exige le PIN du caissier actif ; verrouille les changements de page et la fermeture normale.
 - Validation locale : 34 tests métier ; parcours Tk incluant Divers, calculatrice, PIN erroné/correct et conservation du panier.
-- Reste : thème, tiroir physique, rôle de Flash/Alerte, revue complète de l'exécutable et impression physique.
+- Thème : accents Bleu/Vert/Violet enregistrés. Tiroir : commande ESC/POS configurable, matériel physique non testé.
+- Reste : rôle de Flash/Alerte, revue complète de l'exécutable et impression physique.
+
+## Fournisseurs et navigation Gestion — 20/09/2026
+- Fournisseurs ouvre une vraie liste avec création/modification (nom, téléphone, notes) et historique des réceptions.
+- Réceptions : choix d'un fournisseur existant ou création par +, sélection immédiate ; les factures restent liées à son identifiant après renommage.
+- Suppression du groupe fournisseurs en double. Clients/règlements/crédits ne redirigent plus vers des pages sans rapport : statut « à compléter » explicite.
+- Sorties, Inventaire dédié, clients, règlements, crédits et Rendez-vous restent à implémenter ; la présence des entrées ne signifie pas achèvement.
+- Validation locale : 39 tests métier ; parcours Tk à 1100×640 avec création fournisseur, réception liée, renommage, historique, vente et reçu PDF.
