@@ -19,10 +19,10 @@ class PurchasesFrame(ttk.Frame):
         for c,h,w in [("id","ID",50),("name","Article",240),("stock","Stock",80),("cost","Achat",80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
         self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.search()
         r=ttk.Frame(body);body.add(r,weight=3)
+        ttk.Button(r,text="VALIDER réception / تأكيد المشتريات",style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
         self.lines_t=ttk.Treeview(r,columns=("name","qty","cost","total"),show="headings")
         for c,h,w in [("name","Article",230),("qty","Qté",80),("cost","Coût",90),("total","Total",100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
         self.lines_t.pack(fill="both",expand=True)
-        ttk.Button(r,text="Valider réception",command=self.save).pack(fill="x",pady=6)
     def search(self):
         q=f"%{self.q.get().strip()}%"
         with connect() as c:r=c.execute("SELECT id,name,stock_qty,purchase_price_cents FROM products WHERE active=1 AND name LIKE ? ORDER BY name LIMIT 100",(q,)).fetchall()

@@ -1,6 +1,6 @@
 import tkinter as tk
 import math
-from tkinter import ttk, messagebox, simpledialog
+from tkinter import ttk, messagebox, simpledialog, filedialog
 from decimal import Decimal
 from database import connect, get_setting
 from services.catalog import search_products, scan_barcode
@@ -9,7 +9,7 @@ from services.sales import complete_sale, hold_sale, list_held, resume_held
 from services.cash import get_open_session
 from services.money import fmt, to_cents, allocate
 from services.images import abs_image
-from services.receipts import build_receipt, print_receipt_windows
+from services.receipts import build_receipt, print_receipt_windows, export_receipt_pdf
 from screens.payment import PaymentDialog
 try:
     from PIL import Image, ImageTk
@@ -81,6 +81,16 @@ class SaleFrame(ttk.Frame):
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
         ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
+        checkout_area=ttk.Frame(right,style='Card.TFrame')
+        checkout_area.pack(side='bottom',fill='x')
+        actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
+        ttk.Button(checkout_area,text='Fonctions / الوظائف',command=self.functions).pack(fill='x',pady=4)
+        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
+            ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
+        self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
+        self.total_label=ttk.Label(checkout_area,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
+        ttk.Button(checkout_area,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
+        ttk.Button(checkout_area,text='SOLDER sans ticket',command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
         ttk.Label(right,text='Ticket en cours',style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
         self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
         self.ticket.heading('#0',text='ARTICLE');self.ticket.column('#0',width=170,minwidth=100)
@@ -89,14 +99,6 @@ class SaleFrame(ttk.Frame):
         self.ticket.tag_configure('offer',background='#DCFCE7',foreground='#166534')
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
-        actions=ttk.Frame(right,style='Card.TFrame');actions.pack(fill='x',pady=8)
-        ttk.Button(right,text='Fonctions / الوظائف',command=self.functions).pack(fill='x',pady=4)
-        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
-            ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
-        self.subtotal_label=ttk.Label(right,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
-        self.total_label=ttk.Label(right,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
-        ttk.Button(right,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
-        ttk.Button(right,text='SOLDER sans ticket',command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
         for label,command in [('F2 Espèces',lambda:self.set_payment('CASH')),('F3 Carte',lambda:self.set_payment('CARD')),('F4 Attente',self.hold),('Liste attente',self.show_held),('F7 Remise',self.discount),('ESC Annuler',self.cancel)]:
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
@@ -200,9 +202,10 @@ class SaleFrame(ttk.Frame):
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
         columns=max(1,self.card_canvas.winfo_width()//167)
+        for row in rows:
+            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
         photo_rows=[row for row in rows if row['image_path']]
         for index,row in enumerate(photo_rows):
-            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
             thumb=self.thumbnail(row,90)
@@ -463,7 +466,9 @@ class SaleFrame(ttk.Frame):
             self.clear()
             self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")
             try:
-                if print_ticket and dialog_print:print_receipt_windows(result['id'])
+                if print_ticket:
+                    self.show_receipt(result)
+                if dialog_print:print_receipt_windows(result['id'])
             except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
@@ -471,8 +476,13 @@ class SaleFrame(ttk.Frame):
 
     def show_receipt(self,result):
         w=tk.Toplevel(self);w.title(result['sale_no']);w.geometry('450x560');w.transient(self)
+        buttons=ttk.Frame(w);buttons.pack(side='bottom',fill='x')
+        def save_pdf():
+            path=filedialog.asksaveasfilename(parent=w,defaultextension='.pdf',filetypes=[('PDF','*.pdf')],initialfile=result['sale_no']+'.pdf')
+            if path:export_receipt_pdf(result['id'],path)
+        ttk.Button(buttons,text='PDF / حفظ الفاتورة',command=save_pdf).pack(side='left',padx=8,pady=8)
         text=tk.Text(w,font=('Consolas',11),padx=16,pady=16)
         text.pack(fill='both',expand=True);text.insert('1.0',build_receipt(result['id']));text.config(state='disabled')
-        ttk.Button(w,text='Imprimer',command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
-        ttk.Button(w,text='Fermer',command=w.destroy).pack(side='right',padx=12,pady=12)
+        ttk.Button(buttons,text='Imprimer',command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
+        ttk.Button(buttons,text='Fermer',command=w.destroy).pack(side='right',padx=12,pady=12)
         w.bind('<Escape>',lambda e:w.destroy())

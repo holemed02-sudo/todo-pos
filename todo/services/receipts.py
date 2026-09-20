@@ -24,3 +24,26 @@ def print_receipt_windows(sale_id):
     if os.name=="nt":
         os.startfile(str(path),"print")
     return path
+
+
+
+def export_receipt_pdf(sale_id, destination):
+    """Create a paginated, printable receipt without sending a printer job."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from textwrap import wrap
+    path = Path(destination)
+    pdf = canvas.Canvas(str(path), pagesize=A4)
+    pdf.setTitle(f"ToDo ticket {sale_id}")
+    y = 800
+    pdf.setFont("Helvetica", 10)
+    for line in build_receipt(sale_id).splitlines():
+        for part in wrap(line, 82) or [""]:
+            if y < 45:
+                pdf.showPage()
+                pdf.setFont("Helvetica", 10)
+                y = 800
+            pdf.drawString(40, y, part)
+            y -= 15
+    pdf.save()
+    return path

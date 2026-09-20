@@ -21,6 +21,8 @@ jobs:
         run: python -B -m unittest discover -s tests -v
       - name: Tk interface smoke test
         run: python -B tests/ui_smoke.py
+      - name: Purchase to printable receipt through Tk controls
+        run: python -B tests/ui_acceptance.py
       - name: Compile sources
         run: python -m compileall -q todo ToDo.pyw IMPORT_OLD_DATA.pyw
       - name: Build portable Windows application

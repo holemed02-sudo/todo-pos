@@ -12,7 +12,7 @@ class PaymentDialog(tk.Toplevel):
         self.currency = currency
         self.result = None
         self.title('Encaissement / الخلاص')
-        self.geometry('580x650')
+        self.geometry(f'580x{min(650,self.winfo_screenheight()-90)}')
         self.configure(bg='#F6F7FB')
         self.transient(master.winfo_toplevel())
         self.method = tk.StringVar(value=method)
@@ -22,7 +22,9 @@ class PaymentDialog(tk.Toplevel):
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
         tk.Label(self, text=fmt(total, currency), bg='#2563EB', fg='white',
                  font=('Segoe UI', 34, 'bold')).pack(fill='x', ipady=12)
-        body = ttk.Frame(self, padding=18)
+        controls = ttk.Frame(self, padding=8)
+        controls.pack(side='bottom',fill='x')
+        body = ttk.Frame(self, padding=10)
         body.pack(fill='both', expand=True)
         modes = ttk.Frame(body)
         modes.pack(fill='x', pady=(0, 12))
@@ -42,9 +44,9 @@ class PaymentDialog(tk.Toplevel):
         self.error = ttk.Label(body, foreground='#DC2626', wraplength=500)
         self.error.pack(fill='x')
         ttk.Checkbutton(body, text='Imprimer le ticket / طباعة التيكي', variable=self.print_ticket).pack(anchor='w', pady=12)
-        self.confirm_button = ttk.Button(body, text='VALIDER / تأكيد  Entrée', style='Primary.TButton', command=self.confirm)
+        self.confirm_button = ttk.Button(controls, text='VALIDER / تأكيد  Entrée', style='Primary.TButton', command=self.confirm)
         self.confirm_button.pack(fill='x', ipady=12, pady=8)
-        ttk.Button(body, text='Retour au ticket / رجوع  Esc', command=self.destroy).pack(fill='x', ipady=6)
+        ttk.Button(controls, text='Retour au ticket / رجوع  Esc', command=self.destroy).pack(fill='x', ipady=6)
         self.amount.trace_add('write', lambda *_: self.update_amount())
         self.bind('<Return>', lambda e: self.confirm())
         self.bind('<Escape>', lambda e: self.destroy())
