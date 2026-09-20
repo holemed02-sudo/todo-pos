@@ -18,6 +18,7 @@ messagebox.showwarning=unexpected_dialog
 app=ToDoApp()
 app.withdraw()
 app.login_pin.set('1234');app.login();app.withdraw();app.update_idletasks()
+app.show('sale');app.update_idletasks()
 with connect() as c:
  pid=c.execute("INSERT INTO products(name,sale_price_cents) VALUES('UI Smoke',1200)").lastrowid
  apply_stock_movement(c,pid,10,'OPENING',note='UI test')
