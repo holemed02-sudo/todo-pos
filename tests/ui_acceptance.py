@@ -92,6 +92,12 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     calc.expression.set('12,5 * 2');button(calc,'=').invoke()
     assert calc.expression.get()=='25'
     button(calc,'Fermer').invoke()
+    app.choose_theme();app.update()
+    theme=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    button(theme,'Vert').invoke()
+    from database import get_setting
+    assert get_setting('theme')=='Vert' and app.theme_color=='#15803D'
+    assert sale.cart==saved
     with patch('tkinter.simpledialog.askstring',side_effect=['TEST supplement','2.50','1']):
         sale.add_misc()
     assert sale.cart[-1]['is_misc'] and sale.totals()[1]==850
@@ -131,6 +137,16 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert closing['status']=='CLOSED' and closing['difference_cents']==0
     cash_window.destroy()
     app.show('journal');app.update()
+    app.show('settings');app.update()
+    settings=app.current
+    with patch('services.printers.installed_printers',return_value=['Receipt Test']):
+        button(settings,'Actualiser imprimantes').invoke()
+    assert 'Receipt Test' in settings.printer_choice['values']
+    settings.printer.set('Receipt Test');settings.print_mode.set('never')
+    settings.drawer_enabled.set(True);settings.drawer_pin.set('1')
+    button(settings,'Enregistrer impression').invoke()
+    assert get_setting('printer_name')=='Receipt Test'
+    assert get_setting('drawer_enabled')=='1' and get_setting('drawer_pin')=='1'
     print('PASS: UI product/category -> purchase confirmation -> stock 5 -> scan/qty/discount -> visible SOLDER/VALIDER at 1100x640 -> sale 5 DH -> stock 3 -> receipt PDF -> journal',flush=True)
     if os.environ.get('TODO_REVIEW_UI'):
         app.show('sale')

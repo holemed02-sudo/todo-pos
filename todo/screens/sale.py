@@ -156,6 +156,8 @@ class SaleFrame(ttk.Frame):
                   ('Raccourcis / الاختصارات',self.show_shortcuts),
                   ('Calculatrice / الحاسبة',self.calculator),
                   ('Lock / قفل الصندوق',self.app.lock_cashier),
+                  ('Thème / الألوان',self.app.choose_theme),
+                  ('Tiroir / درج النقود',self.open_drawer),
                   ('Attente / انتظار',self.hold),
                   ("Liste d’attente / المعلقات",self.show_held)]
         for index,(label,command) in enumerate(commands):
@@ -179,6 +181,12 @@ class SaleFrame(ttk.Frame):
     def calculator(self):
         from screens.cashier_tools import Calculator
         Calculator(self)
+
+    def open_drawer(self):
+        from services.printers import open_drawer
+        try:
+            open_drawer();self.status.config(text='Commande envoyée au tiroir.')
+        except Exception as error:messagebox.showerror('Tiroir',str(error),parent=self)
 
     def add_misc(self):
         from services.misc import misc_line

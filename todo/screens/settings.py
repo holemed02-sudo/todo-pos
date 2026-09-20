@@ -20,10 +20,19 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(f,text="Enregistrer",command=self.save).grid(row=5,column=0,pady=8)
         p=ttk.LabelFrame(self,text="Impression / الطباعة",padding=10);p.pack(fill="x",pady=10)
         self.printer=tk.StringVar(value=get_setting("printer_name",""));self.print_mode=tk.StringVar(value=get_setting("print_mode","ask"))
-        ttk.Label(p,text="Imprimante (اختياري)").grid(row=0,column=0,sticky="w");ttk.Entry(p,textvariable=self.printer,width=34).grid(row=0,column=1,padx=8)
+        ttk.Label(p,text="Imprimante (اختياري)").grid(row=0,column=0,sticky="w")
+        self.printer_choice=ttk.Combobox(p,textvariable=self.printer,width=34)
+        self.printer_choice.grid(row=0,column=1,padx=8)
+        ttk.Button(p,text='Actualiser imprimantes',command=self.refresh_printers).grid(row=0,column=2,padx=5)
         ttk.Label(p,text="Après validation").grid(row=1,column=0,sticky="w",pady=5)
         ttk.Combobox(p,textvariable=self.print_mode,values=['ask','always','never'],state='readonly',width=12).grid(row=1,column=1,sticky='w',padx=8)
         ttk.Label(p,text="ask = يسولك، always = يطبع، never = بلا طباعة").grid(row=2,column=0,columnspan=2,sticky='w')
+        self.drawer_enabled=tk.BooleanVar(value=get_setting('drawer_enabled','0')=='1')
+        self.drawer_pin=tk.StringVar(value=get_setting('drawer_pin','0'))
+        ttk.Checkbutton(p,text='Tiroir connecté à une imprimante ESC/POS',variable=self.drawer_enabled).grid(row=3,column=0,columnspan=2,sticky='w')
+        ttk.Label(p,text='Connecteur tiroir').grid(row=4,column=0,sticky='w')
+        ttk.Combobox(p,textvariable=self.drawer_pin,values=['0','1'],state='readonly',width=5).grid(row=4,column=1,sticky='w',padx=8)
+        ttk.Button(p,text='Enregistrer impression',command=self.save).grid(row=4,column=2)
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
         ttk.Button(b,text="Restaurer backup",command=self.restore).pack(side="left",padx=4)
@@ -40,7 +49,13 @@ class SettingsFrame(ttk.Frame):
             messagebox.showerror("ToDo","Limite recherche بين 1 و1000.",parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
+        set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get())
         messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
+    def refresh_printers(self):
+        from services.printers import installed_printers
+        try:self.printer_choice['values']=installed_printers()
+        except Exception as error:messagebox.showerror('Imprimantes',str(error),parent=self)
+
     def backup(self):
         try:messagebox.showinfo("ToDo",f"Backup:\n{create_backup()}",parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)

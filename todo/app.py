@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from database import init_db, get_setting
+from database import init_db, get_setting, set_setting
 from services.bootstrap import ensure_defaults
 from services.backup import create_backup
 from services.security import verify_pin, current_user, hash_pin, audit
@@ -69,6 +69,7 @@ class ToDoApp(tk.Tk):
         st.configure('Catalog.Treeview',rowheight=54)
         st.configure('Cart.Treeview',rowheight=48)
 
+        self.apply_theme()
         self.show_login()
 
     def clear_root(self):
@@ -133,6 +134,7 @@ class ToDoApp(tk.Tk):
         # room for the product table and the cart than with a permanent sidebar.
         self.shell=ttk.Frame(self);self.shell.pack(fill="both",expand=True)
         bar=tk.Frame(self.shell,bg="#0878C9",height=58)
+        self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
         tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
         nav=[("Vente","sale"),("Stock","stock"),("Journal","journal"),("Gestion","management"),("Paramètres","settings"),("Statistiques","statistics")]
@@ -144,6 +146,7 @@ class ToDoApp(tk.Tk):
         tk.Button(bar,text="Écran client",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
         tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",font=("Segoe UI",9)).pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
+        self.apply_theme()
 
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
@@ -181,7 +184,33 @@ class ToDoApp(tk.Tk):
 
     def _mark_nav(self,key):
         for name,button in getattr(self,'nav_buttons',{}).items():
-            button.configure(bg="#075B96" if name==key else "#0878C9")
+            button.configure(bg=self.theme_active if name==key else self.theme_color)
+        self.current_key=key
+
+    def apply_theme(self):
+        palette={'Bleu':('#2563EB','#1D4ED8'),'Vert':('#15803D','#166534'),'Violet':('#7C3AED','#6D28D9')}
+        self.theme_color,self.theme_active=palette.get(get_setting('theme','Bleu'),palette['Bleu'])
+        style=ttk.Style(self)
+        style.configure('Primary.TButton',background=self.theme_color)
+        style.map('Primary.TButton',background=[('active',self.theme_active)])
+        style.configure('Accent.TLabel',foreground=self.theme_color)
+        style.configure('Total.TLabel',foreground=self.theme_color)
+        bar=getattr(self,'nav_bar',None)
+        if bar is not None and bar.winfo_exists():
+            bar.configure(bg=self.theme_color)
+            for child in bar.winfo_children():
+                child.configure(bg=self.theme_color)
+                if isinstance(child,tk.Button):child.configure(activebackground=self.theme_active)
+            self._mark_nav(getattr(self,'current_key','home'))
+
+    def choose_theme(self):
+        window=tk.Toplevel(self);window.title('Thème / الألوان');window.transient(self);window.grab_set()
+        ttk.Label(window,text='Couleur principale / اللون الرئيسي').pack(padx=25,pady=15)
+        def choose(name):
+            set_setting('theme',name);self.apply_theme();window.destroy()
+        for name,color in [('Bleu','#2563EB'),('Vert','#15803D'),('Violet','#7C3AED')]:
+            tk.Button(window,text=name,bg=color,fg='white',command=lambda n=name:choose(n)).pack(fill='x',padx=25,pady=6,ipady=10)
+        ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=12)
 
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
