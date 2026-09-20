@@ -8,7 +8,7 @@ class ManagementFrame(ttk.Frame):
         groups=[
             [('Réceptions','purchases'),('Sorties',None),('Inventaire',None),('Mouvements de stock','stock')],
             [('Fournisseurs','suppliers'),('Règlements fournisseurs',None),('État crédits fournisseurs',None)],
-            [('Clients',None),('Règlements clients',None),('État crédits clients',None)],
+            [('Clients','customers'),('Règlements clients',None),('État crédits clients',None)],
             [('Dépenses','cash'),('Rendez-vous',None)],
         ]
         for row,items in enumerate(groups):
