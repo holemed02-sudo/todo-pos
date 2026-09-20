@@ -60,6 +60,26 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert str(pid) in sale.products.get_children(), 'Products without images must be searchable'
     assert len(sale.card_inner.winfo_children())==0, 'Photo grid must exclude products without images'
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
+    # Invoke reference menu actions while preserving the current ticket.
+    sale.functions();app.update()
+    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    for label in ['Duplicata','Modifier quantité','Modifier prix','Supprimer','PRIX 1','Clôture','Dépenses','Rapport','Raccourcis']:
+        visible(button(menu,label))
+    with patch('tkinter.simpledialog.askstring',return_value='4.00'):
+        button(menu,'Modifier prix').invoke()
+    assert sale.totals()[1]==800
+    sale.functions();app.update()
+    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    button(menu,'PRIX 1').invoke()
+    assert sale.totals()[1]==600
+    with patch('tkinter.simpledialog.askstring',return_value='Test held ticket'):
+        sale.hold()
+    assert not sale.cart
+    sale.show_held();app.update()
+    held=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    tree=next(w for w in descendants(held) if w.winfo_class()=='Treeview')
+    tree.selection_set(tree.get_children()[0]);button(held,'Reprendre').invoke()
+    assert sale.cart[0]['qty']==2
     with patch('tkinter.simpledialog.askfloat',return_value=1):sale.discount()
     assert sale.totals()[1]==500
     for label in ['SOLDER avec','SOLDER sans','Fonctions']:visible(button(sale,label))
@@ -82,6 +102,18 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         button(receipt,'PDF').invoke()
     assert output.read_bytes().startswith(b'%PDF-')
     receipt.destroy()
+    sale.cash_tools();app.update()
+    cash_window=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    with patch('tkinter.simpledialog.askstring',return_value='TEST expense'), patch('tkinter.simpledialog.askfloat',return_value=1):
+        button(cash_window,'Dépense').invoke()
+    with connect() as c:
+        assert c.execute('SELECT amount_cents FROM expenses').fetchone()[0]==100
+    with patch('tkinter.simpledialog.askfloat',return_value=104):
+        button(cash_window,'Clôturer').invoke()
+    with connect() as c:
+        closing=c.execute('SELECT * FROM cash_sessions').fetchone()
+        assert closing['status']=='CLOSED' and closing['difference_cents']==0
+    cash_window.destroy()
     app.show('journal');app.update()
     print('PASS: UI product/category -> purchase confirmation -> stock 5 -> scan/qty/discount -> visible SOLDER/VALIDER at 1100x640 -> sale 5 DH -> stock 3 -> receipt PDF -> journal',flush=True)
     if os.environ.get('TODO_REVIEW_UI'):

@@ -1,5 +1,6 @@
 """Business acceptance: isolated purchase, sale, stock and printable PDF."""
 import sys, tempfile, unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'todo'))
 import database
@@ -37,6 +38,11 @@ class PurchaseToReceiptTest(unittest.TestCase):
                 pdf=receipts.export_receipt_pdf(result['id'],Path(tmp)/'receipt.pdf')
                 self.assertTrue(pdf.read_bytes().startswith(b'%PDF-'))
                 self.assertGreater(pdf.stat().st_size,500)
+                if sys.platform=='win32':
+                    database.set_setting('printer_name','Test printer')
+                    with patch('os.startfile') as dispatch:
+                        path=receipts.print_receipt_windows(result['id'])
+                        dispatch.assert_called_once_with(str(path),'printto','"Test printer"')
             finally:
                 current_user.set(old_user)
                 database.DB_PATH=old

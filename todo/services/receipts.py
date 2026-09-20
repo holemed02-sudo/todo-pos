@@ -22,7 +22,12 @@ def print_receipt_windows(sale_id):
     path=Path(tempfile.gettempdir())/f"todo_receipt_{sale_id}.txt"
     path.write_text(text,encoding="utf-8")
     if os.name=="nt":
-        os.startfile(str(path),"print")
+        printer=get_setting('printer_name','').strip()
+        if printer:
+            from subprocess import list2cmdline
+            os.startfile(str(path),'printto',list2cmdline([printer]))
+        else:
+            os.startfile(str(path),"print")
     return path
 
 

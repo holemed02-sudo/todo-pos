@@ -146,12 +146,45 @@ class SaleFrame(ttk.Frame):
                   ('Modifier prix / الثمن',self.set_price),
                   ('Remise ticket / تخفيض',self.discount),
                   ('Remise ligne',self.line_discount),
+                  ('Supprimer ligne / حذف السطر',self.remove),
+                  ('PRIX 1 / الثمن العادي',self.restore_price),
+                  ('Compter la caisse / الصندوق',self.cash_tools),
+                  ('Clôture / إغلاق الصندوق',lambda:self.cash_tools('close')),
+                  ('Dépenses / المصاريف',lambda:self.cash_tools('expense')),
+                  ('Rapport / التقارير',lambda:self.app.show('journal')),
+                  ('Raccourcis / الاختصارات',self.show_shortcuts),
                   ('Attente / انتظار',self.hold),
                   ("Liste d’attente / المعلقات",self.show_held)]
         for index,(label,command) in enumerate(commands):
-            ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//2,column=index%2,padx=10,pady=10,ipadx=12,ipady=20,sticky='ew')
-        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=(len(commands)+1)//2,column=0,columnspan=2,pady=12)
+            ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//3,column=index%3,padx=6,pady=6,ipadx=4,ipady=10,sticky='ew')
+        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=(len(commands)+2)//3,column=0,columnspan=3,pady=12)
         window.bind('<Escape>',lambda e:run(self.focus_search))
+
+    def restore_price(self):
+        index=self.selected()
+        if index is None:return
+        line=self.cart[index]
+        with connect() as conn:
+            product=conn.execute('SELECT sale_price_cents FROM products WHERE id=?',(line['product_id'],)).fetchone()
+        line['unit_price_cents']=str(product['sale_price_cents'])
+        line['manual_unit_price']=True
+        line['discount_cents']=min(line.get('discount_cents',0),line_total(line['unit_price_cents'],line['qty']))
+        self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0])
+        self.refresh(index);self.focus_search()
+
+    def cash_tools(self,action=None):
+        from screens.cashdesk import CashFrame
+        window=tk.Toplevel(self);window.title('Caisse / الصندوق')
+        window.transient(self.app);window.grab_set()
+        frame=CashFrame(window,self.app);frame.pack(fill='both',expand=True)
+        ttk.Button(window,text='Retour à la vente',command=window.destroy).pack(pady=8)
+        window.bind('<Escape>',lambda e:window.destroy())
+        if action in ('close','expense'):
+            window.after_idle(getattr(frame,action))
+
+    def show_shortcuts(self):
+        messagebox.showinfo('Raccourcis',
+            'F2 : Espèces\nF3 : Carte\nF4 : Attente\nF5 : Solder\nF7 : Remise\nF8 : Quantité\nCtrl+F : Recherche\nEntrée : Ajouter / Confirmer\nSuppr : Supprimer ligne\nÉchap : Annuler',parent=self)
 
     def duplicate_receipt(self):
         with connect() as conn:
@@ -457,6 +490,8 @@ class SaleFrame(ttk.Frame):
         try:
             total=self.totals()[1]
             dialog=PaymentDialog(self,total,self.currency,self.payment)
+            mode=get_setting('print_mode','ask')
+            dialog.print_ticket.set(print_ticket and mode=='always')
             self.wait_window(dialog)
             if dialog.result is None:return
             self.payment,paid,dialog_print=dialog.result
@@ -468,7 +503,7 @@ class SaleFrame(ttk.Frame):
             try:
                 if print_ticket:
                     self.show_receipt(result)
-                if dialog_print:print_receipt_windows(result['id'])
+                if print_ticket and mode!='never' and (mode=='always' or dialog_print):print_receipt_windows(result['id'])
             except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
