@@ -8,6 +8,7 @@ class StockFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
         ttk.Label(top,text="Stock / المخزون",font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(self,text="الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في Articles.",foreground="#475569").pack(anchor="w",pady=(0,8))
         ttk.Button(top,text="Ajustement",command=self.adjust).pack(side="right")
         ttk.Button(top,text="Historique",command=self.ledger).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")

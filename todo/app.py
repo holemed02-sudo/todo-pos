@@ -16,6 +16,8 @@ from screens.purchases import PurchasesFrame
 from screens.returns import ReturnsFrame
 from screens.journal import JournalFrame
 from screens.settings import SettingsFrame
+from screens.management import ManagementFrame
+from screens.statistics import StatisticsFrame
 
 class ToDoApp(tk.Tk):
     def __init__(self):
@@ -116,7 +118,7 @@ class ToDoApp(tk.Tk):
             if not row['pin_hash'].startswith('pbkdf2$'):
                 conn.execute('UPDATE users SET pin_hash=? WHERE id=?',(hash_pin(pin),row['id']))
             audit(conn,'LOGIN',row['id'])
-        self.build_shell();self.show('sale')
+        self.build_shell();self.show('home')
 
     def build_shell(self):
         self.clear_root()
@@ -132,10 +134,10 @@ class ToDoApp(tk.Tk):
         bar=tk.Frame(self.shell,bg="#0878C9",height=58)
         bar.pack(fill="x");bar.pack_propagate(False)
         tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
-        nav=[("Accueil","home"),("Vente","sale"),("Articles","products"),("Caisse","cash"),("Stock","stock"),("Achats","purchases"),("Retours","returns"),("Journal","journal"),("Paramètres","settings")]
+        nav=[("Vente","sale"),("Stock","stock"),("Journal","journal"),("Gestion","management"),("Paramètres","settings"),("Statistiques","statistics")]
         self.nav_buttons={}
         for txt,key in nav:
-            if self.user["role"]!="admin" and key in ("products","purchases","settings","journal"):continue
+            if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
             b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
             b.pack(side="left",fill="y");self.nav_buttons[key]=b
         tk.Button(bar,text="Écran client",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
@@ -143,7 +145,7 @@ class ToDoApp(tk.Tk):
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
 
     def show(self, key):
-        if self.user['role']!='admin' and key in ('products','purchases','settings','journal'):
+        if self.user['role']!='admin' and key in ('products','purchases','settings','journal','management','statistics'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
@@ -165,6 +167,8 @@ class ToDoApp(tk.Tk):
             "returns": lambda: ReturnsFrame(self.content, self),
             "journal": lambda: JournalFrame(self.content),
             "settings": lambda: SettingsFrame(self.content, self),
+            "management": lambda: ManagementFrame(self.content, self),
+            "statistics": lambda: StatisticsFrame(self.content),
         }
 
         self.current = makers[key]()

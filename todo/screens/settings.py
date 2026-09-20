@@ -8,12 +8,22 @@ class SettingsFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=15);self.app=app
         ttk.Label(self,text="Paramètres / الإعدادات",font=("Segoe UI",22,"bold")).pack(anchor="w",pady=(0,12))
-        f=ttk.LabelFrame(self,text="Magasin",padding=10);f.pack(fill="x")
-        self.shop=tk.StringVar(value=get_setting("shop_name","ToDo"));self.cur=tk.StringVar(value=get_setting("currency","DH"));self.neg=tk.BooleanVar(value=get_setting("allow_negative_stock","0")=="1")
+        f=ttk.LabelFrame(self,text="Magasin et vente",padding=10);f.pack(fill="x")
+        self.shop=tk.StringVar(value=get_setting("shop_name","ToDo"));self.cur=tk.StringVar(value=get_setting("currency","DH"));self.neg=tk.BooleanVar(value=get_setting("allow_negative_stock","1")=="1")
+        self.footer=tk.StringVar(value=get_setting("receipt_footer","Merci"))
+        self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
         ttk.Label(f,text="Nom magasin").grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
         ttk.Label(f,text="Devise").grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.cur,width=10).grid(row=1,column=1,sticky="w",padx=8)
         ttk.Checkbutton(f,text="Autoriser stock négatif",variable=self.neg).grid(row=2,column=0,columnspan=2,sticky="w")
-        ttk.Button(f,text="Enregistrer",command=self.save).grid(row=3,column=0,pady=8)
+        ttk.Label(f,text="Message bas du ticket").grid(row=3,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=3,column=1,padx=8)
+        ttk.Label(f,text="Limite résultats recherche").grid(row=4,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=4,column=1,sticky="w",padx=8)
+        ttk.Button(f,text="Enregistrer",command=self.save).grid(row=5,column=0,pady=8)
+        p=ttk.LabelFrame(self,text="Impression / الطباعة",padding=10);p.pack(fill="x",pady=10)
+        self.printer=tk.StringVar(value=get_setting("printer_name",""));self.print_mode=tk.StringVar(value=get_setting("print_mode","ask"))
+        ttk.Label(p,text="Imprimante (اختياري)").grid(row=0,column=0,sticky="w");ttk.Entry(p,textvariable=self.printer,width=34).grid(row=0,column=1,padx=8)
+        ttk.Label(p,text="Après validation").grid(row=1,column=0,sticky="w",pady=5)
+        ttk.Combobox(p,textvariable=self.print_mode,values=['ask','always','never'],state='readonly',width=12).grid(row=1,column=1,sticky='w',padx=8)
+        ttk.Label(p,text="ask = يسولك، always = يطبع، never = بلا طباعة").grid(row=2,column=0,columnspan=2,sticky='w')
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
         ttk.Button(b,text="Restaurer backup",command=self.restore).pack(side="left",padx=4)
@@ -23,7 +33,14 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(u,text="Journal des actions",command=self.audit_log).pack(side="left",padx=8)
         ttk.Label(u,text="Admin initial: admin / PIN 1234 — changez-le.").pack(side="left",padx=15)
     def save(self):
-        set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0");messagebox.showinfo("ToDo","Enregistré.",parent=self)
+        try:
+            limit=int(self.search_limit.get())
+            if limit<1 or limit>1000:raise ValueError()
+        except ValueError:
+            messagebox.showerror("ToDo","Limite recherche بين 1 و1000.",parent=self);return
+        set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
+        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
+        messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
     def backup(self):
         try:messagebox.showinfo("ToDo",f"Backup:\n{create_backup()}",parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)

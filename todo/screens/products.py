@@ -177,6 +177,7 @@ class ProductsFrame(ttk.Frame):
         self.page=0
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
         ttk.Label(top,text="Articles / المنتجات",font=("Segoe UI",20,"bold")).pack(side="left")
+        ttk.Label(self,text="بطاقة المنتوج، الباركودات، الصور، الأثمنة والعروض.",foreground="#475569").pack(anchor="w",pady=(0,8))
         self.q=tk.StringVar();e=ttk.Entry(top,textvariable=self.q,width=32);e.pack(side="left",padx=15);e.bind("<KeyRelease>",lambda x:self.go_page(0))
         ttk.Button(top,text="+ Nouveau",command=self.new).pack(side="right",padx=3)
         ttk.Button(top,text="Modifier",command=self.edit).pack(side="right",padx=3)
@@ -188,7 +189,7 @@ class ProductsFrame(ttk.Frame):
         self.t.pack(fill="both",expand=True);self.t.bind("<Double-1>",lambda e:self.edit())
         self.kpi_bar=tk.Frame(self,bg='#F6F7FB');self.kpi_bar.pack(fill='x',pady=(8,2))
         self.kpi_values=[]
-        for title,color in [('Articles','#DC2626'),('Promotions','#F59E0B'),('Valeur stock','#2563EB'),('Stock négatif','#16A34A')]:
+        for title,color in [('Articles','#DC2626'),('Promotions','#F59E0B'),('Prix quantité','#E07B00'),('Valeur stock','#2563EB'),('Stock négatif','#16A34A')]:
             card=tk.Frame(self.kpi_bar,bg=color,height=72);card.pack(side='left',fill='x',expand=True,padx=3);card.pack_propagate(False)
             value=tk.Label(card,text='0',bg=color,fg='white',font=('Segoe UI',18,'bold'));value.pack(anchor='w',padx=12,pady=(7,0))
             tk.Label(card,text=title,bg=color,fg='white',font=('Segoe UI',9)).pack(anchor='w',padx=12)
@@ -210,7 +211,7 @@ class ProductsFrame(ttk.Frame):
                 ORDER BY p.name LIMIT 200 OFFSET ?""",(q,q,q,self.page*200)).fetchall()
             stats=c.execute("SELECT COUNT(*),COALESCE(SUM(stock_qty*purchase_price_cents),0),COALESCE(SUM(CASE WHEN stock_qty<0 THEN 1 ELSE 0 END),0) FROM products WHERE active=1").fetchone()
             promos=c.execute("SELECT COUNT(*) FROM quantity_prices WHERE active=1").fetchone()[0]
-        self.kpi_values[0].config(text=str(stats[0]));self.kpi_values[1].config(text=str(promos));self.kpi_values[2].config(text=f"{stats[1]/100:.2f}");self.kpi_values[3].config(text=str(stats[2]))
+        self.kpi_values[0].config(text=str(stats[0]));self.kpi_values[1].config(text='0');self.kpi_values[2].config(text=str(promos));self.kpi_values[3].config(text=f"{stats[1]/100:.2f}");self.kpi_values[4].config(text=str(stats[2]))
         self.page_label.config(text=f'Page {self.page+1} · {len(rows)} produits · 200 par page')
         self.t.delete(*self.t.get_children())
         for r in rows:self.t.insert("", "end",values=(r["id"],r["barcode"] or "",r["name"],r["category"],f"{r['purchase_price_cents']/100:.2f}",f"{r['sale_price_cents']/100:.2f}",f"{r['stock_qty']:g}",f"{r['alert_qty']:g}","✓" if r["image_path"] else ""))

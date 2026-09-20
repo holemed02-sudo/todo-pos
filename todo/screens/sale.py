@@ -59,10 +59,8 @@ class SaleFrame(ttk.Frame):
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        combo=ttk.Combobox(filters,textvariable=self.cat,values=list(self.categories),state='readonly',width=25)
-        combo.pack(side='left');combo.bind('<<ComboboxSelected>>',lambda e:self.render_products())
-        self.category_combo=combo
-        ttk.Label(filters,text='Nom · barcode · référence · alias').pack(side='right')
+        self.category_buttons=ttk.Frame(filters);self.category_buttons.pack(side='left',fill='x',expand=True)
+        ttk.Label(filters,text='Nom · code · référence · alias').pack(side='right')
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
         self.catalog_tabs.add(self.photo_page,text='Photos / بيع بدون باركود');self.catalog_tabs.add(self.list_page,text='Liste')
@@ -97,13 +95,14 @@ class SaleFrame(ttk.Frame):
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(right,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
         self.total_label=ttk.Label(right,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
-        ttk.Button(right,text='Encaisser  F5',style='Primary.TButton',command=self.checkout).pack(fill='x',ipady=8)
+        ttk.Button(right,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
+        ttk.Button(right,text='SOLDER sans ticket',command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
         for label,command in [('F2 Espèces',lambda:self.set_payment('CASH')),('F3 Carte',lambda:self.set_payment('CARD')),('F4 Attente',self.hold),('Liste attente',self.show_held),('F7 Remise',self.discount),('ESC Annuler',self.cancel)]:
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
         self.status=ttk.Label(self,text='Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter')
         self.status.pack(anchor='w',pady=(8,0))
-        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':self.checkout,'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
+        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         for sequence,command in commands.items():
             binding=app.bind(sequence,lambda e,c=command:self.shortcut(e,c),add='+')
             self.bindings.append((sequence,binding))
@@ -192,14 +191,17 @@ class SaleFrame(ttk.Frame):
         with connect() as conn:
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
-        self.category_combo['values']=list(self.categories)
         if self.cat.get() not in self.categories:self.cat.set('Tous')
+        for child in self.category_buttons.winfo_children(): child.destroy()
+        for name in self.categories:
+            ttk.Button(self.category_buttons,text=name,command=lambda n=name:self.choose_category(n)).pack(side='left',padx=2)
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
         columns=max(1,self.card_canvas.winfo_width()//167)
-        for index,row in enumerate(rows):
+        photo_rows=[row for row in rows if row['image_path']]
+        for index,row in enumerate(photo_rows):
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
@@ -209,6 +211,11 @@ class SaleFrame(ttk.Frame):
             tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='white',fg='#2563EB').pack()
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
+        self.card_canvas.event_generate('<Configure>')
+
+    def choose_category(self,name):
+        self.cat.set(name)
+        self.render_products()
 
     def confirm_search(self,event=None):
         if self.search_job:
@@ -439,7 +446,7 @@ class SaleFrame(ttk.Frame):
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
         ttk.Button(w,text='Reprendre',command=resume).pack(pady=8)
 
-    def checkout(self):
+    def checkout(self, print_ticket=True):
         if not self.cart or self.busy:return
         session=get_open_session()
         if not session:
@@ -450,14 +457,14 @@ class SaleFrame(ttk.Frame):
             dialog=PaymentDialog(self,total,self.currency,self.payment)
             self.wait_window(dialog)
             if dialog.result is None:return
-            self.payment,paid,print_ticket=dialog.result
+            self.payment,paid,dialog_print=dialog.result
             self.payment_label.config(text='Paiement : '+self.payment)
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
             self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")
             try:
-                if print_ticket:print_receipt_windows(result['id'])
+                if print_ticket and dialog_print:print_receipt_windows(result['id'])
             except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)

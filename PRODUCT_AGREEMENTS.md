@@ -26,3 +26,15 @@
 - اختبار صفر/سالب المخزون، الباركود غير المعروف، وحفظ السلة بعد إغلاق النوافذ.
 - اختبار العائلة الجديدة والمنتوج بلا باركود والعروض بأمثلة مالية واضحة.
 - إرفاق نسخة Windows قابلة للتنزيل؛ لا اعتبار ملف المصدر نسخة Windows.
+
+## خريطة الصفحات — مطابقة للصور
+- الصفحة الرئيسية: ستة مداخل فقط: Vente، Stock، Journal، Gestion، Paramètres، Statistiques.
+- Vente: التيكي في اليسار؛ CODE BARRE وDESIGNATION والكمية ولوحة الأرقام فوق؛ عائلات ثابتة على اليسار؛ Liste Article وListe Photos؛ الصور فقط للمنتوجات التي عندها صورة؛ Fonctions وSOLDER مع/بدون طباعة.
+- Articles: جدول Code، Article، Famille، PRIX A، PRIX V، Stock، إجراءات؛ بطاقة Nouveau بنفس Code/Article/Famille/Prix Achat/Prix Vente/Stock/Alert/Prix MP/Image/PRIX QTE/QTE MIN؛ مؤشرات Articles وPromotions وPrix QTE وقيم المخزون.
+- Stock: الكمية، الإنذارات، الحركات، الجرد والسجل؛ ماشي بطاقة تعريف المنتوج.
+- Journal: رقم التيكي، التاريخ، الوقت، المقال، الثمن، الكمية، التخفيض، الصافي، الكاشير، البائع، الزبون، العملية؛ فترة من/إلى، أنواع التقرير، consulter/imprimer/export.
+- Gestion: Réceptions، Sorties، Inventaire، Mouvements de Stock، Fournisseurs، Règlements، État Crédits، Clients، Dépenses، Rendez-vous.
+- Statistiques: Evolution des ventes، Top 10 Articles، Top Clients/Caissier، Evolution Article، الفترة، Total Ventes، Tickets، Retours.
+- Paramètres: المحل، العملة، الضرائب، التيكي، الباركود، المستخدمين، النسخ الاحتياطي، شاشة الزبون، الطابعة، السكان، الاختصارات واللغة.
+
+أي صفحة أو زر ما داخلش فهاد الخريطة أو ما باينش فالفيديو/الصور ما كيدخلش فواجهة النسخة المقبلة.
