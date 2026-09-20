@@ -242,6 +242,16 @@ CREATE TABLE IF NOT EXISTS client_payments (
 );
 CREATE INDEX IF NOT EXISTS idx_client_payments_client ON client_payments(client_id);
 
+
+CREATE TABLE IF NOT EXISTS product_categories (
+    product_id  INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY(product_id, category_id),
+    FOREIGN KEY(product_id)  REFERENCES products(id)  ON DELETE CASCADE,
+    FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_product_categories_cat ON product_categories(category_id);
+
 INSERT OR IGNORE INTO settings(key,value) VALUES
 ('shop_name','ToDo'),
 ('currency','DH'),
@@ -312,6 +322,7 @@ def migrate(conn):
         'sale_items': {'net_total_cents': 'INTEGER', 'qty_multiplier': 'REAL NOT NULL DEFAULT 1', 'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},
         'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0'},
         'sales': {'client_id': 'INTEGER REFERENCES clients(id)'},
+        'categories': {'color': "TEXT NOT NULL DEFAULT '#2563EB'", 'icon': "TEXT NOT NULL DEFAULT ''"},
     }
     for table, fields in additions.items():
         existing = {r['name'] for r in conn.execute(f'PRAGMA table_info({table})')}
@@ -350,4 +361,9 @@ def migrate(conn):
     except sqlite3.OperationalError as error:
         if 'no such module' not in str(error) and 'no such tokenizer' not in str(error):
             raise
+    # Back-fill product_categories from existing single category_id
+    conn.execute('''
+        INSERT OR IGNORE INTO product_categories(product_id,category_id)
+        SELECT id,category_id FROM products WHERE category_id IS NOT NULL
+    ''')
     conn.execute('PRAGMA user_version=110')
