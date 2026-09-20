@@ -95,7 +95,7 @@ class ToDoApp(tk.Tk):
         pin=ttk.Entry(outer,textvariable=self.login_pin,show='●',font=('Segoe UI',20),justify='center')
         pin.pack(fill='x',ipady=5);pin.bind('<Return>',lambda e:self.login())
         ttk.Button(outer,text='Entrer / الدخول',style='Primary.TButton',command=self.login).pack(fill='x',pady=16)
-        self.after(100,pin.focus_set)
+        self.after(100,lambda: pin.focus_set() if pin.winfo_exists() else None)
 
     def login(self):
         import time

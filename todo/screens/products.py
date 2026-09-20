@@ -62,7 +62,7 @@ class ProductEditor(tk.Toplevel):
         if self.pid:
             self.load()
 
-        self.after(100,self.e_bar.focus_force)
+        self.after(100,lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
 
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)

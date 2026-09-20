@@ -32,6 +32,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.report_callback_exception=lambda t,v,tb: fail('Tk callback',v)
     app.login_pin.set('1234');app.login()
     app.geometry('1100x640');app.update()
+    done=__import__('tkinter').BooleanVar(value=False)
+    app.after(200,lambda:done.set(True));app.wait_variable(done)
     app.show('stock');app.update()
     button(app.current,'Articles').invoke()
     app.update()
