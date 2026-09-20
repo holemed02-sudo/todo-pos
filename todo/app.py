@@ -19,6 +19,7 @@ from screens.settings import SettingsFrame
 from screens.management import ManagementFrame
 from screens.statistics import StatisticsFrame
 from screens.suppliers import SuppliersFrame
+from screens.clients import ClientsFrame
 
 class ToDoApp(tk.Tk):
     def __init__(self):
