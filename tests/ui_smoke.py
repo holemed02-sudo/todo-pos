@@ -70,7 +70,7 @@ payment.choose_method('CARD');payment.confirm();assert payment.result==('CARD',2
 from services.cash import open_session
 open_session(app.user['id'],0)
 def accept_payment():
- dialogs=[w for w in sale.winfo_children() if isinstance(w,PaymentDialog)]
+ dialogs=[w for w in app.winfo_children() if isinstance(w,PaymentDialog)]
  assert len(dialogs)==1
  dialogs[0].set_amount(100);dialogs[0].confirm()
 app.after(200,accept_payment)

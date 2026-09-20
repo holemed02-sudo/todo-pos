@@ -211,7 +211,6 @@ class SaleFrame(ttk.Frame):
             tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='white',fg='#2563EB').pack()
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
-        self.card_canvas.event_generate('<Configure>')
 
     def choose_category(self,name):
         self.cat.set(name)
