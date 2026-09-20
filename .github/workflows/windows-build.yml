@@ -31,6 +31,8 @@ jobs:
       - name: Build data import utility
         shell: cmd
         run: pyinstaller --noconfirm --clean --windowed --onefile --name ImporterToDo --paths todo IMPORT_OLD_DATA.pyw
+      - name: Create optional isolated demo
+        run: python tools/create_demo.py dist/ToDo
       - name: Include documentation and importer
         shell: pwsh
         run: |

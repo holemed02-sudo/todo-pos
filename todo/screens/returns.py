@@ -40,5 +40,5 @@ class ReturnsFrame(ttk.Frame):
         reason=simpledialog.askstring("Retour","Raison:",parent=self) or ""
         try:
             r=create_return(self.sale_id,sess["id"],self.app.user["id"],[(line,qty)],reason)
-            messagebox.showinfo("ToDo",f"{r['return_no']}\nRemboursement: {fmt(r['total_cents'])}",parent=self);self.load()
+            messagebox.showinfo("ToDo",f"{r['return_no']}\nRemboursement: {fmt(r['refund_paid_cents'])}\nDette annulée: {fmt(r['debt_reduction_cents'])}",parent=self);self.load()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)

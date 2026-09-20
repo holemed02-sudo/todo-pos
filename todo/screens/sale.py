@@ -21,6 +21,7 @@ class SaleFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=16)
         self.app=app
+        self.client_id=None
         self.cart=[]
         self.ticket_discount_cents=0
         self.held_id=None
@@ -36,6 +37,8 @@ class SaleFrame(ttk.Frame):
         ttk.Label(top,text='Vente / البيع',style='Title.TLabel').pack(side='left')
         self.payment_label=ttk.Label(top,text='Paiement : CASH',style='Accent.TLabel')
         self.payment_label.pack(side='right')
+        self.client_button=ttk.Button(top,text='F6 Client : passage',command=self.choose_client)
+        self.client_button.pack(side='left',padx=18)
         searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
         searchbar.pack(fill='x',pady=(0,12))
         ttk.Label(searchbar,text='⌕  Scanner ou rechercher',style='Card.TLabel').pack(side='left',padx=(0,12))
@@ -104,7 +107,7 @@ class SaleFrame(ttk.Frame):
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
         self.status=ttk.Label(self,text='Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter')
         self.status.pack(anchor='w',pady=(8,0))
-        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
+        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F6>':self.choose_client,'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         for sequence,command in commands.items():
             binding=app.bind(sequence,lambda e,c=command:self.shortcut(e,c),add='+')
             self.bindings.append((sequence,binding))
@@ -472,11 +475,35 @@ class SaleFrame(ttk.Frame):
         except Exception as error:messagebox.showerror('ToDo',str(error),parent=self)
         self.focus_search()
 
+    def choose_client(self):
+        from services.clients import list_clients
+        window=tk.Toplevel(self);window.title('Choisir client / الزبون');window.geometry('580x460')
+        window.transient(self.app);window.grab_set()
+        query=tk.StringVar();entry=ttk.Entry(window,textvariable=query);entry.pack(fill='x',padx=12,pady=12)
+        buttons=ttk.Frame(window);buttons.pack(side='bottom',fill='x',padx=12,pady=12)
+        tree=ttk.Treeview(window,columns=('name','phone'),show='headings')
+        tree.heading('name',text='Client');tree.heading('phone',text='Téléphone');tree.pack(fill='both',expand=True,padx=12)
+        def refresh(*args):
+            tree.delete(*tree.get_children())
+            for row in list_clients(query.get()):tree.insert('','end',iid=str(row['id']),values=(row['name'],row['phone']))
+        def select(clear=False):
+            if not clear and not tree.selection():return
+            self.client_id=None if clear else int(tree.selection()[0])
+            self.update_client_label();window.destroy();self.focus_search()
+        ttk.Button(buttons,text='Choisir',command=select).pack(side='left')
+        ttk.Button(buttons,text='Client de passage',command=lambda:select(True)).pack(side='left',padx=10)
+        tree.bind('<Double-1>',lambda e:select());entry.bind('<KeyRelease>',refresh);refresh();entry.focus_set()
+
+    def update_client_label(self):
+        from services.clients import get_client
+        name=get_client(self.client_id)['name'] if self.client_id is not None else 'passage'
+        self.client_button.configure(text='F6 Client : '+name[:30])
+
     def set_payment(self,method):
         self.payment=method;self.payment_label.config(text='Paiement : '+method);self.focus_search()
 
     def clear(self):
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.refresh();self.focus_search()
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.payment='CASH';self.payment_label.config(text='Paiement : CASH');self.update_client_label();self.refresh();self.focus_search()
 
     def cancel(self):
         if self.cart and not messagebox.askyesno('Annuler','Vider le ticket en cours ? Un ticket en attente reste sauvegardé.',parent=self):return
@@ -487,7 +514,7 @@ class SaleFrame(ttk.Frame):
         label=simpledialog.askstring('Attente','Nom ou numéro du ticket:',parent=self)
         if label is None:return
         try:
-            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id)
+            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
             self.clear();self.status.config(text='Ticket et remise sauvegardés.')
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
@@ -506,6 +533,7 @@ class SaleFrame(ttk.Frame):
             if not tree.selection():return
             state=resume_held(int(tree.selection()[0]))
             self.cart=state['cart'];self.ticket_discount_cents=state['discount_cents'];self.held_id=state['held_id']
+            self.client_id=state.get('client_id');self.update_client_label()
             self.refresh();w.destroy();self.focus_search()
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
         ttk.Button(w,text='Reprendre',command=resume).pack(pady=8)
@@ -518,14 +546,16 @@ class SaleFrame(ttk.Frame):
         self.busy=True
         try:
             total=self.totals()[1]
-            dialog=PaymentDialog(self,total,self.currency,self.payment)
+            from services.clients import get_client
+            client_name=get_client(self.client_id)['name'] if self.client_id is not None else None
+            dialog=PaymentDialog(self,total,self.currency,self.payment,client_name=client_name)
             mode=get_setting('print_mode','ask')
             dialog.print_ticket.set(print_ticket and mode=='always')
             self.wait_window(dialog)
             if dialog.result is None:return
             self.payment,paid,dialog_print=dialog.result
             self.payment_label.config(text='Paiement : '+self.payment)
-            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id)
+            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
             self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")

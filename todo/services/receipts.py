@@ -15,6 +15,12 @@ def build_receipt(sale_id):
         if i['pricing_mode']=='PACK':
             lines.append(f"  {i['qty']/i['qty_multiplier']:g} pack(s) x {fmt(i['unit_price_cents'],cur)} ({i['qty_multiplier']:g} unités/pack)")
     lines += ["-"*32, f"Remise ticket: {fmt(s['discount_cents'],cur)}", f"TOTAL: {fmt(s['total_cents'],cur)}", f"Paiement: {s['payment_method']}", f"Reçu: {fmt(s['paid_cents'],cur)}", f"Monnaie: {fmt(s['change_cents'],cur)}", "="*32, get_setting("receipt_footer","Merci")]
+    if s['client_id'] is not None:
+        with connect() as conn:
+            client=conn.execute('SELECT name FROM clients WHERE id=?',(s['client_id'],)).fetchone()
+        lines.insert(4,'Client: '+client['name'])
+    if s['payment_method']=='CREDIT':
+        lines.insert(-2,'Dette initiale: '+fmt(s['total_cents']-s['paid_cents'],cur))
     return "\n".join(lines)
 
 def print_receipt_windows(sale_id):

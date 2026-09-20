@@ -153,7 +153,7 @@ class ToDoApp(tk.Tk):
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
             self.lock_window.lift();return
-        if self.user['role']!='admin' and key in ('products','purchases','suppliers','settings','journal','management','statistics'):
+        if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
@@ -173,6 +173,7 @@ class ToDoApp(tk.Tk):
             "stock": lambda: StockFrame(self.content, self),
             "purchases": lambda: PurchasesFrame(self.content),
             "suppliers": lambda: SuppliersFrame(self.content),
+            "clients": lambda: ClientsFrame(self.content,self),
             "returns": lambda: ReturnsFrame(self.content, self),
             "journal": lambda: JournalFrame(self.content),
             "settings": lambda: SettingsFrame(self.content, self),
@@ -276,7 +277,7 @@ class ToDoApp(tk.Tk):
         if self.sale_frame and self.sale_frame.cart:
             from services.sales import hold_sale
             try:
-                hold_sale(self.user['id'],self.sale_frame.cart,'Reprise après fermeture',self.sale_frame.ticket_discount_cents,self.sale_frame.held_id)
+                hold_sale(self.user['id'],self.sale_frame.cart,'Reprise après fermeture',self.sale_frame.ticket_discount_cents,self.sale_frame.held_id,client_id=self.sale_frame.client_id)
                 self.sale_frame.cart=[]
             except Exception as e:
                 messagebox.showerror('ToDo',f'Ticket non sauvegardé : {e}');return
@@ -291,3 +292,4 @@ if __name__ == "__main__":
     app = ToDoApp()
     app.protocol("WM_DELETE_WINDOW", app.on_close)
     app.mainloop()
+

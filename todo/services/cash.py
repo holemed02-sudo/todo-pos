@@ -22,11 +22,11 @@ def open_session(user_id, opening_cash_cents):
 
 def session_totals(conn, session_id):
     cash_sales = conn.execute(
-        "SELECT COALESCE(SUM(total_cents),0) v FROM sales WHERE session_id=? AND status='COMPLETED' AND payment_method='CASH'",
+        "SELECT COALESCE(SUM(CASE WHEN payment_method='CREDIT' THEN paid_cents ELSE total_cents END),0) v FROM sales WHERE session_id=? AND status='COMPLETED' AND payment_method IN ('CASH','CREDIT')",
         (session_id,)
     ).fetchone()["v"]
     cash_returns = conn.execute(
-        "SELECT COALESCE(SUM(total_cents),0) v FROM returns WHERE session_id=? AND refund_method='CASH'",
+        "SELECT COALESCE(SUM(COALESCE(refund_paid_cents,total_cents)),0) v FROM returns WHERE session_id=? AND refund_method='CASH'",
         (session_id,)
     ).fetchone()["v"]
     expenses = conn.execute(
@@ -41,6 +41,7 @@ def session_totals(conn, session_id):
         "SELECT COALESCE(SUM(amount_cents),0) v FROM cash_movements WHERE session_id=? AND movement_type='OUT'",
         (session_id,)
     ).fetchone()["v"]
+    cash_in += conn.execute("SELECT COALESCE(SUM(amount_cents),0) FROM client_payments WHERE session_id=? AND payment_method='CASH'",(session_id,)).fetchone()[0]
     return dict(cash_sales=int(cash_sales), cash_returns=int(cash_returns),
                 expenses=int(expenses), cash_in=int(cash_in), cash_out=int(cash_out))
 

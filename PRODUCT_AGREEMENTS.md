@@ -55,3 +55,13 @@
 - Suppression du groupe fournisseurs en double. Clients/règlements/crédits ne redirigent plus vers des pages sans rapport : statut « à compléter » explicite.
 - Sorties, Inventaire dédié, clients, règlements, crédits et Rendez-vous restent à implémenter ; la présence des entrées ne signifie pas achèvement.
 - Validation locale : 39 tests métier ; parcours Tk à 1100×640 avec création fournisseur, réception liée, renommage, historique, vente et reçu PDF.
+
+
+## Mise à jour — clients et crédit
+- Client F6 lié à la vente et conservé en attente. Crédit explicite avec acompte espèces.
+- Paiements immédiats déduits du solde ; règlements répartis par facture et reliés à la caisse ouverte.
+- Retours : dette annulée avant remboursement de l'encaissement réel.
+- Recherche SQL corrigée ; famille principale et familles supplémentaires synchronisées.
+- Anciennes données conservées avec sauvegarde avant migration 120.
+- Mode TEST_TODO.bat séparé, trois produits et un client de démonstration ; ToDo.exe reste vierge.
+- Fournisseurs : gestion des règlements encore incomplète. Flash/Alerte et matériel physique restent à vérifier.

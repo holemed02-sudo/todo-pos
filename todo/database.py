@@ -278,11 +278,11 @@ def connect():
 
 def init_db():
     with connect() as conn:
-        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='products'").fetchone() and conn.execute('PRAGMA user_version').fetchone()[0] < 110:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='products'").fetchone() and conn.execute('PRAGMA user_version').fetchone()[0] < 120:
             from datetime import datetime
             backup_dir=DB_PATH.parent / 'migration_backups'
             backup_dir.mkdir(parents=True,exist_ok=True)
-            destination=sqlite3.connect(backup_dir / f"before_110_{datetime.now():%Y%m%d_%H%M%S_%f}.db")
+            destination=sqlite3.connect(backup_dir / f"before_120_{datetime.now():%Y%m%d_%H%M%S_%f}.db")
             try:
                 conn.backup(destination)
             finally:
@@ -320,7 +320,9 @@ def migrate(conn):
         'products': {'supplier_code': "TEXT NOT NULL DEFAULT ''", 'alias': "TEXT NOT NULL DEFAULT ''", 'is_misc': 'INTEGER NOT NULL DEFAULT 0'},
         'stock_movements': {'user_id': 'INTEGER REFERENCES users(id)', 'old_qty': 'REAL'},
         'sale_items': {'net_total_cents': 'INTEGER', 'qty_multiplier': 'REAL NOT NULL DEFAULT 1', 'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},
-        'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0'},
+        'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0', 'client_id': 'INTEGER REFERENCES clients(id)'},
+        'returns': {'refund_paid_cents': 'INTEGER'},
+        'client_payments': {'session_id': 'INTEGER REFERENCES cash_sessions(id)', 'user_id': 'INTEGER REFERENCES users(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CASH'"},
         'sales': {'client_id': 'INTEGER REFERENCES clients(id)'},
         'categories': {'color': "TEXT NOT NULL DEFAULT '#2563EB'", 'icon': "TEXT NOT NULL DEFAULT ''"},
     }
@@ -361,9 +363,18 @@ def migrate(conn):
     except sqlite3.OperationalError as error:
         if 'no such module' not in str(error) and 'no such tokenizer' not in str(error):
             raise
-    # Back-fill product_categories from existing single category_id
-    conn.execute('''
-        INSERT OR IGNORE INTO product_categories(product_id,category_id)
-        SELECT id,category_id FROM products WHERE category_id IS NOT NULL
-    ''')
-    conn.execute('PRAGMA user_version=110')
+    if not conn.execute("SELECT 1 FROM settings WHERE key='categories_junction_v1'").fetchone():
+        conn.execute('INSERT OR IGNORE INTO product_categories(product_id,category_id) SELECT id,category_id FROM products WHERE category_id IS NOT NULL')
+        conn.execute("INSERT INTO settings(key,value) VALUES('categories_junction_v1','1')")
+    conn.executescript("""
+        CREATE TRIGGER IF NOT EXISTS product_primary_category_insert AFTER INSERT ON products
+        WHEN new.category_id IS NOT NULL BEGIN
+          INSERT OR IGNORE INTO product_categories VALUES(new.id,new.category_id);
+        END;
+        CREATE TRIGGER IF NOT EXISTS product_primary_category_update AFTER UPDATE OF category_id ON products
+        WHEN old.category_id IS NOT new.category_id BEGIN
+          DELETE FROM product_categories WHERE product_id=new.id AND category_id=old.category_id;
+          INSERT OR IGNORE INTO product_categories SELECT new.id,new.category_id WHERE new.category_id IS NOT NULL;
+        END;
+    """)
+    conn.execute('PRAGMA user_version=120')
