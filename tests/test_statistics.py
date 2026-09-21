@@ -1,86 +1,59 @@
-"""Regression tests — reports and statistics queries."""
-import os, sys, types, pytest, datetime
-os.environ.setdefault("TODO_DB_PATH", ":memory:")
-sys.modules.setdefault("win32print", types.ModuleType("win32print"))
-from database import init_db
-from services.reports import (
-    today_summary, sales_evolution, top_products,
-    top_cashiers, category_breakdown,
-)
+"""Financial chart regressions using real sale/return services."""
+import sys,tempfile,unittest,datetime
+from pathlib import Path
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'todo'))
+import database
+from services.bootstrap import ensure_defaults
+from services.security import current_user
+from services.cash import open_session
+from services.sales import complete_sale,create_return
+from services.reports import today_summary,period_summary,sales_evolution,top_products,top_cashiers,category_breakdown
 
-
-@pytest.fixture(autouse=True)
-def fresh_db(tmp_path, monkeypatch):
-    db = str(tmp_path / "test.db")
-    monkeypatch.setenv("TODO_DB_PATH", db)
-    import importlib, database
-    importlib.reload(database)
-    init_db()
-    yield
-
-
-def _seed(conn):
-    conn.execute("INSERT INTO users(username,display_name,pin_hash) VALUES('a','Admin','x')")
-    conn.execute("INSERT INTO categories(name,color,icon) VALUES('Épicerie','#2563EB','🥫')")
-    conn.execute("INSERT INTO products(name,category_id,sale_price_cents,purchase_price_cents,stock_qty) VALUES('Huile',1,1500,800,100)")
-    conn.execute("INSERT INTO cash_sessions(user_id,opening_cash_cents,expected_cash_cents) VALUES(1,0,0)")
-    conn.execute("INSERT INTO sales(sale_no,session_id,cashier_user_id,subtotal_cents,total_cents,payment_method,paid_cents) VALUES('V-001',1,1,3000,3000,'CASH',3000)")
-    conn.execute("INSERT INTO sale_items(sale_id,product_id,name_snapshot,qty,unit_price_cents,cost_price_cents,line_total_cents) VALUES(1,1,'Huile',2,1500,800,3000)")
-    conn.commit()
-
-
-def test_today_summary_empty():
-    s = today_summary()
-    assert s['tickets'] == 0
-    assert s['net_sales'] == 0
-
-
-def test_today_summary_with_sale():
-    from database import connect
-    with connect() as conn:
-        _seed(conn)
-    s = today_summary()
-    assert s['tickets'] == 1
-    assert s['net_sales'] == 3000
-
-
-def test_sales_evolution_week():
-    from database import connect
-    with connect() as conn:
-        _seed(conn)
-    labels, values = sales_evolution('week')
-    assert len(labels) == 7
-    assert sum(values) == 3000
-
-
-def test_sales_evolution_month():
-    labels, values = sales_evolution('month')
-    today = datetime.date.today()
-    assert len(values) == today.day
-
-
-def test_top_products():
-    from database import connect
-    with connect() as conn:
-        _seed(conn)
-    rows = top_products(5, 'month')
-    assert rows[0]['name'] == 'Huile'
-    assert rows[0]['revenue'] == 3000
-
-
-def test_top_cashiers():
-    from database import connect
-    with connect() as conn:
-        _seed(conn)
-    rows = top_cashiers('month')
-    assert rows[0]['name'] == 'Admin'
-    assert rows[0]['tickets'] == 1
-
-
-def test_category_breakdown():
-    from database import connect
-    with connect() as conn:
-        _seed(conn)
-    rows = category_breakdown('month')
-    assert rows[0]['name'] == 'Épicerie'
-    assert rows[0]['revenue'] == 3000
+class StatisticsTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.old=database.DB_PATH
+        database.DB_PATH=Path(self.tmp.name)/'stats.db';database.init_db();ensure_defaults()
+        with database.connect() as c:
+            self.uid=c.execute('SELECT id FROM users').fetchone()[0]
+            self.cat=c.execute("INSERT INTO categories(name) VALUES('Test family')").lastrowid
+            self.pid=c.execute("INSERT INTO products(name,category_id,sale_price_cents,purchase_price_cents) VALUES('Test rice',?,1500,800)",(self.cat,)).lastrowid
+        self.token=current_user.set(self.uid);self.session=open_session(self.uid,0)
+    def tearDown(self):
+        current_user.reset(self.token);database.DB_PATH=self.old;self.tmp.cleanup()
+    def sell(self):
+        sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=2,unit_price_cents=1500)],'CASH',2500,discount_cents=500)
+        with database.connect() as c:self.item=c.execute('SELECT id FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0]
+        return sale
+    def assert_revenue(self,amount,period='month'):
+        self.assertEqual(period_summary(period)['net_sales'],amount)
+        self.assertEqual(sum(sales_evolution(period)[1]),amount)
+        self.assertEqual(top_products(period=period)[0]['revenue'],amount)
+        self.assertEqual(top_cashiers(period)[0]['revenue'],amount)
+        self.assertEqual(category_breakdown(period)[0]['revenue'],amount)
+    def test_empty_windows_month_and_all_periods(self):
+        for period in ['week','month','year']:
+            labels,values=sales_evolution(period)
+            self.assertEqual(len(labels),len(values));self.assertEqual(sum(values),0)
+            self.assertEqual(period_summary(period)['tickets'],0)
+        self.assertEqual(len(sales_evolution('month')[0]),datetime.date.today().day)
+    def test_discount_and_partial_return_consistent_everywhere(self):
+        sale=self.sell();self.assert_revenue(2500)
+        self.assertEqual(period_summary()['gross_margin'],900)
+        create_return(sale['id'],self.session,self.uid,[(self.item,1)])
+        for period in ['week','month','year']:self.assert_revenue(1250,period)
+        self.assertEqual(period_summary()['gross_margin'],450)
+        self.assertEqual(today_summary()['net_sales'],1250)
+    def test_return_recognized_today_for_old_sale(self):
+        sale=self.sell()
+        with database.connect() as c:c.execute("UPDATE sales SET created_at='2000-01-01 12:00:00' WHERE id=?",(sale['id'],))
+        create_return(sale['id'],self.session,self.uid,[(self.item,1)])
+        self.assert_revenue(-1250)
+        self.assertEqual(period_summary()['tickets'],0)
+        self.assertEqual(period_summary()['gross_margin'],-450)
+    def test_multiple_families_do_not_duplicate_revenue(self):
+        from services.catalog import set_product_categories
+        with database.connect() as c:
+            other=c.execute("INSERT INTO categories(name) VALUES('Second family')").lastrowid
+            set_product_categories(c,self.pid,[self.cat,other])
+        self.sell()
+        self.assertEqual(sum(r['revenue'] for r in category_breakdown()),2500)

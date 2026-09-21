@@ -23,6 +23,8 @@ jobs:
         run: python -B tests/ui_smoke.py
       - name: Purchase to printable receipt through Tk controls
         run: python -B tests/ui_acceptance.py
+      - name: Integrated families and statistics through Tk controls
+        run: python -B tests/ui_integration.py
       - name: Compile sources
         run: python -m compileall -q todo ToDo.pyw IMPORT_OLD_DATA.pyw
       - name: Build portable Windows application
@@ -31,6 +33,8 @@ jobs:
       - name: Build data import utility
         shell: cmd
         run: pyinstaller --noconfirm --clean --windowed --onefile --name ImporterToDo --paths todo IMPORT_OLD_DATA.pyw
+      - name: Create optional isolated demo
+        run: python tools/create_demo.py dist/ToDo
       - name: Include documentation and importer
         shell: pwsh
         run: |

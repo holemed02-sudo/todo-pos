@@ -39,7 +39,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.update()
     editor=ProductEditor(app)
     editor.name.set('TEST - Rice')
-    editor.cat.set('Test groceries')
+    with patch('screens.products.simpledialog.askstring',return_value='Test groceries'):
+        editor.add_category()
     editor.buy.set('2');editor.sell.set('3')
     editor.bar.set('TEST123')
     button(editor,'Enregistrer').invoke();app.update()
@@ -160,6 +161,41 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert closing['status']=='CLOSED' and closing['difference_cents']==0
     cash_window.destroy()
     app.show('journal');app.update()
+    # Complete a customer credit sale and settlement through actual Tk controls.
+    from screens.clients import ClientEditor, PaymentsWindow
+    from services.clients import get_client
+    from services.cash import close_session
+    open_session(app.user['id'],0)
+    app.show('clients');app.update()
+    button(app.current,'Nouveau').invoke();app.update()
+    customer_editor=next(w for w in descendants(app) if isinstance(w,ClientEditor))
+    customer_editor.name.set('TEST credit customer')
+    button(customer_editor,'Enregistrer').invoke();app.update()
+    with connect() as c:cid=c.execute("SELECT id FROM clients WHERE name='TEST credit customer'").fetchone()[0]
+    app.show('sale');app.update();sale=app.current
+    button(sale,'F6 Client').invoke();app.update()
+    picker=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    customer_tree=next(w for w in descendants(picker) if w.winfo_class()=='Treeview')
+    customer_tree.selection_set(str(cid));button(picker,'Choisir').invoke()
+    assert sale.client_id==cid
+    sale.query.set('TEST123');sale.confirm_search()
+    def credit_payment():
+        dialog=next(w for w in descendants(app) if isinstance(w,PaymentDialog))
+        dialog.choose_method('CREDIT');dialog.amount.set('1.00');app.update()
+        visible(dialog.confirm_button)
+        assert not dialog.confirm_button.instate(['disabled'])
+        dialog.confirm_button.invoke()
+    app.after(150,credit_payment)
+    button(sale,'SOLDER sans').invoke();app.update()
+    assert get_client(cid)['balance_cents']==200 and sale.client_id is None
+    app.show('clients');app.update()
+    app.current.tree.selection_set(str(cid));button(app.current,'Règlements').invoke();app.update()
+    payments=next(w for w in descendants(app) if isinstance(w,PaymentsWindow))
+    with patch('tkinter.simpledialog.askstring',side_effect=['2.00','TEST settlement']):
+        button(payments,'Ajouter un règlement').invoke()
+    assert get_client(cid)['balance_cents']==0
+    payments.destroy()
+    assert close_session(__import__('services.cash',fromlist=['get_open_session']).get_open_session()['id'],300)[:2]==(300,0)
     app.show('settings');app.update()
     settings=app.current
     with patch('services.printers.installed_printers',return_value=['Receipt Test']):

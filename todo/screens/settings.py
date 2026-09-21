@@ -48,11 +48,11 @@ class CategoryEditor(tk.Toplevel):
 
         ttk.Label(f, text='Icône').grid(row=3, column=0, sticky='w', pady=8)
         icon_frame = ttk.Frame(f); icon_frame.grid(row=3, column=1, columnspan=3, sticky='ew')
-        for icon in self.ICONS:
+        for i,icon in enumerate(self.ICONS):
             lbl = icon if icon else '—'
             tk.Button(icon_frame, text=lbl, width=3, font=('Segoe UI', 12),
                       relief='flat', cursor='hand2',
-                      command=lambda ic=icon: self.icon_var.set(ic)).pack(side='left', padx=1)
+                      command=lambda ic=icon: self.icon_var.set(ic)).grid(row=i//7,column=i%7,padx=1)
 
         ttk.Button(f, text='Enregistrer', style='Primary.TButton',
                    command=self.save).grid(row=4, column=0, columnspan=4, sticky='ew', pady=16)
@@ -73,6 +73,7 @@ class CategoryEditor(tk.Toplevel):
             from tkinter import messagebox
             messagebox.showerror('Famille', 'Le nom est obligatoire.', parent=self); return
         with connect() as conn:
+            require_admin(conn)
             if self.cat_id:
                 conn.execute('UPDATE categories SET name=?,color=?,icon=? WHERE id=?',
                              (name, color, icon, self.cat_id))

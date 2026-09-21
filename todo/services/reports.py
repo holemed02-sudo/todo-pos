@@ -27,7 +27,7 @@ def _date_range(period):
         start = today.replace(day=1)
         end   = today
         days  = [(start + datetime.timedelta(i)) for i in range((end - start).days + 1)]
-        return start.isoformat(), end.isoformat(), [d.strftime('%-d') for d in days]
+        return start.isoformat(), end.isoformat(), [str(d.day) for d in days]
     if period == 'year':
         months = []
         for m in range(1, 13):
@@ -37,86 +37,63 @@ def _date_range(period):
     return today.isoformat(), today.isoformat(), [today.strftime('%H:00')]
 
 
+# Net revenue is recognized on sale/return date; categories use the primary family
+# so a product assigned to several families is never counted twice.
+EVENTS = """WITH events AS (
+ SELECT si.product_id, si.name_snapshot name, p.category_id,
+        s.cashier_user_id, s.created_at, si.qty,
+        COALESCE(si.net_total_cents,si.line_total_cents) revenue,
+        si.cost_price_cents*si.qty cost
+ FROM sale_items si JOIN sales s ON s.id=si.sale_id
+ LEFT JOIN products p ON p.id=si.product_id WHERE s.status='COMPLETED'
+ UNION ALL
+ SELECT ri.product_id,si.name_snapshot,p.category_id,s.cashier_user_id,
+        r.created_at,-ri.qty,-ri.line_total_cents,-si.cost_price_cents*ri.qty
+ FROM return_items ri JOIN returns r ON r.id=ri.return_id
+ JOIN sale_items si ON si.id=ri.sale_item_id JOIN sales s ON s.id=si.sale_id
+ LEFT JOIN products p ON p.id=ri.product_id
+), period_events AS (
+ SELECT * FROM events WHERE date(created_at,'localtime') BETWEEN ? AND ?
+) """
+
+def period_summary(period='month'):
+    start,end,_=_date_range(period)
+    with connect() as c:
+        row=c.execute(EVENTS+'SELECT COALESCE(SUM(revenue),0),COALESCE(SUM(cost),0) FROM period_events',(start,end)).fetchone()
+        tickets=c.execute("SELECT COUNT(*) FROM sales WHERE status='COMPLETED' AND date(created_at,'localtime') BETWEEN ? AND ?",(start,end)).fetchone()[0]
+        alerts=c.execute('SELECT COUNT(*) FROM products WHERE active=1 AND stock_qty<=alert_qty').fetchone()[0]
+    return dict(net_sales=row[0],gross_margin=rounded(row[0]-row[1]),tickets=tickets,alerts=alerts)
+
 def sales_evolution(period='month'):
-    """Daily/monthly sales totals for bar chart."""
-    from_d, to_d, labels = _date_range(period)
-    with connect() as conn:
-        if period == 'year':
-            rows = conn.execute("""
-                SELECT strftime('%m', created_at, 'localtime') mon,
-                       COALESCE(SUM(total_cents),0) total
-                FROM sales WHERE status='COMPLETED'
-                  AND date(created_at,'localtime') BETWEEN ? AND ?
-                GROUP BY mon ORDER BY mon
-            """, (from_d, to_d)).fetchall()
-            by_key = {r['mon']: r['total'] for r in rows}
-            values = [by_key.get(f'{m:02d}', 0) for m in range(1, 13)]
-        else:
-            rows = conn.execute("""
-                SELECT date(created_at,'localtime') day,
-                       COALESCE(SUM(total_cents),0) total
-                FROM sales WHERE status='COMPLETED'
-                  AND date(created_at,'localtime') BETWEEN ? AND ?
-                GROUP BY day ORDER BY day
-            """, (from_d, to_d)).fetchall()
-            by_key = {r['day']: r['total'] for r in rows}
-            import datetime as dt
-            start = dt.date.fromisoformat(from_d)
-            end   = dt.date.fromisoformat(to_d)
-            values = []
-            cur = start
-            while cur <= end:
-                values.append(by_key.get(cur.isoformat(), 0))
-                cur += dt.timedelta(days=1)
-    return labels, values
+    start,end,labels=_date_range(period)
+    key="strftime('%m',created_at,'localtime')" if period=='year' else "date(created_at,'localtime')"
+    with connect() as c:
+        rows=c.execute(EVENTS+f'SELECT {key} bucket,SUM(revenue) total FROM period_events GROUP BY bucket',(start,end)).fetchall()
+    totals={r['bucket']:r['total'] for r in rows}
+    keys=([f'{m:02d}' for m in range(1,13)] if period=='year' else
+          [(datetime.date.fromisoformat(start)+datetime.timedelta(days=i)).isoformat() for i in range(len(labels))])
+    return labels,[totals.get(k,0) for k in keys]
 
-
-def top_products(limit=10, period='month'):
-    """Top selling products by revenue."""
-    from_d, to_d, _ = _date_range(period)
-    with connect() as conn:
-        rows = conn.execute("""
-            SELECT p.name, COALESCE(SUM(si.qty),0) qty,
-                   COALESCE(SUM(si.line_total_cents),0) revenue
-            FROM sale_items si
-            JOIN sales s   ON s.id  = si.sale_id
-            JOIN products p ON p.id = si.product_id
-            WHERE s.status='COMPLETED'
-              AND date(s.created_at,'localtime') BETWEEN ? AND ?
-            GROUP BY si.product_id ORDER BY revenue DESC LIMIT ?
-        """, (from_d, to_d, limit)).fetchall()
+def top_products(limit=10,period='month'):
+    start,end,_=_date_range(period)
+    with connect() as c:
+        rows=c.execute(EVENTS+"SELECT name,SUM(qty) qty,SUM(revenue) revenue FROM period_events GROUP BY product_id,name ORDER BY revenue DESC LIMIT ?",(start,end,limit)).fetchall()
     return [dict(r) for r in rows]
-
 
 def top_cashiers(period='month'):
-    """Top cashiers by sales count."""
-    from_d, to_d, _ = _date_range(period)
-    with connect() as conn:
-        rows = conn.execute("""
-            SELECT u.display_name name,
-                   COUNT(*) tickets,
-                   COALESCE(SUM(s.total_cents),0) revenue
-            FROM sales s JOIN users u ON u.id=s.cashier_user_id
-            WHERE s.status='COMPLETED'
-              AND date(s.created_at,'localtime') BETWEEN ? AND ?
-            GROUP BY s.cashier_user_id ORDER BY revenue DESC LIMIT 10
-        """, (from_d, to_d)).fetchall()
+    start,end,_=_date_range(period)
+    with connect() as c:
+        rows=c.execute(EVENTS+"""SELECT u.display_name name,SUM(e.revenue) revenue,
+           (SELECT COUNT(*) FROM sales s WHERE s.cashier_user_id=u.id AND s.status='COMPLETED'
+            AND date(s.created_at,'localtime') BETWEEN ? AND ?) tickets
+           FROM period_events e JOIN users u ON u.id=e.cashier_user_id
+           GROUP BY u.id ORDER BY revenue DESC LIMIT 10""",(start,end,start,end)).fetchall()
     return [dict(r) for r in rows]
 
-
 def category_breakdown(period='month'):
-    """Sales by category for pie/bar."""
-    from_d, to_d, _ = _date_range(period)
-    with connect() as conn:
-        rows = conn.execute("""
-            SELECT COALESCE(c.name,'Sans famille') name,
-                   COALESCE(SUM(si.line_total_cents),0) revenue
-            FROM sale_items si
-            JOIN sales s    ON s.id   = si.sale_id
-            JOIN products p ON p.id   = si.product_id
-            LEFT JOIN categories c ON c.id = p.category_id
-            WHERE s.status='COMPLETED'
-              AND date(s.created_at,'localtime') BETWEEN ? AND ?
-            GROUP BY p.category_id ORDER BY revenue DESC LIMIT 8
-        """, (from_d, to_d)).fetchall()
+    start,end,_=_date_range(period)
+    with connect() as c:
+        rows=c.execute(EVENTS+"""SELECT COALESCE(c.name,'Sans famille') name,SUM(e.revenue) revenue
+            FROM period_events e LEFT JOIN categories c ON c.id=e.category_id
+            GROUP BY e.category_id ORDER BY revenue DESC LIMIT 8""",(start,end)).fetchall()
     return [dict(r) for r in rows]

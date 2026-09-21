@@ -21,11 +21,14 @@ class SaleFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=16)
         self.app=app
+        self.client_id=None
         self.cart=[]
         self.ticket_discount_cents=0
         self.held_id=None
         self.payment='CASH'
         self.category=None
+        self.photo_offset=0
+        self.photo_filter=None
         self.currency=get_setting('currency','DH')
         self.images={}
         self.search_job=None
@@ -36,6 +39,8 @@ class SaleFrame(ttk.Frame):
         ttk.Label(top,text='Vente / البيع',style='Title.TLabel').pack(side='left')
         self.payment_label=ttk.Label(top,text='Paiement : CASH',style='Accent.TLabel')
         self.payment_label.pack(side='right')
+        self.client_button=ttk.Button(top,text='F6 Client : passage',command=self.choose_client)
+        self.client_button.pack(side='left',padx=18)
         searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
         searchbar.pack(fill='x',pady=(0,12))
         ttk.Label(searchbar,text='⌕  Scanner ou rechercher',style='Card.TLabel').pack(side='left',padx=(0,12))
@@ -59,8 +64,14 @@ class SaleFrame(ttk.Frame):
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        self.category_buttons=ttk.Frame(filters);self.category_buttons.pack(side='left',fill='x',expand=True)
-        ttk.Label(filters,text='Nom · code · référence · alias').pack(side='right')
+        self.family_canvas=tk.Canvas(filters,height=42,highlightthickness=0)
+        self.family_canvas.pack(fill='x',expand=True)
+        family_scroll=ttk.Scrollbar(filters,orient='horizontal',command=self.family_canvas.xview)
+        family_scroll.pack(fill='x')
+        self.family_canvas.configure(xscrollcommand=family_scroll.set)
+        self.category_buttons=ttk.Frame(self.family_canvas)
+        self.family_canvas.create_window((0,0),window=self.category_buttons,anchor='nw')
+        self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
         self.catalog_tabs.add(self.photo_page,text='Photos / بيع بدون باركود');self.catalog_tabs.add(self.list_page,text='Liste')
@@ -70,6 +81,9 @@ class SaleFrame(ttk.Frame):
         for key,label in [('price','PRIX'),('stock','STOCK')]:
             self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
         self.products.pack(fill='both',expand=True)
+        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
+        ttk.Button(photo_nav,text='Précédent',command=lambda:self.photo_next(-1)).pack(side='left')
+        self.photo_more=ttk.Button(photo_nav,text='Suivant',command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
         self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
@@ -104,7 +118,7 @@ class SaleFrame(ttk.Frame):
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
         self.status=ttk.Label(self,text='Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter')
         self.status.pack(anchor='w',pady=(8,0))
-        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
+        commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F6>':self.choose_client,'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         for sequence,command in commands.items():
             binding=app.bind(sequence,lambda e,c=command:self.shortcut(e,c),add='+')
             self.bindings.append((sequence,binding))
@@ -250,6 +264,10 @@ class SaleFrame(ttk.Frame):
                 except (OSError,ValueError):pass
         return self.images.get(key,'')
 
+    def photo_next(self,direction):
+        self.photo_offset=max(0,self.photo_offset+direction*60);self.render_products()
+        self.card_canvas.yview_moveto(0)
+
     def render_products(self):
         self.search_job=None
         with connect() as conn:
@@ -257,9 +275,10 @@ class SaleFrame(ttk.Frame):
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         if self.cat.get() not in self.categories:self.cat.set('Tous')
         for child in self.category_buttons.winfo_children(): child.destroy()
+        category_rows=list_categories()
         # Default colours for "Tous" and fallback
         all_colors = {'Tous': ('#1e293b', '#ffffff')}
-        for cat_row in list_categories():
+        for cat_row in category_rows:
             bg = cat_row['color'] or '#2563EB'
             # compute a readable text colour (white or black) based on luminance
             try:
@@ -274,7 +293,7 @@ class SaleFrame(ttk.Frame):
             if name not in self.categories:
                 continue
             icon = ''
-            for cat_row in list_categories():
+            for cat_row in category_rows:
                 if cat_row['name'] == name:
                     icon = (cat_row['icon'] + ' ') if cat_row['icon'] else ''
                     break
@@ -301,7 +320,11 @@ class SaleFrame(ttk.Frame):
         columns=max(1,self.card_canvas.winfo_width()//167)
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
-        photo_rows=[row for row in rows if row['image_path']]
+        photo_filter=(self.query.get(),self.categories[self.cat.get()])
+        if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
+        photo_rows=search_products(*photo_filter,limit=61,images_only=True,offset=self.photo_offset)
+        self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
+        photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
@@ -507,11 +530,35 @@ class SaleFrame(ttk.Frame):
         except Exception as error:messagebox.showerror('ToDo',str(error),parent=self)
         self.focus_search()
 
+    def choose_client(self):
+        from services.clients import list_clients
+        window=tk.Toplevel(self);window.title('Choisir client / الزبون');window.geometry('580x460')
+        window.transient(self.app);window.grab_set()
+        query=tk.StringVar();entry=ttk.Entry(window,textvariable=query);entry.pack(fill='x',padx=12,pady=12)
+        buttons=ttk.Frame(window);buttons.pack(side='bottom',fill='x',padx=12,pady=12)
+        tree=ttk.Treeview(window,columns=('name','phone'),show='headings')
+        tree.heading('name',text='Client');tree.heading('phone',text='Téléphone');tree.pack(fill='both',expand=True,padx=12)
+        def refresh(*args):
+            tree.delete(*tree.get_children())
+            for row in list_clients(query.get()):tree.insert('','end',iid=str(row['id']),values=(row['name'],row['phone']))
+        def select(clear=False):
+            if not clear and not tree.selection():return
+            self.client_id=None if clear else int(tree.selection()[0])
+            self.update_client_label();window.destroy();self.focus_search()
+        ttk.Button(buttons,text='Choisir',command=select).pack(side='left')
+        ttk.Button(buttons,text='Client de passage',command=lambda:select(True)).pack(side='left',padx=10)
+        tree.bind('<Double-1>',lambda e:select());entry.bind('<KeyRelease>',refresh);refresh();entry.focus_set()
+
+    def update_client_label(self):
+        from services.clients import get_client
+        name=get_client(self.client_id)['name'] if self.client_id is not None else 'passage'
+        self.client_button.configure(text='F6 Client : '+name[:30])
+
     def set_payment(self,method):
         self.payment=method;self.payment_label.config(text='Paiement : '+method);self.focus_search()
 
     def clear(self):
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.refresh();self.focus_search()
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.payment='CASH';self.payment_label.config(text='Paiement : CASH');self.update_client_label();self.refresh();self.focus_search()
 
     def cancel(self):
         if self.cart and not messagebox.askyesno('Annuler','Vider le ticket en cours ? Un ticket en attente reste sauvegardé.',parent=self):return
@@ -522,7 +569,7 @@ class SaleFrame(ttk.Frame):
         label=simpledialog.askstring('Attente','Nom ou numéro du ticket:',parent=self)
         if label is None:return
         try:
-            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id)
+            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
             self.clear();self.status.config(text='Ticket et remise sauvegardés.')
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
@@ -541,6 +588,7 @@ class SaleFrame(ttk.Frame):
             if not tree.selection():return
             state=resume_held(int(tree.selection()[0]))
             self.cart=state['cart'];self.ticket_discount_cents=state['discount_cents'];self.held_id=state['held_id']
+            self.client_id=state.get('client_id');self.update_client_label()
             self.refresh();w.destroy();self.focus_search()
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
         ttk.Button(w,text='Reprendre',command=resume).pack(pady=8)
@@ -553,14 +601,16 @@ class SaleFrame(ttk.Frame):
         self.busy=True
         try:
             total=self.totals()[1]
-            dialog=PaymentDialog(self,total,self.currency,self.payment)
+            from services.clients import get_client
+            client_name=get_client(self.client_id)['name'] if self.client_id is not None else None
+            dialog=PaymentDialog(self,total,self.currency,self.payment,client_name=client_name)
             mode=get_setting('print_mode','ask')
             dialog.print_ticket.set(print_ticket and mode=='always')
             self.wait_window(dialog)
             if dialog.result is None:return
             self.payment,paid,dialog_print=dialog.result
             self.payment_label.config(text='Paiement : '+self.payment)
-            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id)
+            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
             self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")

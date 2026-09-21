@@ -6,8 +6,9 @@ from services.money import fmt, to_cents
 class PaymentDialog(tk.Toplevel):
     """Collect a payment choice; closing this dialog never writes a sale."""
 
-    def __init__(self, master, total, currency='DH', method='CASH'):
+    def __init__(self, master, total, currency='DH', method='CASH', client_name=None):
         super().__init__(master)
+        self.client_name = client_name
         self.total = total
         self.currency = currency
         self.result = None
@@ -28,7 +29,10 @@ class PaymentDialog(tk.Toplevel):
         body.pack(fill='both', expand=True)
         modes = ttk.Frame(body)
         modes.pack(fill='x', pady=(0, 12))
-        for label, value in [('F2 Espèces / نقداً', 'CASH'), ('F3 Carte / بطاقة', 'CARD')]:
+        choices=[('F2 Espèces / نقداً','CASH'),('F3 Carte / بطاقة','CARD')]
+        if client_name:choices.append(('Crédit / كريدي','CREDIT'))
+        if client_name:ttk.Label(body,text='Client : '+client_name).pack(anchor='w')
+        for label, value in choices:
             ttk.Radiobutton(modes, text=label, variable=self.method, value=value,
                             command=self.update_amount).pack(side='left', expand=True, padx=8)
         ttk.Label(body, text='Montant reçu / المبلغ المدفوع').pack(anchor='w')
@@ -84,10 +88,12 @@ class PaymentDialog(tk.Toplevel):
             if paid < 0:
                 raise ValueError()
             difference = paid - self.total
+            credit=self.method.get()=='CREDIT' and self.client_name is not None
+            valid=(0<=paid<=self.total) if credit else difference>=0
             self.change.configure(text=('Reste à payer / باقي : ' if difference < 0 else 'Monnaie / الصرف : ') + fmt(abs(difference), self.currency),
                                   fg='#DC2626' if difference < 0 else '#166534')
-            self.confirm_button.configure(state='disabled' if difference < 0 else 'normal')
-            self.error.configure(text='Montant reçu insuffisant.' if difference < 0 else '')
+            self.confirm_button.configure(state='normal' if valid else 'disabled')
+            self.error.configure(text='Reste enregistré en dette client. Acompte en espèces.' if credit and valid else ('' if valid else 'Montant reçu invalide ou insuffisant.'))
         except Exception:
             self.change.configure(text='—')
             self.error.configure(text='Saisissez un montant valide / دخل مبلغ صحيح')
@@ -96,7 +102,8 @@ class PaymentDialog(tk.Toplevel):
     def confirm(self):
         try:
             paid = self.paid_cents()
-            if paid < self.total:
+            credit=self.method.get()=='CREDIT' and self.client_name is not None
+            if (credit and not 0<=paid<=self.total) or (not credit and paid<self.total):
                 self.update_amount()
                 return
         except Exception:

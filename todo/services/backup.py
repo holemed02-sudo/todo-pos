@@ -18,11 +18,13 @@ def validate(conn):
     with closing(sqlite3.connect(':memory:')) as expected:
         expected.executescript(SCHEMA)
         for (table,) in expected.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
+            if table in ('clients','client_payments','product_categories') and table not in tables:
+                continue
             needed={r[1] for r in expected.execute(f'PRAGMA table_info({table})')}
             actual={r[1] for r in conn.execute(f'PRAGMA table_info({table})')}
             if not needed.issubset(actual):
                 raise ValueError(f'Structure ToDo incompatible : {table}')
-    if conn.execute('PRAGMA user_version').fetchone()[0]>110:
+    if conn.execute('PRAGMA user_version').fetchone()[0]>120:
         raise ValueError('Sauvegarde issue d’une version plus récente de ToDo.')
 
 def create_backup():

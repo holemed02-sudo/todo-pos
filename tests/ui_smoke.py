@@ -28,7 +28,7 @@ sale.query.set('123456');sale.confirm_search();app.update_idletasks()
 assert len(sale.cart)==1
 assert sale.totals()==(1200,1200)
 sale.change(1);assert sale.cart[0]['qty']==2
-for key in ['home','products','cash','stock','purchases','returns','journal','settings','sale']:
+for key in ['home','products','cash','stock','purchases','returns','journal','settings','statistics','sale']:
  app.show(key);app.update_idletasks()
 assert app.sale_frame.cart[0]['qty']==2
 editor=ProductEditor(app,product_id=pid)

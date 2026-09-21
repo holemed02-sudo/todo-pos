@@ -1,7 +1,7 @@
 from database import connect, get_setting
 
 
-def search_products(query='', category=None, limit=None):
+def search_products(query='', category=None, limit=None, images_only=False, offset=0):
     query = query.strip()
     with connect() as conn:
         limit = max(1, min(200, int(limit or get_setting('search_limit', '60', conn))))
@@ -15,10 +15,12 @@ def search_products(query='', category=None, limit=None):
         else:
             cat_filter = ''
 
+        if images_only:cat_filter+=" AND trim(p.image_path)<>''"
+        offset=max(0,int(offset))
         if not query:
             return conn.execute(
-                f'SELECT p.* FROM products p WHERE p.active=1 {cat_filter} ORDER BY p.name LIMIT ?',
-                (*args, limit)
+                f'SELECT p.* FROM products p WHERE p.active=1 {cat_filter} ORDER BY p.name,p.id LIMIT ? OFFSET ?',
+                (*args, limit, offset)
             ).fetchall()
 
         # Exact barcode / SKU first
@@ -27,8 +29,8 @@ def search_products(query='', category=None, limit=None):
             WHERE p.active=1 {cat_filter}
               AND p.id IN (SELECT id FROM products WHERE sku=?
                            UNION SELECT product_id FROM product_barcodes WHERE barcode=?)
-            ORDER BY p.name LIMIT ?
-        ''', (*args, query, query, limit)).fetchall()
+            ORDER BY p.name,p.id LIMIT ? OFFSET ?
+        ''', (*args, query, query, limit, offset)).fetchall()
         if exact:
             return exact
 
@@ -40,29 +42,30 @@ def search_products(query='', category=None, limit=None):
                 WHERE p.active=1 {cat_filter}
                   AND p.id IN (
                       SELECT rowid FROM product_search WHERE product_search MATCH ?
-                      UNION SELECT product_id FROM product_barcodes WHERE barcode LIKE ? ESCAPE '\\\\'
+                      UNION SELECT product_id FROM product_barcodes WHERE barcode LIKE ? ESCAPE '\\'
                   )
-                ORDER BY p.name LIMIT ?
-            ''', (*args, match, _pattern(query), limit)).fetchall()
+                ORDER BY p.name,p.id LIMIT ? OFFSET ?
+            ''', (*args, match, _pattern(query), limit, offset)).fetchall()
         else:
             pattern = _pattern(query)
             rows = conn.execute(f'''
                 SELECT p.* FROM products p
                 WHERE p.active=1 {cat_filter}
-                  AND (p.name LIKE ? ESCAPE '\\\\'
-                    OR p.sku  LIKE ? ESCAPE '\\\\'
-                    OR p.alias LIKE ? ESCAPE '\\\\'
-                    OR p.supplier_code LIKE ? ESCAPE '\\\\'
-                    OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ? ESCAPE '\\\\'))
-                ORDER BY p.name LIMIT ?
-            ''', (*args, *([pattern]*5), limit)).fetchall()
+                  AND (p.name LIKE ? ESCAPE '\\'
+                    OR p.sku  LIKE ? ESCAPE '\\'
+                    OR p.alias LIKE ? ESCAPE '\\'
+                    OR p.supplier_code LIKE ? ESCAPE '\\'
+                    OR p.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE ? ESCAPE '\\'))
+                ORDER BY p.name,p.id LIMIT ? OFFSET ?
+            ''', (*args, *([pattern]*5), limit, offset)).fetchall()
 
         ids = {r['id'] for r in exact}
         return (list(exact) + [r for r in rows if r['id'] not in ids])[:limit]
 
 
 def _pattern(q):
-    return '%' + q.replace('\\\\', '\\\\\\\\').replace('%', '\\\\%').replace('_', '\\\\_ ') + '%'
+    escape = chr(92)
+    return '%' + q.replace(escape, escape*2).replace('%', escape+'%').replace('_', escape+'_') + '%'
 
 
 def scan_barcode(code):
@@ -93,14 +96,9 @@ def get_product_categories(product_id):
 
 def set_product_categories(conn, product_id, category_ids):
     """Replace all category assignments for a product (within open transaction)."""
+    category_ids=list(dict.fromkeys(category_ids))
+    conn.execute('UPDATE products SET category_id=? WHERE id=?',
+                 (category_ids[0] if category_ids else None, product_id))
     conn.execute('DELETE FROM product_categories WHERE product_id=?', (product_id,))
-    for cid in category_ids:
-        conn.execute(
-            'INSERT OR IGNORE INTO product_categories(product_id,category_id) VALUES(?,?)',
-            (product_id, cid)
-        )
-    # keep category_id (primary) in sync with first selection
-    if category_ids:
-        conn.execute(
-            'UPDATE products SET category_id=? WHERE id=?', (category_ids[0], product_id)
-        )
+    conn.executemany('INSERT INTO product_categories(product_id,category_id) VALUES(?,?)',
+                     [(product_id,cid) for cid in category_ids])

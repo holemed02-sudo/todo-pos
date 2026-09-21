@@ -133,7 +133,7 @@ class PaymentsWindow(tk.Toplevel):
         if sel:
             sale_id = int(sel[0])
         amount_str = simpledialog.askstring(
-            'Règlement', 'Montant reçu (DH) / المبلغ المقبوض :', parent=self)
+            'Règlement', 'Montant reçu en espèces (DH) / المبلغ المقبوض نقداً :', parent=self)
         if amount_str is None: return
         note = simpledialog.askstring('Règlement', 'Note (facultatif) :', parent=self) or ''
         try:
@@ -272,3 +272,4 @@ class ClientsFrame(ttk.Frame):
 
     def credit_state(self):
         CreditStateWindow(self)
+

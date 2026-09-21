@@ -1,3 +1,19 @@
+# Integration validation — 2026-09-21
+
+Latest integration combines main e39c214 with customer-credit fixes d47d990.
+Local Windows validation on isolated temporary databases:
+- 53 unittest regression tests passed (sales, purchases, stock, pricing, credit, returns, backup, search, statistics).
+- ui_smoke.py passed: login, scan, quantity, navigation including statistics, direct stock correction and ledger.
+- ui_acceptance.py passed: product/family, supplier, purchase validation, stock, scan, quantity, discount, visible SOLDER/VALIDER at 1100x640, payment, receipt PDF, journal, credit deposit and settlement.
+- ui_integration.py passed: 30 families, inline creation, multi-family save/reopen/remove, colour/icon editor, sale family buttons, all three statistics periods, discounted sale and partial return, negative net revenue and navigation.
+
+Receipt PDF generation is tested; physical printing, thermal layout, Arabic receipt rendering, scanner hardware and cash drawer are not verified. No production/shop data was used or changed by these tests.
+The optional TEST_TODO.bat demo uses a separate demo database. It is not a production database.
+
+The following is historical baseline evidence; its earlier Tk/CI limitations are superseded by the local integration results above. CI results for the final commit must be checked separately.
+
+---
+
 # Validation ? ToDo POS 1.1.0
 
 Executed on 2026-09-19, Windows, bundled Python 3.12.14, SQLite 3.53.1, local temporary databases.

@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk
 from services.reports import (
-    today_summary, sales_evolution, top_products,
+    today_summary, period_summary, sales_evolution, top_products,
     top_cashiers, category_breakdown,
 )
 from services.money import fmt
@@ -32,7 +32,7 @@ class BarChart(tk.Canvas):
         self._title  = title
         self._color  = color
         self.bind('<Configure>', lambda e: self._draw())
-        self.after(50, self._draw)
+
 
     def update_data(self, labels, values):
         self._labels = labels
@@ -54,19 +54,22 @@ class BarChart(tk.Canvas):
             self.create_text(W//2, 14, text=self._title,
                              font=('Segoe UI', 9, 'bold'), fill='#1e293b')
 
-        if not self._values or max(self._values, default=0) == 0:
+        if not self._values or not any(self._values):
             self.create_text(W//2, H//2, text='Aucune donnée',
                              fill='#94a3b8', font=('Segoe UI', 10))
             return
 
-        max_val = max(self._values)
+        max_val = max(0,max(self._values))
+        min_val = min(0,min(self._values))
+        span = max_val-min_val or 1
+        zero_y = pad_t + chart_h * max_val / span
         n = len(self._values)
         bar_w = max(4, (chart_w - n * 4) // n)
         gap   = max(2, (chart_w - n * bar_w) // max(n, 1))
 
         # Y axis labels (4 steps)
         for step in range(5):
-            y_val = max_val * step / 4
+            y_val = min_val + span * step / 4
             y_px  = pad_t + chart_h - int(chart_h * step / 4)
             self.create_line(pad_l - 4, y_px, pad_l + chart_w, y_px,
                              fill='#e2e8f0', dash=(2, 4))
@@ -78,9 +81,9 @@ class BarChart(tk.Canvas):
         for i, (lbl, val) in enumerate(zip(self._labels, self._values)):
             x0 = pad_l + i * (bar_w + gap)
             x1 = x0 + bar_w
-            bar_h_px = int(chart_h * val / max_val) if max_val else 0
-            y0 = pad_t + chart_h - bar_h_px
-            y1 = pad_t + chart_h
+            bar_h_px = int(chart_h * val / span)
+            y0 = zero_y - bar_h_px
+            y1 = zero_y
             # shadow
             self.create_rectangle(x0+2, y0+2, x1+2, y1+2,
                                   fill='#e2e8f0', outline='')
@@ -112,7 +115,7 @@ class HBarChart(tk.Canvas):
         self._items = items   # list of (label, value)
         self._title = title
         self.bind('<Configure>', lambda e: self._draw())
-        self.after(50, self._draw)
+
 
     def update_data(self, items):
         self._items = items
@@ -136,8 +139,11 @@ class HBarChart(tk.Canvas):
         pad_l, pad_r, pad_t = 160, 70, 28
         n       = len(self._items)
         row_h   = max(18, (H - pad_t - 10) // n)
-        max_val = max(v for _, v in self._items) if self._items else 1
-        bar_area = W - pad_l - pad_r
+        max_val = max(0,max(v for _,v in self._items))
+        min_val = min(0,min(v for _,v in self._items))
+        span = max_val-min_val or 1
+        bar_area = max(1,W - pad_l - pad_r)
+        zero_x = pad_l - bar_area * min_val / span
 
         for i, (lbl, val) in enumerate(self._items):
             y_mid = pad_t + i * row_h + row_h // 2
@@ -150,10 +156,10 @@ class HBarChart(tk.Canvas):
                                   pad_l + bar_area, y_mid + row_h//3,
                                   fill='#f1f5f9', outline='')
             # bar fill
-            bar_px = int(bar_area * val / max_val) if max_val else 0
+            bar_px = int(bar_area * val / span)
             color  = CHART_COLORS[i % len(CHART_COLORS)]
-            self.create_rectangle(pad_l, y_mid - row_h//3,
-                                  pad_l + bar_px, y_mid + row_h//3,
+            self.create_rectangle(zero_x, y_mid - row_h//3,
+                                  zero_x + bar_px, y_mid + row_h//3,
                                   fill=color, outline='')
             # value
             self.create_text(pad_l + bar_area + 4, y_mid,
@@ -277,10 +283,11 @@ class StatisticsFrame(ttk.Frame):
             self._load_categories()
             self._load_recent()
         except Exception as e:
-            import traceback; traceback.print_exc()
+            from tkinter import messagebox
+            messagebox.showerror('Statistiques',str(e),parent=self)
 
     def _load_kpis(self):
-        data = today_summary()
+        data = period_summary(self._period)
         self._kpi_labels['net_sales'].config(   text=fmt(data['net_sales']))
         self._kpi_labels['gross_margin'].config( text=fmt(data['gross_margin']))
         self._kpi_labels['tickets'].config(      text=str(data['tickets']))
