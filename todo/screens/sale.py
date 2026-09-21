@@ -168,6 +168,7 @@ class SaleFrame(ttk.Frame):
                   ('Dépenses / المصاريف',lambda:self.cash_tools('expense')),
                   ('Rapport / التقارير',lambda:self.app.show('journal')),
                   ('Raccourcis / الاختصارات',self.show_shortcuts),
+                  ('⌨ Clavier / لوحة المفاتيح',self.toggle_keyboard),
                   ('Calculatrice / الحاسبة',self.calculator),
                   ('Lock / قفل الصندوق',self.app.lock_cashier),
                   ('Thème / الألوان',self.app.choose_theme),
@@ -193,7 +194,8 @@ class SaleFrame(ttk.Frame):
         self.refresh(index);self.focus_search()
 
     def calculator(self):
-        from screens.cashier_tools import Calculator
+        from screens.virtual_keyboard import VirtualKeyboard
+from screens.cashier_tools import Calculator
         Calculator(self)
 
     def open_drawer(self):
