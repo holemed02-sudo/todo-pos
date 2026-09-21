@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 from database import connect
 from services.money import fmt
 from services.suppliers import list_suppliers, save_supplier
+from screens.common import attach_keyboard
 
 
 class SupplierEditor(tk.Toplevel):
@@ -19,7 +20,7 @@ class SupplierEditor(tk.Toplevel):
         form.pack(fill='both', expand=True)
         for row, (label, variable) in enumerate([('Nom / الاسم', self.name), ('Téléphone / الهاتف', self.phone)]):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky='w', pady=8)
-            ttk.Entry(form, textvariable=variable, width=36).grid(row=row, column=1, padx=12)
+            attach_keyboard(ttk.Entry(form, textvariable=variable, width=36)).grid(row=row, column=1, padx=12)
         ttk.Label(form, text='Notes / ملاحظات').grid(row=2, column=0, sticky='nw')
         self.notes = tk.Text(form, width=36, height=5)
         self.notes.grid(row=2, column=1, padx=12)

@@ -11,6 +11,7 @@ from services.money import fmt, to_cents, allocate
 from services.images import abs_image
 from services.receipts import build_receipt, print_receipt_windows, export_receipt_pdf
 from screens.payment import PaymentDialog
+from screens.common import attach_keyboard
 try:
     from PIL import Image, ImageTk
 except ImportError:
@@ -47,6 +48,7 @@ class SaleFrame(ttk.Frame):
         self.query=tk.StringVar()
         self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
         self.entry.pack(side='left',fill='x',expand=True)
+        attach_keyboard(self.entry)
         ttk.Label(searchbar,text='Qté / الكمية').pack(side='left',padx=(12,4))
         self.scan_quantity=tk.StringVar(value='1')
         self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))

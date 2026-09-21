@@ -18,6 +18,12 @@ def descendants(w):
     for child in w.winfo_children():
         yield child
         yield from descendants(child)
+def dialogs(w):
+    """Toplevel windows other than the persistent VirtualKeyboard (which
+    stays open across fields by design and would otherwise be picked up as
+    'the newest dialog' by naive Toplevel searches)."""
+    from screens.common import VirtualKeyboard
+    return (x for x in descendants(w) if x.winfo_class()=='Toplevel' and not isinstance(x, VirtualKeyboard))
 def button(w, label):
     return next(x for x in descendants(w) if x.winfo_class() in ('TButton','Button') and label in str(x.cget('text')))
 def clickable(w, label):
@@ -82,7 +88,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     supplier_editor=next(w for w in descendants(app) if isinstance(w,SupplierEditor))
     supplier_editor.name.set('TEST Supplier updated');button(supplier_editor,'Enregistrer').invoke()
     button(app.current,'Réceptions du fournisseur').invoke();app.update()
-    history=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    history=next(dialogs(app))
     history_tree=next(w for w in descendants(history) if w.winfo_class()=='Treeview')
     assert len(history_tree.get_children())==1
     assert 'TEST-001' in history_tree.item(history_tree.get_children()[0],'values')
@@ -95,21 +101,21 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
-    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    menu=next(dialogs(app))
     for label in ['Duplicata','Modifier quantité','Modifier prix','Supprimer','PRIX 1','Clôture','Dépenses','Rapport','Raccourcis']:
         visible(button(menu,label))
     with patch('tkinter.simpledialog.askstring',return_value='4.00'):
         button(menu,'Modifier prix').invoke()
     assert sale.totals()[1]==800
     sale.functions();app.update()
-    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    menu=next(dialogs(app))
     button(menu,'PRIX 1').invoke()
     assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askstring',return_value='Test held ticket'):
         sale.hold()
     assert not sale.cart
     sale.show_held();app.update()
-    held=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    held=next(dialogs(app))
     tree=next(w for w in descendants(held) if w.winfo_class()=='Treeview')
     tree.selection_set(tree.get_children()[0]);button(held,'Reprendre').invoke()
     assert sale.cart[0]['qty']==2
@@ -121,12 +127,12 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     lock.pin.set('1234');lock.unlock();assert app.lock_window is None
     assert sale.cart==saved
     sale.calculator();app.update()
-    calc=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    calc=next(dialogs(app))
     calc.expression.set('12,5 * 2');button(calc,'=').invoke()
     assert calc.expression.get()=='25'
     button(calc,'Fermer').invoke()
     app.choose_theme();app.update()
-    theme=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    theme=next(dialogs(app))
     button(theme,'Vert').invoke()
     from database import get_setting
     assert get_setting('theme')=='Vert' and app.theme_color=='#15803D'
@@ -146,7 +152,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.after(150,finish_payment)
     button(sale,'SOLDER avec').invoke();app.update()
     assert not sale.cart
-    receipt=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    receipt=next(dialogs(app))
     visible(button(receipt,'PDF'))
     with connect() as c:
         row=c.execute('SELECT * FROM sales').fetchone()
@@ -158,7 +164,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert output.read_bytes().startswith(b'%PDF-')
     receipt.destroy()
     sale.cash_tools();app.update()
-    cash_window=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    cash_window=next(dialogs(app))
     with patch('tkinter.simpledialog.askstring',return_value='TEST expense'), patch('tkinter.simpledialog.askfloat',return_value=1):
         button(cash_window,'Dépense').invoke()
     with connect() as c:
@@ -183,7 +189,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with connect() as c:cid=c.execute("SELECT id FROM clients WHERE name='TEST credit customer'").fetchone()[0]
     app.show('sale');app.update();sale=app.current
     button(sale,'F6 Client').invoke();app.update()
-    picker=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    picker=next(dialogs(app))
     customer_tree=next(w for w in descendants(picker) if w.winfo_class()=='Treeview')
     customer_tree.selection_set(str(cid));button(picker,'Choisir').invoke()
     assert sale.client_id==cid

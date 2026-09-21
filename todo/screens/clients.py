@@ -7,6 +7,7 @@ from services.clients import (
     add_payment, list_payments, client_sales, credit_statement,
 )
 from services.money import fmt
+from screens.common import attach_keyboard
 
 
 # ── Éditeur client ────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ class ClientEditor(tk.Toplevel):
             ('Téléphone / الهاتف', self.phone),
         ]):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky='w', pady=8)
-            ttk.Entry(form, textvariable=var, width=36).grid(row=row, column=1, padx=12)
+            attach_keyboard(ttk.Entry(form, textvariable=var, width=36)).grid(row=row, column=1, padx=12)
         ttk.Label(form, text='Notes / ملاحظات').grid(row=2, column=0, sticky='nw')
         self.notes = tk.Text(form, width=36, height=4)
         self.notes.grid(row=2, column=1, padx=12)
