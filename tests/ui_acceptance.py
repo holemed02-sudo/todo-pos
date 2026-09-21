@@ -20,6 +20,15 @@ def descendants(w):
         yield from descendants(child)
 def button(w, label):
     return next(x for x in descendants(w) if x.winfo_class() in ('TButton','Button') and label in str(x.cget('text')))
+def clickable(w, label):
+    """Find a widget carrying `label` text, whether it's a real Button or one
+    of the Management screen's clickable colored Label cards."""
+    return next(x for x in descendants(w) if x.winfo_class() in ('TButton','Button','Label') and label in str(x.cget('text')))
+def click(widget):
+    if widget.winfo_class() in ('TButton','Button'):
+        widget.invoke()
+    else:
+        widget.event_generate('<Button-1>')
 def visible(w):
     app.update()
     assert w.winfo_viewable(), str(w)
@@ -65,8 +74,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==5
         assert c.execute('SELECT supplier_id FROM purchases').fetchone()[0]==supplier_id
     app.show('management');app.update()
-    assert len([w for w in descendants(app.current) if w.winfo_class()=='TButton' and w.cget('text')=='Fournisseurs'])==1
-    button(app.current,'Fournisseurs').invoke();app.update()
+    assert len([w for w in descendants(app.current) if w.winfo_class() in ('TButton','Label') and w.cget('text')=='Fournisseurs'])==1
+    click(clickable(app.current,'Fournisseurs'));app.update()
     assert isinstance(app.current,SuppliersFrame)
     app.current.tree.selection_set(str(supplier_id))
     button(app.current,'Modifier').invoke();app.update()

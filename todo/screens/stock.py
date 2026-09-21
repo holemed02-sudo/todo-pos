@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk,messagebox,simpledialog
 from database import connect
 from services.inventory import apply_stock_movement
+from services.reports import stock_summary
+from services.money import fmt
+from screens.common import kpi_row
 
 class StockFrame(ttk.Frame):
     def __init__(self,master,app=None):
@@ -13,11 +16,22 @@ class StockFrame(ttk.Frame):
         ttk.Button(top,text="Historique",command=self.ledger).pack(side="right",padx=8)
         if app is not None:
             ttk.Button(top,text="Articles / المنتجات",command=lambda: app.show("products")).pack(side="right",padx=8)
+        self.kpi_container = kpi_row(self, self._kpi_items())
         cols=("id","name","stock","alert","last")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         for c,h,w in [("id","ID",50),("name","Article",320),("stock","Stock",100),("alert","Alerte",90),("last","Dernier mouvement",220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True);self.refresh()
+    def _kpi_items(self):
+        s=stock_summary()
+        return [
+            ('ARTICLES', str(s['products']), f"{s['negative_stock']} stock négatif", '#DC2626'),
+            ('PROMOTIONS', str(s['offers']), 'PRIX_QTE actifs', '#F59E0B'),
+            ('VALEUR STOCK', fmt(s['value_purchase_cents']), '(Prix achat)', '#2563EB'),
+            ('VALEUR STOCK', fmt(s['value_sale_cents']), '(Prix vente)', '#059669'),
+        ]
     def refresh(self):
+        if hasattr(self,'kpi_container'):
+            kpi_row(self, self._kpi_items(), container=self.kpi_container)
         with connect() as c:r=c.execute("""SELECT p.id,p.name,p.stock_qty,p.alert_qty,
             COALESCE((SELECT movement_type||' '||qty_delta||' @ '||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
             FROM products p WHERE p.active=1 ORDER BY p.name""").fetchall()
