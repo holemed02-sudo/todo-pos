@@ -97,3 +97,17 @@ def category_breakdown(period='month'):
             FROM period_events e LEFT JOIN categories c ON c.id=e.category_id
             GROUP BY e.category_id ORDER BY revenue DESC LIMIT 8""",(start,end)).fetchall()
     return [dict(r) for r in rows]
+
+
+def stock_summary():
+    """KPI figures matching the colored boxes on the reference Stock screen:
+    negative stock count, active quantity-price offers, and total stock
+    value at purchase and at sale price."""
+    with connect() as conn:
+        products=conn.execute('SELECT COUNT(*) FROM products WHERE active=1').fetchone()[0]
+        negative=conn.execute('SELECT COUNT(*) FROM products WHERE active=1 AND stock_qty<0').fetchone()[0]
+        low=conn.execute('SELECT COUNT(*) FROM products WHERE active=1 AND stock_qty<=alert_qty').fetchone()[0]
+        offers=conn.execute('SELECT COUNT(*) FROM quantity_prices qp JOIN products p ON p.id=qp.product_id WHERE qp.active=1 AND p.active=1').fetchone()[0]
+        value=conn.execute('SELECT COALESCE(SUM(stock_qty*purchase_price_cents),0),COALESCE(SUM(stock_qty*sale_price_cents),0) FROM products WHERE active=1').fetchone()
+        return dict(products=products, negative_stock=negative, low_stock=low, offers=offers,
+                    value_purchase_cents=rounded(value[0]), value_sale_cents=rounded(value[1]))

@@ -183,6 +183,22 @@ class CoreTests(unittest.TestCase):
   create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
   summary=today_summary();self.assertEqual((summary['net_sales'],summary['gross_margin']),(0,0))
 
+ def test_stock_summary_kpis(self):
+  from services.reports import stock_summary
+  base=stock_summary()
+  self.assertEqual(base,dict(products=1,negative_stock=0,low_stock=0,offers=0,
+                              value_purchase_cents=6000,value_sale_cents=20000))
+  negative_pid=self.product(name='Negatif',stock=0)
+  with db.connect() as c:
+   apply_stock_movement(c,negative_pid,-5,'ADJUSTMENT',note='Test')
+   c.execute('INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,active) VALUES(?,3,900,1)',(self.pid,))
+   c.execute('INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,active) VALUES(?,3,900,0)',(self.pid,))
+  s=stock_summary()
+  self.assertEqual(s['products'],2);self.assertEqual(s['negative_stock'],1)
+  self.assertEqual(s['offers'],1)
+  self.assertEqual(s['value_purchase_cents'],6000+(-5*300))
+  self.assertEqual(s['value_sale_cents'],20000+(-5*1000))
+
  def test_cash_movement_rejects_closed_session(self):
   from services.cash import record_cash
   record_cash(self.session,self.uid,200,'IN','Test')
