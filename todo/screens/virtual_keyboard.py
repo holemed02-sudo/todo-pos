@@ -88,7 +88,7 @@ _BORDER = '#0F172A'
 class VirtualKeyboard(tk.Toplevel):
     """Clavier virtuel AZERTY flottant, non-modal.
     • Pas de grab_set → ne bloque pas la fenêtre principale
-    • se ferme dès que l’utilisateur quitte le champ cible
+    • se ferme par ✕ ou par le bouton clavier global
     • target : Entry ou Text qui reçoit les frappes
     """
 
@@ -144,7 +144,6 @@ class VirtualKeyboard(tk.Toplevel):
         self.geometry(f'+{(sw - kw) // 2}+{sh - kh - 48}')
         self.protocol('WM_DELETE_WINDOW', self._close)
         self.bind('<Escape>', lambda event: self._close())
-        self.target.bind('<FocusOut>', self._schedule_close, add='+')
         self.target.bind('<Destroy>', lambda event: self._close(), add='+')
         self.after_idle(self._focus_target)
 
@@ -154,21 +153,6 @@ class VirtualKeyboard(tk.Toplevel):
                 self.target.focus_set()
         except tk.TclError:
             self._close()
-
-    def _schedule_close(self, event=None):
-        if self._close_after is not None:
-            self.after_cancel(self._close_after)
-        self._close_after = self.after(120, self._close_if_inactive)
-
-    def _close_if_inactive(self):
-        self._close_after = None
-        try:
-            focused = self.focus_get()
-            if focused is self.target or str(focused).startswith(str(self)):
-                return
-        except tk.TclError:
-            pass
-        self._close()
 
     def _close(self):
         if VirtualKeyboard._instance is self:
