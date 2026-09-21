@@ -1,4 +1,5 @@
 import tkinter as tk
+from screens.virtual_keyboard import VirtualKeyboard
 from tkinter import ttk, messagebox
 from database import connect
 from services.security import verify_pin
