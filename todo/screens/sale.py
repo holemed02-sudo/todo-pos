@@ -194,8 +194,7 @@ class SaleFrame(ttk.Frame):
         self.refresh(index);self.focus_search()
 
     def toggle_keyboard(self):
-        from screens.virtual_keyboard import VirtualKeyboard
-        VirtualKeyboard.toggle(self.app, self.entry)
+        self.app.toggle_keyboard(self.entry)
 
     def calculator(self):
         from screens.cashier_tools import Calculator
