@@ -65,8 +65,9 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==5
         assert c.execute('SELECT supplier_id FROM purchases').fetchone()[0]==supplier_id
     app.show('management');app.update()
-    assert len([w for w in descendants(app.current) if w.winfo_class()=='TButton' and w.cget('text')=='Fournisseurs'])==1
-    button(app.current,'Fournisseurs').invoke();app.update()
+    supplier_cards=[w for w in descendants(app.current) if w.winfo_class()=='Label' and w.cget('text')=='Fournisseurs']
+    assert len(supplier_cards)==1
+    supplier_cards[0].event_generate('<Button-1>');app.update()
     assert isinstance(app.current,SuppliersFrame)
     app.current.tree.selection_set(str(supplier_id))
     button(app.current,'Modifier').invoke();app.update()
