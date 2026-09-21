@@ -36,6 +36,7 @@ class ToDoApp(tk.Tk):
         self.customer_label = None
         self.shell = None
         self.lock_window = None
+        self._keyboard_target = None
 
         self.title("ToDo POS")
         self.geometry("460x330")
@@ -135,6 +136,7 @@ class ToDoApp(tk.Tk):
         # screen: the cashier sees the current module immediately and has more
         # room for the product table and the cart than with a permanent sidebar.
         self.shell=ttk.Frame(self);self.shell.pack(fill="both",expand=True)
+        self.bind_all('<FocusIn>', self.remember_keyboard_target, add='+')
         bar=tk.Frame(self.shell,bg="#0878C9",height=58)
         self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
@@ -145,6 +147,7 @@ class ToDoApp(tk.Tk):
             if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
             b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
             b.pack(side="left",fill="y");self.nav_buttons[key]=b
+        tk.Button(bar,text="⌨ Clavier",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_keyboard).pack(side="right",padx=4)
         tk.Button(bar,text="Écran client",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
         tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",font=("Segoe UI",9)).pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
@@ -221,6 +224,26 @@ class ToDoApp(tk.Tk):
         for name,color in [('Bleu','#2563EB'),('Vert','#15803D'),('Violet','#7C3AED')]:
             tk.Button(window,text=name,bg=color,fg='white',command=lambda n=name:choose(n)).pack(fill='x',padx=25,pady=6,ipady=10)
         ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=12)
+
+    def _is_text_input(self, widget):
+        try:
+            return widget is not None and widget.winfo_exists() and widget.winfo_class() in ('Entry', 'TEntry', 'Text', 'Spinbox', 'TSpinbox', 'TCombobox')
+        except tk.TclError:
+            return False
+
+    def remember_keyboard_target(self, event):
+        if self._is_text_input(event.widget):
+            self._keyboard_target = event.widget
+
+    def toggle_keyboard(self, target=None):
+        target = target if self._is_text_input(target) else self.focus_get()
+        if not self._is_text_input(target):
+            target = self._keyboard_target
+        if not self._is_text_input(target):
+            messagebox.showinfo('Clavier', 'Cliquez d’abord dans une zone de recherche ou de saisie.')
+            return
+        from screens.virtual_keyboard import VirtualKeyboard
+        VirtualKeyboard.toggle(self, target)
 
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
