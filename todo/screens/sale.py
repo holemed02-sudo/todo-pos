@@ -3,7 +3,7 @@ import math
 from tkinter import ttk, messagebox, simpledialog, filedialog
 from decimal import Decimal
 from database import connect, get_setting
-from services.catalog import search_products, scan_barcode
+from services.catalog import search_products, scan_barcode, list_categories
 from services.pricing import resolve_unit_price, line_total
 from services.sales import complete_sale, hold_sale, list_held, resume_held
 from services.cash import get_open_session
@@ -27,6 +27,8 @@ class SaleFrame(ttk.Frame):
         self.held_id=None
         self.payment='CASH'
         self.category=None
+        self.photo_offset=0
+        self.photo_filter=None
         self.currency=get_setting('currency','DH')
         self.images={}
         self.search_job=None
@@ -62,8 +64,14 @@ class SaleFrame(ttk.Frame):
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        self.category_buttons=ttk.Frame(filters);self.category_buttons.pack(side='left',fill='x',expand=True)
-        ttk.Label(filters,text='Nom · code · référence · alias').pack(side='right')
+        self.family_canvas=tk.Canvas(filters,height=42,highlightthickness=0)
+        self.family_canvas.pack(fill='x',expand=True)
+        family_scroll=ttk.Scrollbar(filters,orient='horizontal',command=self.family_canvas.xview)
+        family_scroll.pack(fill='x')
+        self.family_canvas.configure(xscrollcommand=family_scroll.set)
+        self.category_buttons=ttk.Frame(self.family_canvas)
+        self.family_canvas.create_window((0,0),window=self.category_buttons,anchor='nw')
+        self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
         self.catalog_tabs.add(self.photo_page,text='Photos / بيع بدون باركود');self.catalog_tabs.add(self.list_page,text='Liste')
@@ -73,6 +81,9 @@ class SaleFrame(ttk.Frame):
         for key,label in [('price','PRIX'),('stock','STOCK')]:
             self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
         self.products.pack(fill='both',expand=True)
+        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
+        ttk.Button(photo_nav,text='Précédent',command=lambda:self.photo_next(-1)).pack(side='left')
+        self.photo_more=ttk.Button(photo_nav,text='Suivant',command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
         self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
@@ -253,6 +264,10 @@ class SaleFrame(ttk.Frame):
                 except (OSError,ValueError):pass
         return self.images.get(key,'')
 
+    def photo_next(self,direction):
+        self.photo_offset=max(0,self.photo_offset+direction*60);self.render_products()
+        self.card_canvas.yview_moveto(0)
+
     def render_products(self):
         self.search_job=None
         with connect() as conn:
@@ -260,8 +275,44 @@ class SaleFrame(ttk.Frame):
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         if self.cat.get() not in self.categories:self.cat.set('Tous')
         for child in self.category_buttons.winfo_children(): child.destroy()
-        for name in self.categories:
-            ttk.Button(self.category_buttons,text=name,command=lambda n=name:self.choose_category(n)).pack(side='left',padx=2)
+        category_rows=list_categories()
+        # Default colours for "Tous" and fallback
+        all_colors = {'Tous': ('#1e293b', '#ffffff')}
+        for cat_row in category_rows:
+            bg = cat_row['color'] or '#2563EB'
+            # compute a readable text colour (white or black) based on luminance
+            try:
+                r2,g2,b2 = int(bg[1:3],16), int(bg[3:5],16), int(bg[5:7],16)
+                lum = (0.299*r2 + 0.587*g2 + 0.114*b2)
+                fg = '#ffffff' if lum < 140 else '#1e293b'
+            except Exception:
+                fg = '#ffffff'
+            all_colors[cat_row['name']] = (bg, fg)
+        active = self.cat.get()
+        for name, (bg, fg) in all_colors.items():
+            if name not in self.categories:
+                continue
+            icon = ''
+            for cat_row in category_rows:
+                if cat_row['name'] == name:
+                    icon = (cat_row['icon'] + ' ') if cat_row['icon'] else ''
+                    break
+            label = icon + name
+            is_active = (name == active)
+            border  = '#f59e0b' if is_active else bg
+            relief  = 'solid'   if is_active else 'flat'
+            btn = tk.Button(
+                self.category_buttons,
+                text=label,
+                bg=bg, fg=fg,
+                activebackground=bg, activeforeground=fg,
+                relief=relief, bd=2 if is_active else 0,
+                highlightbackground=border,
+                font=('Segoe UI', 9, 'bold' if is_active else 'normal'),
+                padx=10, pady=6, cursor='hand2',
+                command=lambda n=name: self.choose_category(n)
+            )
+            btn.pack(side='left', padx=3, pady=2)
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
@@ -269,7 +320,11 @@ class SaleFrame(ttk.Frame):
         columns=max(1,self.card_canvas.winfo_width()//167)
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
-        photo_rows=[row for row in rows if row['image_path']]
+        photo_filter=(self.query.get(),self.categories[self.cat.get()])
+        if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
+        photo_rows=search_products(*photo_filter,limit=61,images_only=True,offset=self.photo_offset)
+        self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
+        photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)

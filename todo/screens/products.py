@@ -7,6 +7,7 @@ import math
 from services.money import to_cents
 from services.images import import_image, abs_image
 from screens.common import labeled_entry
+from services.catalog import list_categories, get_product_categories, set_product_categories
 try:
     from PIL import Image,ImageTk
     PIL=True
@@ -18,9 +19,8 @@ class ProductEditor(tk.Toplevel):
         super().__init__(master)
         self.pid=product_id; self.on_saved=on_saved
         self.loaded_stock=0
-        self.extra_categories=[]
         self.img_source="";self.img_rel="";self.img_ref=None
-        self.title("ToDo — Article");self.geometry("920x790");self.resizable(False,False);self.transient(master);self.grab_set()
+        self.title("ToDo — Article");self.geometry("920x790");self.resizable(True,True);self.transient(master);self.grab_set()
         self.sku=tk.StringVar();self.alias=tk.StringVar();self.supplier_code=tk.StringVar();self.fraction=tk.BooleanVar();self.stock_note=tk.StringVar()
         self.bar=tk.StringVar();self.name=tk.StringVar();self.cat=tk.StringVar()
         self.buy=tk.StringVar(value="0");self.sell=tk.StringVar(value="0");self.stock=tk.StringVar(value="0");self.alert=tk.StringVar(value="0")
@@ -29,19 +29,25 @@ class ProductEditor(tk.Toplevel):
         right=ttk.LabelFrame(root,text="Image produit",padding=8);right.pack(side="right",fill="y")
         self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
         self.e_name=labeled_entry(left,"Article / المنتوج",self.name,1)
-        ttk.Label(left,text="Famille").grid(row=2,column=0,sticky='w')
-        self.e_cat=ttk.Combobox(left,textvariable=self.cat)
-        self.e_cat.grid(row=2,column=1,sticky='ew',pady=5)
+        ttk.Label(left,text="Familles / العائلات").grid(row=2,column=0,sticky='nw',pady=4)
+        cat_outer=ttk.Frame(left);cat_outer.grid(row=2,column=1,columnspan=2,sticky='ew',pady=4)
+        ttk.Button(cat_outer,text="+ Famille",command=self.add_category).pack(side='bottom',anchor='w',pady=(4,0))
+        cat_canvas=tk.Canvas(cat_outer,height=100,highlightthickness=0)
+        cat_canvas.pack(side='left',fill='x',expand=True)
+        scrollbar=ttk.Scrollbar(cat_outer,orient='vertical',command=cat_canvas.yview)
+        scrollbar.pack(side='right',fill='y');cat_canvas.configure(yscrollcommand=scrollbar.set)
+        self.cat_scroll_frame=tk.Frame(cat_canvas,bg='white')
+        cat_canvas.create_window((0,0),window=self.cat_scroll_frame,anchor='nw')
+        self.cat_scroll_frame.bind('<Configure>',lambda e:cat_canvas.configure(scrollregion=cat_canvas.bbox('all')))
+        self.cat_vars={}
         self.refresh_categories()
-        ttk.Button(right,text='Autres familles / عائلات إضافية',command=self.choose_categories).pack(fill='x',pady=6)
-        ttk.Button(left,text="+ Famille",command=self.add_category).grid(row=2,column=2,padx=6)
         self.e_buy=labeled_entry(left,"Prix achat",self.buy,3)
         self.e_sell=labeled_entry(left,"Prix vente",self.sell,4)
         self.e_stock=labeled_entry(left,"Stock",self.stock,5)
         self.e_alert=labeled_entry(left,"Alerte stock",self.alert,6)
         left.columnconfigure(1,weight=1)
         self.e_bar.bind("<Return>",lambda e:self.e_name.focus_set())
-        chain=[(self.e_name,self.e_cat),(self.e_cat,self.e_buy),(self.e_buy,self.e_sell),(self.e_sell,self.e_stock),(self.e_stock,self.e_alert)]
+        chain=[(self.e_name,self.e_buy),(self.e_buy,self.e_sell),(self.e_sell,self.e_stock),(self.e_stock,self.e_alert)]
         for a,b in chain:a.bind("<Return>",lambda e,n=b:n.focus_set())
         ttk.Label(left,text="Promotions et prix par quantité",font=("Segoe UI",10,"bold")).grid(row=7,column=0,columnspan=2,sticky="w",pady=(16,4))
         self.offer_rows=[]
@@ -65,21 +71,6 @@ class ProductEditor(tk.Toplevel):
             self.load()
 
         self.after(100,lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
-
-    def choose_categories(self):
-        from services.catalog import list_categories
-        rows=list_categories()
-        window=tk.Toplevel(self);window.title('Familles supplémentaires');window.transient(self);window.grab_set()
-        ttk.Label(window,text='La famille principale reste celle de la fiche.').pack(padx=14,pady=10)
-        choices=tk.Listbox(window,selectmode='multiple',exportselection=False,width=40,height=12)
-        choices.pack(fill='both',expand=True,padx=14)
-        for i,r in enumerate(rows):
-            choices.insert('end',r['name'])
-            if r['id'] in self.extra_categories:choices.selection_set(i)
-        def save():
-            self.extra_categories=[rows[i]['id'] for i in choices.curselection()]
-            window.destroy();self.grab_set()
-        ttk.Button(window,text='Valider',command=save).pack(fill='x',padx=14,pady=10)
 
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
@@ -117,13 +108,45 @@ class ProductEditor(tk.Toplevel):
             with connect() as conn:
                 require_admin(conn)
                 conn.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(name,));conn.commit()
-            self.refresh_categories();self.cat.set(name);self.e_cat.focus_set()
+            self.refresh_categories()
+            for var, label in self.cat_vars.values():
+                if label==name:var.set(True)
+            self.e_buy.focus_set()
         except Exception as error:
             messagebox.showerror("ToDo",str(error),parent=self)
 
     def refresh_categories(self):
-        with connect() as conn:
-            self.e_cat['values']=[r['name'] for r in conn.execute('SELECT name FROM categories WHERE active=1 ORDER BY sort_order,name')]
+        selected={cid for cid,(var,_) in self.cat_vars.items() if var.get()}
+        for w in self.cat_scroll_frame.winfo_children():
+            w.destroy()
+        self.cat_vars.clear()
+        for cat in list_categories():
+            var = tk.BooleanVar(value=cat['id'] in selected)
+            bg  = cat['color'] or '#2563EB'
+            try:
+                r2,g2,b2 = int(bg[1:3],16),int(bg[3:5],16),int(bg[5:7],16)
+                fg = '#ffffff' if (0.299*r2+0.587*g2+0.114*b2)<140 else '#1e293b'
+            except Exception:
+                fg = '#ffffff'
+            icon = (cat['icon']+' ') if cat['icon'] else ''
+            row  = tk.Frame(self.cat_scroll_frame, bg='white')
+            row.pack(fill='x', padx=4, pady=1)
+            cb = tk.Checkbutton(row, text=icon+cat['name'],
+                variable=var, bg='white', activebackground='white',
+                selectcolor=bg, font=('Segoe UI',9))
+            cb.pack(side='left')
+            swatch = tk.Label(row, bg=bg, text=icon or ' ', fg=fg,
+                width=3, font=('Segoe UI',8,'bold'), relief='flat')
+            swatch.pack(side='left', padx=4)
+            swatch.configure(cursor='hand2')
+            swatch.bind('<Button-1>',lambda e,c=dict(cat):self.edit_category(c))
+            self.cat_vars[cat['id']] = (var, cat['name'])
+
+    def edit_category(self,category):
+        from screens.settings import CategoryEditor
+        def saved():
+            self.refresh_categories();self.grab_set()
+        CategoryEditor(self,category,on_saved=saved)
 
     def preview_image(self,p):
         if not PIL:return
@@ -132,15 +155,14 @@ class ProductEditor(tk.Toplevel):
         except:pass
 
     def load(self):
-        from services.catalog import get_product_categories
-        self.extra_categories=get_product_categories(self.pid)
+        selected=get_product_categories(self.pid)
+        for cid,(var,_) in self.cat_vars.items():var.set(cid in selected)
         with connect() as c:
             p=c.execute("""SELECT p.*,COALESCE(cat.name,'') category FROM products p LEFT JOIN categories cat ON cat.id=p.category_id WHERE p.id=?""",(self.pid,)).fetchone()
             b=c.execute("SELECT barcode FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(self.pid,)).fetchone()
             rs=c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=? ORDER BY min_qty",(self.pid,)).fetchall()
         self.sku.set(p["sku"]);self.alias.set(p["alias"]);self.supplier_code.set(p["supplier_code"]);self.fraction.set(bool(p["allow_fraction"]))
         self.bar.set(b["barcode"] if b else "");self.name.set(p["name"]);self.cat.set(p["category"])
-        self.extra_categories=[cid for cid in self.extra_categories if cid!=p['category_id']]
         self.buy.set(f"{p['purchase_price_cents']/100:.2f}");self.sell.set(f"{p['sale_price_cents']/100:.2f}")
         self.stock.set(f"{p['stock_qty']:g}");self.alert.set(f"{p['alert_qty']:g}");self.img_rel=p["image_path"] or ""
         self.loaded_stock=float(p['stock_qty'])
@@ -158,7 +180,8 @@ class ProductEditor(tk.Toplevel):
             buy=to_cents(self.buy.get());sell=to_cents(self.sell.get());stock=float(self.stock.get() or 0);alert=float(self.alert.get() or 0)
             if not all(math.isfinite(x) for x in (stock,alert)) or min(buy,sell,alert)<0:
                 raise ValueError('Valeurs invalides')
-            cat=self.cat.get().strip() or "Général"
+            selected_cats=[cid for cid,(var,_) in self.cat_vars.items() if var.get()]
+            cat=next((name for cid,(_,name) in self.cat_vars.items() if cid in selected_cats),'Général') if selected_cats else 'Général'
             rules=self.read_offers()
             img=self.img_rel
             if self.img_source:img=import_image(self.img_source)
@@ -173,8 +196,7 @@ class ProductEditor(tk.Toplevel):
                 else:
                     cur=c.execute("""INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,image_path) VALUES(?,?,?,?,?,?,?)""",
                                   (name,catid,buy,sell,0,alert,img));pid=cur.lastrowid
-                from services.catalog import set_product_categories
-                set_product_categories(c,pid,list(dict.fromkeys([catid]+self.extra_categories)))
+                set_product_categories(c,pid,selected_cats or [catid])
                 old=c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]
                 if abs(stock-self.loaded_stock)>1e-9 and abs(stock-old)>1e-9:
                     apply_stock_movement(c,pid,stock-old,'ADJUSTMENT' if self.pid else 'OPENING',buy,'product',pid,self.stock_note.get().strip() or ('Correction depuis la fiche produit' if self.pid else 'Stock initial'))
@@ -263,4 +285,3 @@ class ProductsFrame(ttk.Frame):
             except Exception as e:messagebox.showerror("ToDo",str(e),parent=w)
         ttk.Button(f,text="Enregistrer",command=save).grid(row=4,column=0,columnspan=2,pady=15)
         eb.bind("<Return>",lambda e:save());w.after(100,eb.focus_force)
-

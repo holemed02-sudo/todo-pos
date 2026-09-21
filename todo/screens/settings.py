@@ -1,8 +1,88 @@
+from database import connect
 import tkinter as tk
 from tkinter import ttk,messagebox,filedialog,simpledialog
 from database import get_setting,set_setting,connect
 from services.backup import create_backup,restore_backup
 from services.security import hash_pin, require_admin, audit
+
+
+
+class CategoryEditor(tk.Toplevel):
+    """Edit or create a category — name, color, icon."""
+    PALETTE = [
+        '#DC2626','#EA580C','#D97706','#65A30D','#16A34A',
+        '#0891B2','#2563EB','#7C3AED','#DB2777','#6B7280',
+        '#0F766E','#B45309','#1D4ED8','#7E22CE','#BE185D',
+    ]
+    ICONS = ['','🥩','🧃','🥖','🍎','🧴','🧹','🧊','🥛','🍫',
+             '🫙','🧺','💊','🐟','🌿','🔧','📦','🍬','🥚','🧀']
+
+    def __init__(self, master, cat=None, on_saved=None):
+        super().__init__(master)
+        self.cat_id  = cat['id']   if cat else None
+        self.on_saved= on_saved
+        self.title('Famille / عائلة')
+        self.resizable(False, False)
+        self.transient(master.winfo_toplevel())
+        self.grab_set()
+
+        self.name_var  = tk.StringVar(value=cat['name']  if cat else '')
+        self.color_var = tk.StringVar(value=cat['color'] if cat else '#2563EB')
+        self.icon_var  = tk.StringVar(value=cat['icon']  if cat else '')
+
+        f = ttk.Frame(self, padding=20); f.pack(fill='both', expand=True)
+
+        ttk.Label(f, text='Nom / الاسم').grid(row=0, column=0, sticky='w')
+        ttk.Entry(f, textvariable=self.name_var, width=30).grid(row=0, column=1, columnspan=3, sticky='ew', pady=6)
+
+        ttk.Label(f, text='Couleur').grid(row=1, column=0, sticky='w', pady=8)
+        self.swatch = tk.Label(f, width=6, relief='groove')
+        self.swatch.grid(row=1, column=1, sticky='w', padx=4)
+        self._update_swatch()
+
+        palette_frame = ttk.Frame(f); palette_frame.grid(row=2, column=0, columnspan=4, sticky='ew', pady=4)
+        for i, color in enumerate(self.PALETTE):
+            btn = tk.Button(palette_frame, bg=color, width=2, height=1, relief='flat', cursor='hand2',
+                            command=lambda c=color: self._pick(c))
+            btn.grid(row=i//8, column=i%8, padx=2, pady=2)
+
+        ttk.Label(f, text='Icône').grid(row=3, column=0, sticky='w', pady=8)
+        icon_frame = ttk.Frame(f); icon_frame.grid(row=3, column=1, columnspan=3, sticky='ew')
+        for i,icon in enumerate(self.ICONS):
+            lbl = icon if icon else '—'
+            tk.Button(icon_frame, text=lbl, width=3, font=('Segoe UI', 12),
+                      relief='flat', cursor='hand2',
+                      command=lambda ic=icon: self.icon_var.set(ic)).grid(row=i//7,column=i%7,padx=1)
+
+        ttk.Button(f, text='Enregistrer', style='Primary.TButton',
+                   command=self.save).grid(row=4, column=0, columnspan=4, sticky='ew', pady=16)
+
+    def _pick(self, color):
+        self.color_var.set(color)
+        self._update_swatch()
+
+    def _update_swatch(self):
+        self.swatch.config(bg=self.color_var.get(), text=self.color_var.get(),
+                           fg='#ffffff', font=('Consolas', 8))
+
+    def save(self):
+        name  = self.name_var.get().strip()
+        color = self.color_var.get().strip() or '#2563EB'
+        icon  = self.icon_var.get().strip()
+        if not name:
+            from tkinter import messagebox
+            messagebox.showerror('Famille', 'Le nom est obligatoire.', parent=self); return
+        with connect() as conn:
+            require_admin(conn)
+            if self.cat_id:
+                conn.execute('UPDATE categories SET name=?,color=?,icon=? WHERE id=?',
+                             (name, color, icon, self.cat_id))
+            else:
+                conn.execute('INSERT INTO categories(name,color,icon) VALUES(?,?,?)',
+                             (name, color, icon))
+            conn.commit()
+        self.destroy()
+        if self.on_saved: self.on_saved()
 
 class SettingsFrame(ttk.Frame):
     def __init__(self,master,app):

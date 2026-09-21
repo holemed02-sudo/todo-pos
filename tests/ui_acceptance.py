@@ -39,7 +39,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.update()
     editor=ProductEditor(app)
     editor.name.set('TEST - Rice')
-    editor.cat.set('Test groceries')
+    with patch('screens.products.simpledialog.askstring',return_value='Test groceries'):
+        editor.add_category()
     editor.buy.set('2');editor.sell.set('3')
     editor.bar.set('TEST123')
     button(editor,'Enregistrer').invoke();app.update()
