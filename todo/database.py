@@ -252,6 +252,19 @@ CREATE TABLE IF NOT EXISTS product_categories (
 );
 CREATE INDEX IF NOT EXISTS idx_product_categories_cat ON product_categories(category_id);
 
+
+CREATE TABLE IF NOT EXISTS supplier_payments (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    supplier_id INTEGER NOT NULL,
+    purchase_id INTEGER,
+    amount_cents INTEGER NOT NULL,
+    note        TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+    FOREIGN KEY(purchase_id) REFERENCES purchases(id)
+);
+CREATE INDEX IF NOT EXISTS idx_supplier_payments_sup ON supplier_payments(supplier_id);
+
 INSERT OR IGNORE INTO settings(key,value) VALUES
 ('shop_name','ToDo'),
 ('currency','DH'),
