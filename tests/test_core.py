@@ -183,6 +183,22 @@ class CoreTests(unittest.TestCase):
   create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
   summary=today_summary();self.assertEqual((summary['net_sales'],summary['gross_margin']),(0,0))
 
+ def test_journal_reports_by_range(self):
+  import datetime
+  from services.reports import journal_tickets,journal_by_family,journal_by_article,journal_by_day
+  sale=self.sell(qty=3,price=1000)
+  today=datetime.date.today().isoformat()
+  yesterday=(datetime.date.today()-datetime.timedelta(days=1)).isoformat()
+  tickets=journal_tickets(today,today)
+  self.assertEqual(len(tickets),1);self.assertEqual(tickets[0]['id'],sale['id']);self.assertEqual(tickets[0]['total_cents'],3000)
+  self.assertEqual(journal_tickets(yesterday,yesterday),[])
+  family=journal_by_family(today,today)
+  self.assertEqual((family[0]['name'],family[0]['qty'],family[0]['revenue']),('Sans famille',3,3000))
+  article=journal_by_article(today,today)
+  self.assertEqual((article[0]['name'],article[0]['qty'],article[0]['revenue']),('Article',3,3000))
+  day=journal_by_day(today,today)
+  self.assertEqual((day[0]['day'],day[0]['tickets'],day[0]['revenue']),(today,1,3000))
+
  def test_cash_movement_rejects_closed_session(self):
   from services.cash import record_cash
   record_cash(self.session,self.uid,200,'IN','Test')

@@ -58,3 +58,40 @@ def export_receipt_pdf(sale_id, destination):
             y -= 15
     pdf.save()
     return path
+
+
+def export_table_pdf(title, headers, rows, destination):
+    """Generic tabular report PDF (used by the Journal screen for the
+    Par Famille / Par Article / Par Jours reports)."""
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    path = Path(destination)
+    pdf = canvas.Canvas(str(path), pagesize=A4)
+    pdf.setTitle(title)
+    width, height = A4
+    col_x = [40 + i * (width - 80) / len(headers) for i in range(len(headers))]
+    y = height - 50
+    def draw_header():
+        nonlocal y
+        pdf.setFont('Helvetica-Bold', 13)
+        pdf.drawString(40, y, title)
+        y -= 22
+        pdf.setFont('Helvetica-Bold', 9)
+        for x, h in zip(col_x, headers):
+            pdf.drawString(x, y, str(h))
+        y -= 14
+        pdf.line(40, y + 4, width - 40, y + 4)
+        y -= 4
+    draw_header()
+    pdf.setFont('Helvetica', 9)
+    for row in rows:
+        if y < 50:
+            pdf.showPage()
+            y = height - 50
+            draw_header()
+            pdf.setFont('Helvetica', 9)
+        for x, value in zip(col_x, row):
+            pdf.drawString(x, y, str(value))
+        y -= 14
+    pdf.save()
+    return path
