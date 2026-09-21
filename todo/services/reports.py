@@ -97,3 +97,51 @@ def category_breakdown(period='month'):
             FROM period_events e LEFT JOIN categories c ON c.id=e.category_id
             GROUP BY e.category_id ORDER BY revenue DESC LIMIT 8""",(start,end)).fetchall()
     return [dict(r) for r in rows]
+
+
+def journal_tickets(start, end):
+    """Ticket-level detail for the Journal screen, filtered to an explicit
+    [start, end] date range (inclusive, local time)."""
+    with connect() as c:
+        rows = c.execute("""
+            SELECT s.id, s.sale_no, s.created_at, u.display_name, s.payment_method,
+              s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0) total_cents,
+              COALESCE((SELECT SUM(si.cost_price_cents*si.qty) FROM sale_items si WHERE si.sale_id=s.id),0)
+              -COALESCE((SELECT SUM(ri.qty*si.cost_price_cents) FROM return_items ri JOIN sale_items si ON si.id=ri.sale_item_id WHERE si.sale_id=s.id),0) cost
+            FROM sales s JOIN users u ON u.id=s.cashier_user_id
+            WHERE date(s.created_at,'localtime') BETWEEN ? AND ?
+            ORDER BY s.id DESC LIMIT 5000""", (start, end)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def journal_by_family(start, end):
+    with connect() as c:
+        rows = c.execute(EVENTS + """
+            SELECT COALESCE(cat.name,'Sans famille') name, SUM(e.qty) qty, SUM(e.revenue) revenue
+            FROM period_events e LEFT JOIN categories cat ON cat.id=e.category_id
+            GROUP BY e.category_id ORDER BY revenue DESC""", (start, end)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def journal_by_article(start, end):
+    with connect() as c:
+        rows = c.execute(EVENTS + """
+            SELECT name, SUM(qty) qty, SUM(revenue) revenue
+            FROM period_events GROUP BY product_id, name ORDER BY revenue DESC""", (start, end)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def journal_by_day(start, end):
+    with connect() as c:
+        rows = c.execute(EVENTS + """
+            SELECT date(created_at,'localtime') day, SUM(revenue) revenue
+            FROM period_events GROUP BY day ORDER BY day""", (start, end)).fetchall()
+        tickets = c.execute("""
+            SELECT date(created_at,'localtime') day, COUNT(*) tickets
+            FROM sales WHERE status='COMPLETED' AND date(created_at,'localtime') BETWEEN ? AND ?
+            GROUP BY day""", (start, end)).fetchall()
+    ticket_by_day = {r['day']: r['tickets'] for r in tickets}
+    return [dict(day=r['day'], revenue=r['revenue'], tickets=ticket_by_day.get(r['day'], 0)) for r in rows]
+
+
+
