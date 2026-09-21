@@ -1,10 +1,10 @@
 import math
-from database import get_setting
+from database import get_setting, connect
 from services.security import current_user, require_admin, audit
 
 def apply_stock_movement(conn, product_id, qty_delta, movement_type,
                          unit_cost_cents=0, ref_type='', ref_id=None, note='', user_id=None):
-    if movement_type in ('ADJUSTMENT','OPENING','INVENTORY'):
+    if movement_type in ('ADJUSTMENT','OPENING','INVENTORY','INVENTAIRE','SORTIE'):
         require_admin(conn)
         if not note.strip():
             raise ValueError('La raison est obligatoire.')
@@ -25,3 +25,23 @@ def apply_stock_movement(conn, product_id, qty_delta, movement_type,
                  (product_id,movement_type,delta,old,new,int(unit_cost_cents or 0),ref_type,ref_id,note,uid))
     audit(conn,'STOCK_'+movement_type,ref_id or product_id,note,uid)
     return new
+
+def apply_physical_counts(counts, expected):
+    """Apply every entered count atomically; reject stock changed since counting."""
+    with connect() as conn:
+        conn.execute('BEGIN IMMEDIATE')
+        require_admin(conn)
+        changes=[]
+        for pid, value in counts.items():
+            row=conn.execute('SELECT name,stock_qty,allow_fraction FROM products WHERE id=? AND active=1',(pid,)).fetchone()
+            if row is None:raise ValueError('Article introuvable.')
+            count=float(value)
+            if not math.isfinite(count) or count<0 or (not row['allow_fraction'] and not count.is_integer()):
+                raise ValueError('Quantité comptée invalide : '+row['name'])
+            old=float(row['stock_qty'])
+            if pid not in expected or abs(old-float(expected[pid]))>1e-9:
+                raise ValueError('Stock modifié depuis le comptage : '+row['name']+'. Vérifiez et recomptez cet article.')
+            if abs(count-old)>1e-9:changes.append((pid,old,count))
+        for pid,old,count in changes:
+            apply_stock_movement(conn,pid,count-old,'INVENTORY',note=f'Inventaire : {old:g} → {count:g}')
+        return len(changes)
