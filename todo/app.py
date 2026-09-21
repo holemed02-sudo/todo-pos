@@ -139,7 +139,7 @@ class ToDoApp(tk.Tk):
         self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
         tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
-        nav=[("Vente","sale"),("Stock","stock"),("Journal","journal"),("Gestion","management"),("Paramètres","settings"),("Statistiques","statistics")]
+        nav=[("🛒 Vente","sale"),("📦 Stock","stock"),("📋 Journal","journal"),("🗂 Gestion","management"),("⚙ Paramètres","settings"),("📊 Statistiques","statistics")]
         self.nav_buttons={}
         for txt,key in nav:
             if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
@@ -188,7 +188,13 @@ class ToDoApp(tk.Tk):
 
     def _mark_nav(self,key):
         for name,button in getattr(self,'nav_buttons',{}).items():
-            button.configure(bg=self.theme_active if name==key else self.theme_color)
+            is_active = (name==key)
+            button.configure(
+                bg=self.theme_active if is_active else self.theme_color,
+                relief='solid' if is_active else 'flat',
+                bd=0,
+                font=('Segoe UI',10,'bold') if is_active else ('Segoe UI',10,'normal'),
+            )
         self.current_key=key
 
     def apply_theme(self):
