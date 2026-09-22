@@ -236,12 +236,12 @@ class ToDoApp(tk.Tk):
             self._keyboard_target = event.widget
 
     def toggle_keyboard(self, target=None):
+        # The global keyboard must always be able to open.  A target field is
+        # optional: if none is focused yet, the keyboard stays visible and the
+        # next Entry/Text clicked becomes its target.
         target = target if self._is_text_input(target) else self.focus_get()
         if not self._is_text_input(target):
             target = self._keyboard_target
-        if not self._is_text_input(target):
-            messagebox.showinfo('Clavier', 'Cliquez d’abord dans une zone de recherche ou de saisie.')
-            return
         from screens.virtual_keyboard import VirtualKeyboard
         VirtualKeyboard.toggle(self, target)
 
