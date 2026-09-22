@@ -41,5 +41,7 @@ class ReturnsFrame(ttk.Frame):
         try:
             refund_method='AUTO' if getattr(self,'sale_payment',None)=='MIXED' else ('CARD' if getattr(self,'sale_payment',None)=='CARD' else 'CASH')
             r=create_return(self.sale_id,sess["id"],self.app.user["id"],[(line,qty)],reason,refund_method)
-            messagebox.showinfo("ToDo",f"{r['return_no']}\nRemboursement: {fmt(r['refund_paid_cents'])}\nDette annulée: {fmt(r['debt_reduction_cents'])}",parent=self);self.load()
+            detail="\n".join(f"{p['payment_method']}: {fmt(p['amount_cents'])}" for p in r.get('refund_payments',[]))
+            if detail:detail="\n"+detail
+            messagebox.showinfo("ToDo",f"{r['return_no']}\nRemboursement: {fmt(r['refund_paid_cents'])}{detail}\nDette annulée: {fmt(r['debt_reduction_cents'])}",parent=self);self.load()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
