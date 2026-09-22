@@ -344,6 +344,7 @@ class ProductsFrame(ttk.Frame):
         ttk.Combobox(top,textvariable=self.filter,values=["Tous","Alertes stock","Stock négatif","Promotions"],state="readonly",width=16).pack(side="left",padx=4)
         self.filter.trace_add("write",lambda *_:self.go_page(0))
         ttk.Button(top,text="+ Nouveau",command=self.new).pack(side="right",padx=3)
+        ttk.Button(top,text="Importer Excel",command=self.import_excel).pack(side="right",padx=3)
         ttk.Button(top,text="Modifier",command=self.edit).pack(side="right",padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
@@ -382,6 +383,46 @@ class ProductsFrame(ttk.Frame):
         self.page_label.config(text=f'Page {self.page+1} · {len(rows)} produits · 200 par page')
         self.t.delete(*self.t.get_children())
         for r in rows:self.t.insert("", "end",values=(r["id"],r["barcode"] or "",r["name"],r["category"],f"{r['purchase_price_cents']/100:.2f}",f"{r['sale_price_cents']/100:.2f}",f"{r['stock_qty']:g}",f"{r['alert_qty']:g}","✓" if r["image_path"] else ""))
+    def import_excel(self):
+        path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title="Importer les articles")
+        if not path:return
+        try:
+            from openpyxl import load_workbook
+            wb=load_workbook(path,read_only=True,data_only=True);ws=wb.active
+            headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
+            aliases={'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert']}
+            idx={}
+            for key,names in aliases.items():
+                idx[key]=next((headers.index(n) for n in names if n in headers),None)
+            if idx['name'] is None:raise ValueError("Colonne Article/Nom obligatoire.")
+            preview=[];errors=[]
+            for line,row in enumerate(ws.iter_rows(values_only=True),start=2):
+                if not any(v not in (None,'') for v in row):continue
+                try:
+                    get=lambda k: row[idx[k]] if idx[k] is not None and idx[k]<len(row) else None
+                    name=str(get('name') or '').strip();barcode=str(get('barcode') or '').strip()
+                    if not name:raise ValueError("nom vide")
+                    buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
+                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock):raise ValueError("valeurs invalides")
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert))
+                except Exception as e:errors.append(f"Ligne {line}: {e}")
+            if errors:
+                messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
+            if not preview:raise ValueError("Aucun article valide.")
+            if not messagebox.askyesno("Import Excel",f"{len(preview)} article(s) valides. Importer maintenant ?",parent=self):return
+            with connect() as c:
+                c.execute("BEGIN IMMEDIATE");require_admin(c)
+                for _,barcode,name,cat,buy,sell,stock,alert in preview:
+                    c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
+                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty) VALUES(?,?,?,?,0,?)",(name,catid,buy,sell,alert));pid=cur.lastrowid
+                    set_product_categories(c,pid,[catid])
+                    if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(pid,barcode))
+                    if abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
+                    audit(c,'PRODUCT_IMPORT',pid)
+                c.commit()
+            messagebox.showinfo("Import Excel",f"{len(preview)} article(s) importés.",parent=self);self.refresh()
+        except Exception as e:messagebox.showerror("Import Excel",str(e),parent=self)
+
     def sel(self):
         s=self.t.selection();return int(self.t.item(s[0],"values")[0]) if s else None
     def new(self):ProductEditor(self,on_saved=self.refresh)
