@@ -49,6 +49,8 @@ class InventaireFrame(ttk.Frame):
 
         self.counted = {}   # product_id → float
         self.products = []
+        self.pending_label=ttk.Label(toolbar,text='0 écart',foreground='#475569');self.pending_label.pack(side='right',padx=12)
+        self.tree.bind('<Return>', self._edit_cell)
         self.refresh()
 
     def refresh(self):
@@ -75,6 +77,8 @@ class InventaireFrame(ttk.Frame):
                         f'{counted:g}',
                         f'{diff:+g}' if abs(diff) > 0.001 else '—'),
                 tags=(tag,))
+        pending=sum(1 for p in self.products if abs(self.counted.get(p['id'],float(p['stock_qty']))-float(p['stock_qty']))>0.001)
+        self.pending_label.config(text=f'{pending} écart(s) à valider')
 
     def _edit_cell(self, event):
         sel = self.tree.selection()
@@ -190,8 +194,9 @@ class SortiesFrame(ttk.Frame):
         pname = self.rows[sel[0]]['name']
         qty   = simpledialog.askfloat('Sortie', f'Quantité sortie — {pname} :', parent=self)
         if qty is None or qty <= 0: return
-        reason = simpledialog.askstring('Sortie', 'Raison (casse, perte, don…) :', parent=self) or 'Sortie manuelle'
-        if not reason.strip(): return
+        reason = simpledialog.askstring('Sortie', 'Raison obligatoire (casse, perte, don…) :', parent=self)
+        if reason is None or not reason.strip():
+            messagebox.showinfo('Sorties','La raison est obligatoire.',parent=self); return
         try:
             with connect() as conn:
                 conn.execute('BEGIN IMMEDIATE')
