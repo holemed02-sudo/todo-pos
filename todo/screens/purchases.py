@@ -26,12 +26,16 @@ class PurchasesFrame(ttk.Frame):
         self.q=tk.StringVar();e=ttk.Entry(p,textvariable=self.q);e.pack(fill="x",pady=4);e.bind("<KeyRelease>",lambda x:self.search())
         self.prod=ttk.Treeview(p,columns=("id","name","stock","cost"),show="headings")
         for c,h,w in [("id","ID",50),("name","Article",240),("stock","Stock",80),("cost","Achat",80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
-        self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.search()
+        self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.prod.bind("<Return>",lambda e:self.addline());self.search()
         r=ttk.Frame(body);body.add(r,weight=3)
         ttk.Button(r,text="VALIDER réception / تأكيد المشتريات",style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
         self.lines_t=ttk.Treeview(r,columns=("name","qty","cost","total"),show="headings")
         for c,h,w in [("name","Article",230),("qty","Qté",80),("cost","Coût",90),("total","Total",100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
         self.lines_t.pack(fill="both",expand=True)
+        line_actions=ttk.Frame(r);line_actions.pack(fill="x",pady=4)
+        ttk.Button(line_actions,text="Modifier ligne",command=self.edit_line).pack(side="left")
+        ttk.Button(line_actions,text="Supprimer ligne",command=self.remove_line).pack(side="left",padx=6)
+        self.total_label=ttk.Label(line_actions,text="Total : 0.00 DH",font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
     def refresh_suppliers(self, selected=None):
         self.suppliers=list_suppliers()
         self.supplier_choice['values']=[f"{r['name']} · #{r['id']}" for r in self.suppliers]
