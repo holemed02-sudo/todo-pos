@@ -19,7 +19,7 @@ class PaymentDialog(tk.Toplevel):
         self.method = tk.StringVar(value=method)
         self.amount = tk.StringVar(value=f'{total / 100:.2f}')
         self.print_ticket = tk.BooleanVar(value=False)
-        self.cash_tendered_cents = 0
+        self.cash_tendered_cents = total
         tk.Label(self, text='TOTAL À PAYER / المجموع', bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
         tk.Label(self, text=fmt(total, currency), bg='#2563EB', fg='white',
@@ -39,13 +39,15 @@ class PaymentDialog(tk.Toplevel):
         ttk.Label(body, text='Montant reçu / المبلغ المدفوع').pack(anchor='w')
         self.entry = ttk.Entry(body, textvariable=self.amount, font=('Segoe UI', 24), justify='right')
         self.entry.pack(fill='x', pady=8)
-        notes = ttk.Frame(body)
-        notes.pack(fill='x', pady=6)
-        for value in (200, 100, 50, 20, 10, 5, 2, 1):
-            ttk.Button(notes, text=f'{value} DH', command=lambda n=value: self.set_amount(n)).pack(side='left', expand=True, fill='x', padx=3)
-        coins = ttk.Frame(body)
-        coins.pack(fill='x', pady=(0, 6))
-        ttk.Button(coins, text='0,50 DH', command=lambda: self.set_amount(0.5)).pack(side='left', expand=True, fill='x', padx=3)
+        ttk.Label(body, text='Billets / pièces reçus / النقد المستلم').pack(anchor='w', pady=(4, 0))
+        denominations = ttk.Frame(body)
+        denominations.pack(fill='x', pady=6)
+        for index, value in enumerate((200, 100, 50, 20, 10, 5, 2, 1, 0.5)):
+            ttk.Button(denominations, text=f'{value:g} DH', command=lambda n=value: self.add_cash(n)).grid(
+                row=index//5, column=index%5, sticky='nsew', padx=3, pady=3, ipady=5)
+        for column in range(5):
+            denominations.columnconfigure(column, weight=1)
+        ttk.Button(body, text='Effacer espèces / مسح', command=self.clear_cash).pack(fill='x', pady=(0, 4))
         ttk.Button(body, text='Montant exact / المبلغ بالضبط', command=self.exact).pack(fill='x', pady=4)
         self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=14)
         self.change.pack(fill='x', pady=14)
@@ -74,12 +76,43 @@ class PaymentDialog(tk.Toplevel):
 
     def set_amount(self, amount):
         self.method.set('CASH')
+        self.cash_tendered_cents = to_cents(str(amount))
         self.amount.set(f'{amount:.2f}')
         self.focus_amount()
 
+    def add_cash(self, amount):
+        self.method.set('CASH')
+        try:
+            current = to_cents(self.amount.get())
+        except Exception:
+            current = 0
+        # If the cashier selected the initial exact amount, the first denomination
+        # starts a fresh cash count; after that every tap accumulates.
+        if self.cash_tendered_cents == self.total and current == self.total:
+            current = 0
+        self.cash_tendered_cents = current + to_cents(str(amount))
+        self.amount.set(f'{self.cash_tendered_cents / 100:.2f}')
+        self.focus_amount()
+
+    def clear_cash(self):
+        self.method.set('CASH')
+        self.cash_tendered_cents = 0
+        self.amount.set('0.00')
+        self.focus_amount()
+
     def exact(self):
+        self.method.set('CASH')
+        self.cash_tendered_cents = self.total
         self.amount.set(f'{self.total / 100:.2f}')
         self.focus_amount()
+
+    def amount_changed(self, *_):
+        if self.method.get() == 'CASH':
+            try:
+                self.cash_tendered_cents = to_cents(self.amount.get())
+            except Exception:
+                pass
+        self.update_amount()
 
     def paid_cents(self):
         return self.total if self.method.get() == 'CARD' else to_cents(self.amount.get())
