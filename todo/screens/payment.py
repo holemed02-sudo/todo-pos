@@ -19,6 +19,7 @@ class PaymentDialog(tk.Toplevel):
         self.method = tk.StringVar(value=method)
         self.amount = tk.StringVar(value=f'{total / 100:.2f}')
         self.print_ticket = tk.BooleanVar(value=False)
+        self.cash_tendered_cents = 0
         tk.Label(self, text='TOTAL À PAYER / المجموع', bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
         tk.Label(self, text=fmt(total, currency), bg='#2563EB', fg='white',
