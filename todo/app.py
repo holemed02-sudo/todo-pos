@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from pathlib import Path
 
 from database import init_db, get_setting, set_setting
 from services.bootstrap import ensure_defaults
@@ -34,6 +35,10 @@ class ToDoApp(tk.Tk):
         self.login_blocked_until = 0
         self.customer_window = None
         self.customer_label = None
+        self.customer_photo = None
+        self.customer_slides = []
+        self.customer_slide_index = 0
+        self.customer_after_id = None
         self.shell = None
         self.lock_window = None
         self._keyboard_target = None
@@ -263,9 +268,41 @@ class ToDoApp(tk.Tk):
         tk.Label(w,text=get_setting("shop_name","ToDo"),bg="#0F172A",fg="white",font=("Segoe UI",34,"bold")).pack(pady=(35,8))
         tk.Label(w,text="مرحبا بكم · Bienvenue",bg="#0F172A",fg="#FACC15",font=("Segoe UI",22,"bold")).pack()
         self.customer_label=tk.Label(w,text="العروض والإعلانات\nOffres & promotions",bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center")
-        self.customer_label.pack(fill="both",expand=True,padx=50,pady=35)
-        tk.Label(w,text="TODO MARKET",bg="#DC2626",fg="white",font=("Segoe UI",18,"bold"),pady=10).pack(fill="x",side="bottom")
-        w.lift()
+        self.customer_label.pack(fill="both",expand=True)
+        self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide())
+        w.lift();self._load_customer_slides()
+
+    def _load_customer_slides(self):
+        folder=Path.cwd()/"customer_media";folder.mkdir(exist_ok=True)
+        self.customer_slides=sorted([p for p in folder.iterdir() if p.suffix.lower() in (".png",".jpg",".jpeg",".webp")])
+        self.customer_slide_index=0;self._show_customer_slide()
+
+    def _show_customer_slide(self):
+        if not (self.customer_window and self.customer_window.winfo_exists()):return
+        if self.customer_after_id:
+            try:self.after_cancel(self.customer_after_id)
+            except Exception:pass
+        self._render_customer_slide()
+        seconds=max(2,int(get_setting("customer_slide_seconds","6") or 6))
+        self.customer_after_id=self.after(seconds*1000,self._next_customer_slide)
+
+    def _next_customer_slide(self):
+        if self.customer_slides:self.customer_slide_index=(self.customer_slide_index+1)%len(self.customer_slides)
+        self._show_customer_slide()
+
+    def _render_customer_slide(self):
+        if not (self.customer_label and self.customer_label.winfo_exists()):return
+        if not self.customer_slides:
+            self.customer_label.config(image="",text="ضع صور العروض داخل مجلد customer_media\nAjoutez les offres dans customer_media");return
+        try:
+            from PIL import Image,ImageTk
+            path=self.customer_slides[self.customer_slide_index]
+            im=Image.open(path).convert("RGB");w=max(16,self.customer_label.winfo_width());h=max(9,self.customer_label.winfo_height())
+            # cover mode: fill the whole 16:9 display, crop overflow instead of black bars
+            scale=max(w/im.width,h/im.height);nw=max(1,round(im.width*scale));nh=max(1,round(im.height*scale));im=im.resize((nw,nh),Image.Resampling.LANCZOS)
+            left=max(0,(nw-w)//2);top=max(0,(nh-h)//2);im=im.crop((left,top,left+w,top+h))
+            self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
+        except Exception as e:self.customer_label.config(image="",text=f"Image invalide: {e}")
 
     def update_customer_display(self, cart, total):
         # Customer screen is intentionally advertising-first: cashier prices,
