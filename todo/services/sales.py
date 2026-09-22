@@ -70,6 +70,15 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
         if discount<0 or discount>subtotal:
             raise ValueError('La remise dépasse le montant du ticket.')
         total=subtotal-discount;paid=int(paid_cents)
+        split=None
+        if payments is not None:
+            split=[(str(method).upper(),int(amount)) for method,amount in payments if int(amount)>0]
+            if not split or any(method not in ('CASH','CARD') for method,amount in split):
+                raise ValueError('Répartition de paiement invalide.')
+            if sum(amount for method,amount in split)!=total:
+                raise ValueError('Le paiement mixte doit couvrir exactement le ticket.')
+            payment_method='MIXED' if len(split)>1 else split[0][0]
+            paid=total
         if payment_method=='CASH' and paid<total:
             raise ValueError('Montant reçu insuffisant.')
         if payment_method=='CARD':paid=total
