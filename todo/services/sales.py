@@ -137,7 +137,7 @@ def resume_held(held_id):
 
 def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH'):
     if not items:raise ValueError('Aucun article à retourner')
-    if refund_method not in ('CASH','CARD'):raise ValueError('Mode de remboursement invalide')
+    if refund_method not in ('CASH','CARD','AUTO'):raise ValueError('Mode de remboursement invalide')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE');validate_session(conn,session_id,user_id)
         sale=conn.execute('SELECT * FROM sales WHERE id=?',(sale_id,)).fetchone()
@@ -167,6 +167,19 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
         if total>remaining:
             raise ValueError('Les anciens remboursements dépassent le solde. Vérification administrateur requise.')
         refund_paid=total
+        if refund_method=='AUTO':
+            if sale['payment_method']=='MIXED':
+                parts=conn.execute("SELECT payment_method,amount_cents FROM sale_payments WHERE sale_id=? AND payment_method IN ('CASH','CARD')",(sale_id,)).fetchall()
+                original={r['payment_method']:int(r['amount_cents']) for r in parts}
+                prior=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE sale_id=?",(sale_id,)).fetchone()[0]
+                cumulative=min(int(sale['total_cents']),int(prior)+int(total))
+                denominator=Decimal(max(1,int(sale['total_cents'])))
+                cash_target=rounded(Decimal(cumulative)*Decimal(original.get('CASH',0))/denominator)
+                cash_before=rounded(Decimal(prior)*Decimal(original.get('CASH',0))/denominator)
+                cash_refund=max(0,cash_target-cash_before)
+                refund_method='CASH' if cash_refund==total else ('CARD' if cash_refund==0 else 'MIXED')
+            else:
+                refund_method='CARD' if sale['payment_method']=='CARD' else 'CASH'
         if sale['client_id'] is not None and sale['payment_method']=='CREDIT':
             from services.clients import client_sales
             balance=next(r['balance_cents'] for r in client_sales(sale['client_id'],conn) if r['id']==sale_id)
