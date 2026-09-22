@@ -361,7 +361,7 @@ class SaleFrame(ttk.Frame):
         if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
         # Tactile cards are reserved for exceptions without a barcode. Barcode products
         # stay on the fast scanner/search path so hundreds of regular items do not flood the grid.
-        photo_rows=search_products(*photo_filter,limit=61,no_barcode_only=True,offset=self.photo_offset)
+        photo_rows=search_products(*photo_filter,limit=61,tactile_only=True,offset=self.photo_offset)
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
