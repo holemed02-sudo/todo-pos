@@ -6,6 +6,7 @@ from services.reports import (
     top_cashiers, category_breakdown,
 )
 from services.money import fmt
+from database import connect
 
 # ── Palette ───────────────────────────────────────────────────────────────────
 CHART_COLORS = [
@@ -202,6 +203,8 @@ class StatisticsFrame(ttk.Frame):
             ('gross_margin', 'Marge brute',    '#16A34A'),
             ('tickets',      'Tickets',        '#D97706'),
             ('alerts',       'Stock faible',   '#DC2626'),
+            ('stock_value',   'Valeur stock',    '#7C3AED'),
+            ('returns',       'Retours',         '#0891B2'),
         ]
         for i, (key, title, color) in enumerate(kpi_defs):
             card = tk.Frame(self.kpi_frame, bg=color, height=76)
@@ -292,6 +295,11 @@ class StatisticsFrame(ttk.Frame):
         self._kpi_labels['gross_margin'].config( text=fmt(data['gross_margin']))
         self._kpi_labels['tickets'].config(      text=str(data['tickets']))
         self._kpi_labels['alerts'].config(       text=str(data['alerts']))
+        with connect() as conn:
+            stock=conn.execute('SELECT COALESCE(SUM(stock_qty*purchase_price_cents),0) FROM products WHERE active=1').fetchone()[0]
+            returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
+        self._kpi_labels['stock_value'].config(text=fmt(stock))
+        self._kpi_labels['returns'].config(text=fmt(returns))
 
     def _load_evolution(self):
         labels, values = sales_evolution(self._period)
