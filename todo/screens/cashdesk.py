@@ -18,6 +18,7 @@ class CashFrame(ttk.Frame):
         ttk.Button(b,text="Cash IN",command=lambda:self.cashmove("IN")).pack(side="left",padx=4)
         ttk.Button(b,text="Cash OUT",command=lambda:self.cashmove("OUT")).pack(side="left",padx=4)
         ttk.Button(b,text="Clôturer",command=self.close).pack(side="left",padx=4)
+        ttk.Button(b,text="Historique clôtures",command=self.history).pack(side="left",padx=4)
         self.details=tk.Text(self,height=16,font=("Consolas",11));self.details.pack(fill="x",pady=15);self.refresh()
     def refresh(self):
         s=get_open_session();self.details.config(state="normal");self.details.delete("1.0","end")
@@ -61,6 +62,22 @@ Cash OUT       : {fmt(t['cash_out'])}
         try:record_cash(s['id'],self.app.user['id'],to_cents(amount),typ,note)
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self);return
         self.refresh()
+    def history(self):
+        w=tk.Toplevel(self);w.title("Historique des clôtures");w.geometry("1050x560");w.transient(self.winfo_toplevel())
+        cols=("id","user","opened","closed","opening","expected","actual","diff")
+        tree=ttk.Treeview(w,columns=cols,show="headings")
+        cfg=[("id","Caisse",65),("user","Caissier",130),("opened","Ouverture",145),("closed","Clôture",145),("opening","Fond",95),("expected","Attendu",95),("actual","Réel",95),("diff","Écart",95)]
+        for key,title,width in cfg:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
+        tree.tag_configure("bad",foreground="#DC2626");tree.tag_configure("ok",foreground="#15803D")
+        tree.pack(fill="both",expand=True,padx=12,pady=12)
+        with connect() as c:
+            rows=c.execute("""SELECT cs.*,COALESCE(u.display_name,'?') username FROM cash_sessions cs LEFT JOIN users u ON u.id=cs.user_id WHERE cs.status='CLOSED' ORDER BY cs.id DESC LIMIT 1000""").fetchall()
+        total_diff=0
+        for r in rows:
+            diff=int(r["difference_cents"] or 0);total_diff+=diff;tag="ok" if diff==0 else "bad"
+            tree.insert("","end",values=(r["id"],r["username"],r["opened_at"],r["closed_at"],fmt(r["opening_cash_cents"],""),fmt(r["expected_cash_cents"],""),fmt(r["actual_cash_cents"] or 0,""),fmt(diff,"")),tags=(tag,))
+        ttk.Label(w,text=f"{len(rows)} clôture(s) · Écart cumulé {fmt(total_diff)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+
     def close(self):
         s=get_open_session()
         if not s:return
