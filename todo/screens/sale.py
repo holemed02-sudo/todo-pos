@@ -428,21 +428,22 @@ class SaleFrame(ttk.Frame):
         window.bind('<Return>',lambda e:close())
 
     def pick_barcode(self,rows):
-        w=tk.Toplevel(self);w.title('Choisir le produit / اختار المنتوج');w.transient(self);w.grab_set()
-        tree=ttk.Treeview(w,columns=('pack','price'),show='tree headings',height=8)
-        tree.heading('#0',text='Produit');tree.heading('pack',text='Unités');tree.heading('price',text='Prix sélection')
-        tree.pack(fill='both',expand=True,padx=12,pady=12)
+        w=tk.Toplevel(self);w.title('Même barcode — choisir le produit / اختار المنتوج');w.geometry('900x620');w.transient(self);w.grab_set()
+        ttk.Label(w,text=f'{len(rows)} produits utilisent ce même barcode',font=('Segoe UI',16,'bold')).pack(anchor='w',padx=16,pady=(14,2))
+        ttk.Label(w,text='اختار المنتوج الموجود قدامك حسب الاسم والصورة والثمن.').pack(anchor='w',padx=16,pady=(0,10))
+        canvas=tk.Canvas(w,highlightthickness=0);scroll=ttk.Scrollbar(w,orient='vertical',command=canvas.yview);inner=ttk.Frame(canvas)
+        inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')));canvas.create_window((0,0),window=inner,anchor='nw');canvas.configure(yscrollcommand=scroll.set);canvas.pack(side='left',fill='both',expand=True,padx=(16,0),pady=(0,16));scroll.pack(side='right',fill='y',padx=(0,16),pady=(0,16))
         with connect() as conn:
-            for i,r in enumerate(rows):
-                price=resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn)
-                tree.insert('','end',iid=str(i),text=r['name'],values=(r['qty_multiplier'],fmt(line_total(price,r['qty_multiplier']))))
-        def choose(event=None):
-            if not tree.selection():return
-            r=rows[int(tree.selection()[0])];w.destroy()
-            self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
-        tree.bind('<Return>',choose);tree.bind('<Double-1>',choose)
-        ttk.Button(w,text='Choisir',command=choose).pack(pady=8)
-        tree.selection_set('0');tree.focus('0');tree.focus_set()
+            details=[(r,conn.execute('SELECT stock_qty,image_path FROM products WHERE id=?',(r['id'],)).fetchone(),resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn)) for r in rows]
+        def choose(r):w.destroy();self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
+        for i,(r,p,price) in enumerate(details):
+            card=tk.Frame(inner,bg='white',bd=1,relief='solid',cursor='hand2');card.grid(row=i//3,column=i%3,padx=7,pady=7,sticky='nsew')
+            thumb=self.thumbnail({'id':r['id'],'image_path':p['image_path']},110);pic=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',34));pic.pack(fill='both',expand=True,padx=8,pady=6)
+            tk.Label(card,text=r['name'],bg='white',font=('Segoe UI',11,'bold'),wraplength=230).pack(fill='x',padx=8);pack=f"Pack ×{r['qty_multiplier']:g}" if r['qty_multiplier']!=1 else 'Unité';tk.Label(card,text=f"{pack} · Stock {p['stock_qty']:g}",bg='white').pack(fill='x',padx=8)
+            tk.Label(card,text=fmt(line_total(price,r['qty_multiplier']),self.currency),bg='#2563EB',fg='white',font=('Segoe UI',15,'bold'),pady=6).pack(fill='x',pady=(6,0))
+            for widget in [card,*card.winfo_children()]:widget.bind('<Button-1>',lambda e,x=r:choose(x))
+        for col in range(3):inner.columnconfigure(col,weight=1)
+        w.bind('<Escape>',lambda e:(w.destroy(),self.focus_search()))
 
     def add_selected_product(self,event=None):
         if self.products.selection():self.add_product(int(self.products.selection()[0]))
