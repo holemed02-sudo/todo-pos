@@ -30,7 +30,7 @@ class PaymentDialog(tk.Toplevel):
         body.pack(fill='both', expand=True)
         modes = ttk.Frame(body)
         modes.pack(fill='x', pady=(0, 12))
-        choices=[('F2 Espèces / نقداً','CASH'),('F3 Carte / بطاقة','CARD')]
+        choices=[('F2 Espèces / نقداً','CASH'),('F3 Carte / بطاقة','CARD'),('Mixte / مختلط','MIXED')]
         if client_name:choices.append(('Crédit / كريدي','CREDIT'))
         if client_name:ttk.Label(body,text='Client : '+client_name).pack(anchor='w')
         for label, value in choices:
@@ -49,6 +49,9 @@ class PaymentDialog(tk.Toplevel):
             denominations.columnconfigure(column, weight=1)
         ttk.Button(body, text='Effacer espèces / مسح', command=self.clear_cash).pack(fill='x', pady=(0, 4))
         ttk.Button(body, text='Montant exact / المبلغ بالضبط', command=self.exact).pack(fill='x', pady=4)
+        ttk.Label(body, text='Part carte (mode mixte) / جزء البطاقة').pack(anchor='w', pady=(8,0))
+        self.card_entry = ttk.Entry(body, textvariable=self.card_amount, font=('Segoe UI', 18), justify='right')
+        self.card_entry.pack(fill='x', pady=4)
         self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=14)
         self.change.pack(fill='x', pady=14)
         self.error = ttk.Label(body, foreground='#DC2626', wraplength=500)
@@ -58,6 +61,7 @@ class PaymentDialog(tk.Toplevel):
         self.confirm_button.pack(fill='x', ipady=12, pady=8)
         ttk.Button(controls, text='Retour au ticket / رجوع  Esc', command=self.destroy).pack(fill='x', ipady=6)
         self.amount.trace_add('write', self.amount_changed)
+        self.card_amount.trace_add('write', self.amount_changed)
         self.bind('<Return>', lambda e: self.confirm())
         self.bind('<Escape>', lambda e: self.destroy())
         self.bind('<F2>', lambda e: self.choose_method('CASH'))
@@ -118,23 +122,24 @@ class PaymentDialog(tk.Toplevel):
         return self.total if self.method.get() == 'CARD' else to_cents(self.amount.get())
 
     def update_amount(self):
-        card = self.method.get() == 'CARD'
+        method = self.method.get()
+        card = method == 'CARD'
+        mixed = method == 'MIXED'
         self.entry.configure(state='disabled' if card else 'normal')
+        self.card_entry.configure(state='normal' if mixed else 'disabled')
         try:
             paid = self.paid_cents()
-            if paid < 0:
-                raise ValueError()
+            cash = to_cents(self.amount.get()) if not card else 0
+            card_paid = to_cents(self.card_amount.get()) if mixed else (self.total if card else 0)
+            if paid < 0 or cash < 0 or card_paid < 0: raise ValueError()
             difference = paid - self.total
-            credit=self.method.get()=='CREDIT' and self.client_name is not None
-            valid=(0<=paid<=self.total) if credit else difference>=0
-            self.change.configure(text=('Reste à payer / باقي : ' if difference < 0 else 'Monnaie / الصرف : ') + fmt(abs(difference), self.currency),
-                                  fg='#DC2626' if difference < 0 else '#166534')
+            credit=method=='CREDIT' and self.client_name is not None
+            valid=(0<=paid<=self.total) if credit else (difference>=0 if method=='CASH' else difference==0)
+            self.change.configure(text=('Reste à payer / باقي : ' if difference < 0 else 'Monnaie / الصرف : ') + fmt(abs(difference), self.currency), fg='#DC2626' if difference < 0 else '#166534')
             self.confirm_button.configure(state='normal' if valid else 'disabled')
-            self.error.configure(text='Reste enregistré en dette client. Acompte en espèces.' if credit and valid else ('' if valid else 'Montant reçu invalide ou insuffisant.'))
+            self.error.configure(text='Reste enregistré en dette client. Acompte en espèces.' if credit and valid else ('' if valid else 'Le paiement mixte doit couvrir exactement le ticket.' if mixed else 'Montant reçu invalide ou insuffisant.'))
         except Exception:
-            self.change.configure(text='—')
-            self.error.configure(text='Saisissez un montant valide / دخل مبلغ صحيح')
-            self.confirm_button.configure(state='disabled')
+            self.change.configure(text='—'); self.error.configure(text='Saisissez un montant valide / دخل مبلغ صحيح'); self.confirm_button.configure(state='disabled')
 
     def confirm(self):
         try:
@@ -146,5 +151,8 @@ class PaymentDialog(tk.Toplevel):
         except Exception:
             self.update_amount()
             return
-        self.result = (self.method.get(), paid, self.print_ticket.get())
+        payments = None
+        if self.method.get() == 'MIXED':
+            payments = [('CASH', to_cents(self.amount.get())), ('CARD', to_cents(self.card_amount.get()))]
+        self.result = (self.method.get(), paid, self.print_ticket.get(), payments)
         self.destroy()
