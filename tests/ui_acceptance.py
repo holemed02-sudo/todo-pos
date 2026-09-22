@@ -88,7 +88,14 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert VirtualKeyboard._instance and VirtualKeyboard._instance.winfo_exists()
     VirtualKeyboard._instance._close()
     assert str(pid) in sale.products.get_children(), 'Products without images must be searchable'
-    assert len(sale.card_inner.winfo_children())>=1, 'Tactile grid must include products without images using placeholders'
+    assert len(sale.card_inner.winfo_children())>=1, 'Tactile grid must include products without barcodes'
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('TEST Barcode Product',400,1)")
+        barcode_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,is_primary,qty_multiplier) VALUES(?,?,1,1)",(barcode_pid,'REGULAR123'))
+    sale.refresh_catalog();app.update()
+    tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
+    assert 'TEST Barcode Product' not in tactile_names, 'Barcode products must stay out of tactile exception grid'
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
