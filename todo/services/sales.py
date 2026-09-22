@@ -22,7 +22,7 @@ def validate_session(conn,session_id,user_id):
     if current_user.get() is not None and current_user.get()!=user_id:
         raise PermissionError('Utilisateur incompatible')
 
-def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cents=0,held_id=None,client_id=None):
+def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cents=0,held_id=None,client_id=None,payments=None):
     if not cart:
         raise ValueError('Ticket vide')
     if payment_method not in ('CASH','CARD','CREDIT'):
@@ -79,6 +79,11 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
         no=sale_number()
         sid=conn.execute('INSERT INTO sales(sale_no,session_id,cashier_user_id,subtotal_cents,discount_cents,total_cents,payment_method,paid_cents,change_cents,client_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
                          (no,session_id,user_id,subtotal,discount,total,payment_method,paid,change,client_id)).lastrowid
+        if split is None:
+            settled=paid-change if payment_method=='CASH' else paid
+            conn.execute('INSERT INTO sale_payments(sale_id,payment_method,amount_cents) VALUES(?,?,?)',(sid,payment_method,settled))
+        else:
+            conn.executemany('INSERT INTO sale_payments(sale_id,payment_method,amount_cents) VALUES(?,?,?)',[(sid,method,amount) for method,amount in split])
         nets=allocate(total,weights)
         for (p,qty,unit,gross,line_discount,barcode,pricing),net in zip(normalized,nets):
             pack=pricing and pricing['pricing_mode']=='PACK'
