@@ -94,7 +94,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Exception',400,1,'missing-test-image.jpg')")
         photo_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_pid,'REGULAR123'))
-    sale.refresh_catalog();app.update()
+    sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
     assert 'TEST Photo Exception' in tactile_names, 'Image-assigned exceptions must appear even when they have a barcode'
