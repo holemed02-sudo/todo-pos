@@ -345,6 +345,7 @@ class ProductsFrame(ttk.Frame):
         self.filter.trace_add("write",lambda *_:self.go_page(0))
         ttk.Button(top,text="+ Nouveau",command=self.new).pack(side="right",padx=3)
         ttk.Button(top,text="Importer Excel",command=self.import_excel).pack(side="right",padx=3)
+        ttk.Button(top,text="Étiquette PDF",command=self.label_pdf).pack(side="right",padx=3)
         ttk.Button(top,text="Modifier",command=self.edit).pack(side="right",padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
@@ -383,6 +384,36 @@ class ProductsFrame(ttk.Frame):
         self.page_label.config(text=f'Page {self.page+1} · {len(rows)} produits · 200 par page')
         self.t.delete(*self.t.get_children())
         for r in rows:self.t.insert("", "end",values=(r["id"],r["barcode"] or "",r["name"],r["category"],f"{r['purchase_price_cents']/100:.2f}",f"{r['sale_price_cents']/100:.2f}",f"{r['stock_qty']:g}",f"{r['alert_qty']:g}","✓" if r["image_path"] else ""))
+    def label_pdf(self):
+        pid=self.sel()
+        if not pid:
+            messagebox.showinfo("Étiquette","Sélectionnez un article.",parent=self);return
+        copies=simpledialog.askinteger("Étiquette","Nombre d'étiquettes :",initialvalue=1,minvalue=1,maxvalue=200,parent=self)
+        if copies is None:return
+        path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Enregistrer les étiquettes")
+        if not path:return
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from reportlab.graphics.barcode import code128
+            with connect() as c:
+                row=c.execute("""SELECT p.name,p.sale_price_cents,(SELECT barcode FROM product_barcodes b WHERE b.product_id=p.id ORDER BY id LIMIT 1) barcode FROM products p WHERE p.id=?""",(pid,)).fetchone()
+            if not row:raise ValueError("Article introuvable.")
+            barcode=(row["barcode"] or "").strip()
+            if not barcode:raise ValueError("Cet article n'a pas de code-barres.")
+            cv=canvas.Canvas(path,pagesize=A4);page_w,page_h=A4;label_w=page_w/3;label_h=95
+            for n in range(copies):
+                slot=n%24;col=slot%3;line=slot//3
+                if n and slot==0:cv.showPage()
+                x=col*label_w+8;y=page_h-(line+1)*label_h+8
+                cv.rect(x,y,label_w-16,label_h-10)
+                cv.setFont("Helvetica-Bold",9);cv.drawCentredString(x+(label_w-16)/2,y+label_h-25,row["name"][:34])
+                cv.setFont("Helvetica-Bold",13);cv.drawCentredString(x+(label_w-16)/2,y+label_h-42,fmt(row["sale_price_cents"]))
+                bc=code128.Code128(barcode,barHeight=24,barWidth=0.7);bc.drawOn(cv,x+((label_w-16)-bc.width)/2,y+14)
+                cv.setFont("Helvetica",7);cv.drawCentredString(x+(label_w-16)/2,y+5,barcode)
+            cv.save();messagebox.showinfo("Étiquette",f"{copies} étiquette(s) créée(s).",parent=self)
+        except Exception as e:messagebox.showerror("Étiquette",str(e),parent=self)
+
     def import_excel(self):
         path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title="Importer les articles")
         if not path:return
