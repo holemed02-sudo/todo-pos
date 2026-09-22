@@ -7,6 +7,7 @@ def build_receipt(sale_id):
     with connect() as conn:
         s=conn.execute("SELECT s.*,u.display_name FROM sales s JOIN users u ON u.id=s.cashier_user_id WHERE s.id=?",(sale_id,)).fetchone()
         items=conn.execute("SELECT * FROM sale_items WHERE sale_id=? ORDER BY id",(sale_id,)).fetchall()
+        payments=conn.execute("SELECT payment_method,amount_cents FROM sale_payments WHERE sale_id=? ORDER BY id",(sale_id,)).fetchall()
     if not s: raise ValueError("Vente introuvable")
     cur=get_setting("currency","DH")
     lines=[get_setting("shop_name","ToDo"), "="*32, f"Ticket: {s['sale_no']}", f"Caissier: {s['display_name']}", "-"*32]
@@ -14,7 +15,11 @@ def build_receipt(sale_id):
         lines += [i["name_snapshot"], f"  Qté {i['qty']:g} | Brut {fmt(i['line_total_cents'],cur)} | Net {fmt(i['net_total_cents'],cur)}"]
         if i['pricing_mode']=='PACK':
             lines.append(f"  {i['qty']/i['qty_multiplier']:g} pack(s) x {fmt(i['unit_price_cents'],cur)} ({i['qty_multiplier']:g} unités/pack)")
-    lines += ["-"*32, f"Remise ticket: {fmt(s['discount_cents'],cur)}", f"TOTAL: {fmt(s['total_cents'],cur)}", f"Paiement: {s['payment_method']}", f"Reçu: {fmt(s['paid_cents'],cur)}", f"Monnaie: {fmt(s['change_cents'],cur)}", "="*32, get_setting("receipt_footer","Merci")]
+    lines += ["-"*32, f"Remise ticket: {fmt(s['discount_cents'],cur)}", f"TOTAL: {fmt(s['total_cents'],cur)}", f"Paiement: {s['payment_method']}"]
+    if s['payment_method']=='MIXED':
+        for p in payments:
+            lines.append(f"  {p['payment_method']}: {fmt(p['amount_cents'],cur)}")
+    lines += [f"Reçu: {fmt(s['paid_cents'],cur)}", f"Monnaie: {fmt(s['change_cents'],cur)}", "="*32, get_setting("receipt_footer","Merci")]
     if s['client_id'] is not None:
         with connect() as conn:
             client=conn.execute('SELECT name FROM clients WHERE id=?',(s['client_id'],)).fetchone()
