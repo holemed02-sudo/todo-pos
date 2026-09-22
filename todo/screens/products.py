@@ -431,7 +431,15 @@ class ProductsFrame(ttk.Frame):
                 if not any(v not in (None,'') for v in row):continue
                 try:
                     get=lambda k: row[idx[k]] if idx[k] is not None and idx[k]<len(row) else None
-                    name=str(get('name') or '').strip();barcode=str(get('barcode') or '').strip()
+                    name=str(get('name') or '').strip()
+                    raw_barcode=get('barcode')
+                    if raw_barcode in (None,''):barcode=''
+                    elif isinstance(raw_barcode,bool):raise ValueError("barcode invalide")
+                    elif isinstance(raw_barcode,int):barcode=str(raw_barcode)
+                    elif isinstance(raw_barcode,float):
+                        if not math.isfinite(raw_barcode) or not raw_barcode.is_integer():raise ValueError("barcode numérique invalide")
+                        barcode=str(int(raw_barcode))
+                    else:barcode=str(raw_barcode).strip()
                     if not name:raise ValueError("nom vide")
                     buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
                     if buy<0 or sell<0 or alert<0 or not math.isfinite(stock):raise ValueError("valeurs invalides")
@@ -439,6 +447,15 @@ class ProductsFrame(ttk.Frame):
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
+            # Excel permanently drops leading zeroes when a barcode cell is stored as a number.
+            # Refuse to guess: warn the operator to format barcode cells as Text before importing.
+            numeric_barcode_lines=[]
+            if idx['barcode'] is not None:
+                for line,row in enumerate(ws.iter_rows(values_only=True),start=2):
+                    if idx['barcode']<len(row) and isinstance(row[idx['barcode']],(int,float)) and not isinstance(row[idx['barcode']],bool):numeric_barcode_lines.append(line)
+            if numeric_barcode_lines:
+                sample=", ".join(map(str,numeric_barcode_lines[:10]))
+                if not messagebox.askyesno("Import Excel",f"Barcode numérique détecté (lignes {sample}).\n\nExcel peut supprimer les zéros au début. Vérifiez le fichier et mettez la colonne Barcode au format Texte si nécessaire.\n\nContinuer quand même ?",parent=self):return
             if not preview:raise ValueError("Aucun article valide.")
             # Preview + conflict scan. Duplicate barcodes are legal in ToDo, but the operator
             # must see them before import because they will trigger the product chooser at sale.
