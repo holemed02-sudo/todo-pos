@@ -9,6 +9,9 @@ class CashFrame(ttk.Frame):
         super().__init__(master,padding=15);self.app=app
         ttk.Label(self,text="Caisse / الصندوق",font=("Segoe UI",22,"bold")).pack(anchor="w",pady=(0,15))
         self.info=ttk.Label(self,text="",font=("Segoe UI",12));self.info.pack(anchor="w",pady=8)
+        self.kpis=ttk.Frame(self);self.kpis.pack(fill="x",pady=8);self.kpi_labels={}
+        for key,title in [("expected","Cash attendu"),("sales","Ventes cash"),("expenses","Dépenses"),("returns","Retours cash")]:
+            card=ttk.LabelFrame(self.kpis,text=title,padding=8);card.pack(side="left",fill="x",expand=True,padx=3);lbl=ttk.Label(card,text="—",font=("Segoe UI",16,"bold"));lbl.pack();self.kpi_labels[key]=lbl
         b=ttk.Frame(self);b.pack(anchor="w",pady=8)
         ttk.Button(b,text="Ouvrir caisse",command=self.open).pack(side="left",padx=4)
         ttk.Button(b,text="Dépense",command=self.expense).pack(side="left",padx=4)
@@ -18,8 +21,13 @@ class CashFrame(ttk.Frame):
         self.details=tk.Text(self,height=16,font=("Consolas",11));self.details.pack(fill="x",pady=15);self.refresh()
     def refresh(self):
         s=get_open_session();self.details.config(state="normal");self.details.delete("1.0","end")
-        if not s:self.info.config(text="Aucune caisse ouverte");self.details.config(state="disabled");return
+        if not s:
+            self.info.config(text="Aucune caisse ouverte")
+            for lbl in self.kpi_labels.values():lbl.config(text="—")
+            self.details.config(state="disabled");return
         with connect() as c:t=session_totals(c,s["id"])
+        expected=int(s["opening_cash_cents"])+t["cash_sales"]-t["cash_returns"]-t["expenses"]+t["cash_in"]-t["cash_out"]
+        self.kpi_labels["expected"].config(text=fmt(expected));self.kpi_labels["sales"].config(text=fmt(t["cash_sales"]));self.kpi_labels["expenses"].config(text=fmt(t["expenses"]));self.kpi_labels["returns"].config(text=fmt(t["cash_returns"]))
         self.info.config(text=f"Caisse #{s['id']} ouverte depuis {s['opened_at']}")
         txt=f"""Fond de caisse : {fmt(s['opening_cash_cents'])}
 Ventes cash    : {fmt(t['cash_sales'])}
@@ -56,7 +64,9 @@ Cash OUT       : {fmt(t['cash_out'])}
     def close(self):
         s=get_open_session()
         if not s:return
-        actual=simpledialog.askfloat("Clôture","Cash réel compté (DH):",parent=self,minvalue=0)
+        with connect() as c:t=session_totals(c,s["id"])
+        expected=int(s["opening_cash_cents"])+t["cash_sales"]-t["cash_returns"]-t["expenses"]+t["cash_in"]-t["cash_out"]
+        actual=simpledialog.askfloat("Clôture",f"Cash attendu : {fmt(expected)}\n\nCash réel compté (DH):",parent=self,minvalue=0)
         if actual is None:return
         try:
             expected,diff,t=close_session(s["id"],to_cents(actual))
