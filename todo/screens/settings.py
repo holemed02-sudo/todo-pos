@@ -121,6 +121,10 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(d,text="Tester écran client",command=self.test_customer).pack(side="right")
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
+        self.auto_backup=tk.StringVar(value=get_setting("auto_backup_minutes","15"))
+        ttk.Label(b,text="Backup auto").pack(side="left",padx=(18,4))
+        ttk.Combobox(b,textvariable=self.auto_backup,values=["0","5","10","15","30","60"],state="readonly",width=5).pack(side="left")
+        ttk.Label(b,text="min (0 = désactivé)").pack(side="left",padx=4)
         ttk.Button(b,text="Restaurer backup",command=self.restore).pack(side="left",padx=4)
         u=ttk.LabelFrame(self,text="Utilisateurs",padding=10);u.pack(fill="x")
         ttk.Button(u,text="Nouvel utilisateur",command=self.new_user).pack(side="left")
@@ -142,6 +146,8 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo","Durée écran client entre 2 et 120 secondes.",parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
+        set_setting("auto_backup_minutes",self.auto_backup.get())
+        self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
     def test_customer(self):
         self.app.toggle_customer_display()
