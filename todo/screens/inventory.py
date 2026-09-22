@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from database import connect
-from services.inventory import apply_stock_movement
+from services.inventory import apply_stock_movement, apply_physical_counts
 from services.money import fmt
 
 
@@ -47,6 +47,7 @@ class InventaireFrame(ttk.Frame):
         self.tree.pack(fill='both', expand=True)
         self.tree.bind('<Double-1>', self._edit_cell)
 
+        self.expected = {}
         self.counted = {}   # product_id → float
         self.products = []
         self.refresh()
@@ -84,6 +85,9 @@ class InventaireFrame(ttk.Frame):
         val = simpledialog.askfloat(
             'Inventaire', f'Quantité comptée — {pname} :', parent=self)
         if val is None: return
+        if val < 0:
+            messagebox.showerror("Inventaire", "Le comptage doit être positif ou nul.", parent=self); return
+        self.expected[pid] = next(p["stock_qty"] for p in self.products if p["id"]==pid)
         self.counted[pid] = val
         self._redraw()
 
@@ -91,21 +95,14 @@ class InventaireFrame(ttk.Frame):
         diffs = {pid: cnt for pid, cnt in self.counted.items()}
         if not diffs:
             messagebox.showinfo('Inventaire', 'Aucun écart saisi.', parent=self); return
-        n_adj = 0
-        with connect() as conn:
-            conn.execute('BEGIN IMMEDIATE')
-            for p in self.products:
-                pid = p['id']; theory = float(p['stock_qty'])
-                counted = diffs.get(pid)
-                if counted is None: continue
-                delta = counted - theory
-                if abs(delta) < 0.001: continue
-                apply_stock_movement(conn, pid, delta, 'INVENTAIRE',
-                                     note=f'Inventaire : théorique {theory:g} → compté {counted:g}')
-                n_adj += 1
-            conn.commit()
+        try:
+            n_adj=apply_physical_counts(diffs,self.expected)
+        except (ValueError,PermissionError) as error:
+            messagebox.showerror('Inventaire',str(error),parent=self)
+            self.refresh()
+            return
         messagebox.showinfo('Inventaire', f'{n_adj} article(s) ajusté(s).', parent=self)
-        self.counted.clear()
+        self.counted.clear();self.expected.clear()
         self.refresh()
 
 
@@ -190,8 +187,8 @@ class SortiesFrame(ttk.Frame):
         pname = self.rows[sel[0]]['name']
         qty   = simpledialog.askfloat('Sortie', f'Quantité sortie — {pname} :', parent=self)
         if qty is None or qty <= 0: return
-        reason = simpledialog.askstring('Sortie', 'Raison (casse, perte, don…) :', parent=self) or 'Sortie manuelle'
-        if not reason.strip(): return
+        reason = simpledialog.askstring('Sortie', 'Raison (casse, perte, don…) :', parent=self)
+        if reason is None or not reason.strip(): return
         try:
             with connect() as conn:
                 conn.execute('BEGIN IMMEDIATE')

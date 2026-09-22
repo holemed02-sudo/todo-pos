@@ -6,14 +6,14 @@ from tkinter import ttk, messagebox
 GROUPS = [
     [
         ("📥", "Réceptions",         "purchases",  "#0891B2", "#fff"),
-        ("📤", "Sorties",             None,         "#64748B", "#fff"),
-        ("📝", "Inventaire",          None,         "#64748B", "#fff"),
+        ("📤", "Sorties",             "stock_exits",         "#64748B", "#fff"),
+        ("📝", "Inventaire",          "inventory",         "#64748B", "#fff"),
         ("🔄", "Mouvements de stock", "stock",      "#7C3AED", "#fff"),
     ],
     [
         ("🚚", "Fournisseurs",              "suppliers",  "#EA580C", "#fff"),
-        ("💳", "Règlements fournisseurs",   None,         "#64748B", "#fff"),
-        ("📊", "État crédits fournisseurs", None,         "#64748B", "#fff"),
+        ("💳", "Règlements fournisseurs",   "supplier_payments",         "#64748B", "#fff"),
+        ("📊", "État crédits fournisseurs", "supplier_credits",         "#64748B", "#fff"),
     ],
     [
         ("👥", "Clients",             "clients",         "#2563EB", "#fff"),
@@ -114,6 +114,9 @@ class ManagementFrame(ttk.Frame):
 
     def _activate(self, key, label):
         app = self.app
+        if key == "supplier_credits":
+            from screens.supplier_payments import SupplierCreditStateWindow
+            SupplierCreditStateWindow(app); return
         if key == "clients_payments":
             app.show("clients"); return
         if key == "clients_credits":

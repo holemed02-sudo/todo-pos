@@ -20,6 +20,8 @@ from screens.management import ManagementFrame
 from screens.statistics import StatisticsFrame
 from screens.suppliers import SuppliersFrame
 from screens.clients import ClientsFrame
+from screens.inventory import InventaireFrame, SortiesFrame
+from screens.supplier_payments import SupplierReglementFrame
 
 class ToDoApp(tk.Tk):
     def __init__(self):
@@ -156,7 +158,7 @@ class ToDoApp(tk.Tk):
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
             self.lock_window.lift();return
-        if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics'):
+        if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics','inventory','stock_exits','supplier_payments'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
@@ -169,6 +171,9 @@ class ToDoApp(tk.Tk):
             return
 
         makers = {
+            "inventory": lambda: InventaireFrame(self.content),
+            "stock_exits": lambda: SortiesFrame(self.content),
+            "supplier_payments": lambda: SupplierReglementFrame(self.content),
             "home": lambda: HomeFrame(self.content, self),
             "sale": lambda: SaleFrame(self.content, self),
             "products": lambda: ProductsFrame(self.content),

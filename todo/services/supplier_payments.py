@@ -5,17 +5,29 @@ from services.security import require_admin, audit
 
 def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
     amount = int(amount_cents)
-    if amount <= 0:
+    if amount <= 0 or amount != amount_cents:
         raise ValueError('Montant invalide.')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
+        require_admin(conn)
         if not conn.execute('SELECT id FROM suppliers WHERE id=? AND active=1', (supplier_id,)).fetchone():
             raise ValueError('Fournisseur introuvable.')
-        pid = conn.execute(
-            'INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)',
-            (supplier_id, purchase_id, amount, note.strip())).lastrowid
-        audit(conn, 'SUPPLIER_PAYMENT', pid, str(amount))
-        return pid
+        invoices=_supplier_purchases(conn,supplier_id)
+        if purchase_id is not None:
+            invoices=[p for p in invoices if p['id']==purchase_id]
+            if not invoices:raise ValueError('Cette facture ne correspond pas au fournisseur.')
+        if amount>sum(max(0,p['total_cents']-p['paid']) for p in invoices):
+            raise ValueError('Le règlement dépasse le solde dû.')
+        remaining=amount;first=None
+        for invoice in sorted(invoices,key=lambda p:p['id']):
+            allocated=min(remaining,max(0,invoice['total_cents']-invoice['paid']))
+            if not allocated:continue
+            pid=conn.execute('INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)',
+                (supplier_id,invoice['id'],allocated,note.strip())).lastrowid
+            if first is None:first=pid
+            audit(conn,'SUPPLIER_PAYMENT',pid,str(allocated));remaining-=allocated
+            if remaining==0:break
+        return first
 
 
 def list_supplier_payments(supplier_id):
@@ -48,9 +60,17 @@ def supplier_credit_statement():
 
 def supplier_purchases(supplier_id):
     with connect() as conn:
-        return [dict(r) for r in conn.execute(
+        return _supplier_purchases(conn,supplier_id)
+
+def _supplier_purchases(conn,supplier_id):
+        rows=[dict(r) for r in conn.execute(
             """SELECT pu.id, pu.supplier_invoice, pu.total_cents, pu.created_at,
                       COALESCE((SELECT SUM(sp.amount_cents) FROM supplier_payments sp
-                                WHERE sp.purchase_id=pu.id), 0) paid
+                                WHERE sp.purchase_id=pu.id AND sp.supplier_id=pu.supplier_id), 0) paid
                FROM purchases pu WHERE pu.supplier_id=? ORDER BY pu.id DESC""",
             (supplier_id,))]
+        unassigned=conn.execute('SELECT COALESCE(SUM(amount_cents),0) FROM supplier_payments WHERE supplier_id=? AND purchase_id IS NULL',(supplier_id,)).fetchone()[0]
+        for row in reversed(rows):
+            amount=min(unassigned,max(0,row['total_cents']-row['paid']))
+            row['paid']+=amount;unassigned-=amount
+        return rows
