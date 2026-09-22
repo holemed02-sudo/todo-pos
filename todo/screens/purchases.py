@@ -64,7 +64,28 @@ class PurchasesFrame(ttk.Frame):
         self.lines.append(dict(product_id=pid,name=name,qty=qty,unit_cost_cents=to_cents(cost)));self.refresh_lines()
     def refresh_lines(self):
         self.lines_t.delete(*self.lines_t.get_children())
-        for x in self.lines:self.lines_t.insert("", "end",values=(x["name"],f"{x['qty']:g}",fmt(x["unit_cost_cents"],""),fmt(round(x["qty"]*x["unit_cost_cents"]),"")))
+        total=0
+        for x in self.lines:
+            line_total=round(x["qty"]*x["unit_cost_cents"]);total+=line_total
+            self.lines_t.insert("", "end",values=(x["name"],f"{x['qty']:g}",fmt(x["unit_cost_cents"],""),fmt(line_total,"")))
+        self.total_label.configure(text=f"Total : {fmt(total)}")
+    def _selected_line_index(self):
+        sel=self.lines_t.selection()
+        if not sel:return None
+        return self.lines_t.index(sel[0])
+    def edit_line(self):
+        i=self._selected_line_index()
+        if i is None:return
+        x=self.lines[i]
+        qty=simpledialog.askfloat("Qté",f"{x['name']}\nQuantité reçue:",initialvalue=x['qty'],parent=self,minvalue=0.001)
+        if qty is None:return
+        cost=simpledialog.askfloat("Coût",f"Prix achat unitaire {x['name']}:",initialvalue=x['unit_cost_cents']/100,parent=self,minvalue=0)
+        if cost is None:return
+        x['qty']=qty;x['unit_cost_cents']=to_cents(cost);self.refresh_lines()
+    def remove_line(self):
+        i=self._selected_line_index()
+        if i is None:return
+        del self.lines[i];self.refresh_lines()
     def save(self):
         if not self.lines:return
         supplier_id=self.supplier_id
