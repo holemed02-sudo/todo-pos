@@ -200,5 +200,6 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
             if not misc:
                 apply_stock_movement(conn,si['product_id'],qty,'RETURN',si['cost_price_cents'],'return',rid,reason or no,user_id)
         audit(conn,'RETURN',rid,reason,user_id)
-        return dict(id=rid,return_no=no,total_cents=total,refund_paid_cents=refund_paid,debt_reduction_cents=total-refund_paid)
+        refund_parts=[dict(payment_method=r['payment_method'],amount_cents=r['amount_cents']) for r in conn.execute('SELECT payment_method,amount_cents FROM return_payments WHERE return_id=? ORDER BY payment_method',(rid,))]
+        return dict(id=rid,return_no=no,total_cents=total,refund_paid_cents=refund_paid,debt_reduction_cents=total-refund_paid,refund_method=refund_method,refund_payments=refund_parts)
 
