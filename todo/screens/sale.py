@@ -193,9 +193,11 @@ class SaleFrame(ttk.Frame):
         self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0])
         self.refresh(index);self.focus_search()
 
+    def toggle_keyboard(self):
+        self.app.toggle_keyboard(self.entry)
+
     def calculator(self):
-        from screens.virtual_keyboard import VirtualKeyboard
-from screens.cashier_tools import Calculator
+        from screens.cashier_tools import Calculator
         Calculator(self)
 
     def open_drawer(self):
