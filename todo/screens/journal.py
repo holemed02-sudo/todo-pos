@@ -1,4 +1,6 @@
 import csv
+import tkinter as tk
+from datetime import date, timedelta
 from tkinter import ttk,filedialog,messagebox
 from database import connect
 from services.money import fmt
@@ -9,21 +11,42 @@ class JournalFrame(ttk.Frame):
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
         ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
+        today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
+        for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
+        ttk.Label(filters,text="Caissier").pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
+        ttk.Label(filters,text="Paiement").pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=["Tous","CASH","CARD","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
+        ttk.Button(filters,text="Aujourd’hui",command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text="7 jours",command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text="30 jours",command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text="Consulter",command=self.refresh).pack(side="right")
         cols=("id","ticket","date","cashier","pay","total","cost","margin")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         for c,h,w in [("id","ID",45),("ticket","Ticket",190),("date","Date",160),("cashier","Caissier",110),("pay","Paiement",90),("total","Total",90),("cost","Coût",90),("margin","Marge brute",100)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
-        self.t.pack(fill="both",expand=True);self.refresh()
+        self.t.pack(fill="both",expand=True)
+        self.summary=ttk.Label(self,text="",font=("Segoe UI",11,"bold"));self.summary.pack(anchor="e",pady=6)
+        with connect() as c:names=[r[0] for r in c.execute("SELECT display_name FROM users WHERE active=1 ORDER BY display_name").fetchall()]
+        self.cashier_box["values"]=["Tous",*names]
+        self.refresh()
+    def set_period(self,days):
+        end=date.today();self.date_to.set(str(end));self.date_from.set(str(end-timedelta(days=days)));self.refresh()
     def rows(self):
-        with connect() as c:return c.execute("""SELECT s.id,s.sale_no,s.created_at,u.display_name,s.payment_method,
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return []
+        where=["date(s.created_at)>=?","date(s.created_at)<=?"];params=[self.date_from.get(),self.date_to.get()]
+        if self.cashier.get()!="Tous":where.append("u.display_name=?");params.append(self.cashier.get())
+        if self.payment.get()!="Tous":where.append("s.payment_method=?");params.append(self.payment.get())
+        sql="""SELECT s.id,s.sale_no,s.created_at,u.display_name,s.payment_method,
           s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0) total_cents,
           COALESCE((SELECT SUM(si.cost_price_cents*si.qty) FROM sale_items si WHERE si.sale_id=s.id),0)
           -COALESCE((SELECT SUM(ri.qty*si.cost_price_cents) FROM return_items ri JOIN sale_items si ON si.id=ri.sale_item_id WHERE si.sale_id=s.id),0) cost
-          FROM sales s JOIN users u ON u.id=s.cashier_user_id ORDER BY s.id DESC LIMIT 5000""").fetchall()
+          FROM sales s JOIN users u ON u.id=s.cashier_user_id WHERE """+" AND ".join(where)+" ORDER BY s.id DESC LIMIT 5000"
+        with connect() as c:return c.execute(sql,params).fetchall()
     def refresh(self):
-        self.t.delete(*self.t.get_children())
-        for r in self.rows():
-            margin=int(r["total_cents"]-r["cost"])
+        rows=self.rows();self.t.delete(*self.t.get_children());total=cost=0
+        for r in rows:
+            margin=int(r["total_cents"]-r["cost"]);total+=r["total_cents"];cost+=r["cost"]
             self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
+        self.summary.config(text=f"{len(rows)} ticket(s) · Ventes nettes {fmt(total)} · Coût {fmt(cost)} · Marge brute {fmt(total-cost)}")
     def export(self):
         p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title="Exporter journal")
         if not p:return
