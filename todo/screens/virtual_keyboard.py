@@ -144,15 +144,26 @@ class VirtualKeyboard(tk.Toplevel):
         self.geometry(f'+{(sw - kw) // 2}+{sh - kh - 48}')
         self.protocol('WM_DELETE_WINDOW', self._close)
         self.bind('<Escape>', lambda event: self._close())
-        self.target.bind('<Destroy>', lambda event: self._close(), add='+')
-        self.after_idle(self._focus_target)
+        if self.target is not None:
+            self.target.bind('<Destroy>', lambda event: self._target_destroyed(event), add='+')
+            self.after_idle(self._focus_target)
+        self.lift()
+        try:
+            self.attributes('-topmost', True)
+        except tk.TclError:
+            pass
 
     def _focus_target(self):
         try:
-            if self.target.winfo_exists():
+            if self.target is not None and self.target.winfo_exists():
                 self.target.focus_set()
         except tk.TclError:
-            self._close()
+            self.target = None
+
+    def _target_destroyed(self, event=None):
+        # A screen change may destroy the old Entry; keep the floating
+        # keyboard alive so it can be reused on the next input field.
+        self.target = None
 
     def _close(self):
         if VirtualKeyboard._instance is self:
@@ -232,16 +243,20 @@ class VirtualKeyboard(tk.Toplevel):
             self._build_page(self._page)
 
     def _get_target(self):
+        # Prefer the most recently focused input tracked by the application.
         try:
-            if self.target and self.target.winfo_exists():
-                self.target.focus_set()
-                return self.target
+            candidate = getattr(self.master, '_keyboard_target', None)
+            if candidate is not None and candidate.winfo_exists():
+                self.target = candidate
         except Exception:
             pass
         try:
-            return self.focus_get()
+            if self.target is not None and self.target.winfo_exists():
+                self.target.focus_set()
+                return self.target
         except Exception:
-            return None
+            self.target = None
+        return None
 
     # ── drag ──────────────────────────────────────────────────────────────
     def _drag_start(self, e):
