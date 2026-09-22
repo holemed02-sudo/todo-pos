@@ -1,7 +1,7 @@
 from database import connect, get_setting
 
 
-def search_products(query='', category=None, limit=None, images_only=False, no_barcode_only=False, offset=0):
+def search_products(query='', category=None, limit=None, images_only=False, tactile_only=False, offset=0):
     query = query.strip()
     with connect() as conn:
         limit = max(1, min(200, int(limit or get_setting('search_limit', '60', conn))))
@@ -16,6 +16,7 @@ def search_products(query='', category=None, limit=None, images_only=False, no_b
             cat_filter = ''
 
         if images_only:cat_filter+=" AND trim(p.image_path)<>''"
+        if tactile_only:cat_filter+=" AND trim(p.image_path)<>'' AND (NOT EXISTS (SELECT 1 FROM product_barcodes tb WHERE tb.product_id=p.id) OR EXISTS (SELECT 1 FROM product_barcodes tb WHERE tb.product_id=p.id AND (tb.barcode LIKE 'TODO-%' OR tb.barcode LIKE 'VIRT-%' OR tb.barcode LIKE 'INT-%')))"
         if no_barcode_only:cat_filter+=" AND NOT EXISTS (SELECT 1 FROM product_barcodes nb WHERE nb.product_id=p.id AND trim(nb.barcode)<>'')"
         offset=max(0,int(offset))
         if not query:
