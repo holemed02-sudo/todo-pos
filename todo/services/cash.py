@@ -22,9 +22,12 @@ def open_session(user_id, opening_cash_cents):
 
 def session_totals(conn, session_id):
     cash_sales = conn.execute(
-        """SELECT COALESCE(SUM(sp.amount_cents),0) v
+        """SELECT COALESCE(SUM(CASE
+                    WHEN sp.payment_method='CASH' THEN sp.amount_cents
+                    WHEN sp.payment_method='CREDIT' THEN sp.amount_cents
+                    ELSE 0 END),0) v
            FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
-           WHERE s.session_id=? AND s.status='COMPLETED' AND sp.payment_method='CASH'""",
+           WHERE s.session_id=? AND s.status='COMPLETED'""",
         (session_id,)
     ).fetchone()["v"]
     cash_returns = conn.execute(
