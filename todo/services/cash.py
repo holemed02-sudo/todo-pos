@@ -31,7 +31,9 @@ def session_totals(conn, session_id):
         (session_id,)
     ).fetchone()["v"]
     cash_returns = conn.execute(
-        "SELECT COALESCE(SUM(COALESCE(refund_paid_cents,total_cents)),0) v FROM returns WHERE session_id=? AND refund_method='CASH'",
+        """SELECT COALESCE(SUM(rp.amount_cents),0) v
+           FROM return_payments rp JOIN returns r ON r.id=rp.return_id
+           WHERE r.session_id=? AND rp.payment_method='CASH'""",
         (session_id,)
     ).fetchone()["v"]
     expenses = conn.execute(
