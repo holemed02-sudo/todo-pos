@@ -111,6 +111,8 @@ class PaymentDialog(tk.Toplevel):
         self.focus_amount()
 
     def amount_changed(self, *_):
+        if not hasattr(self, 'card_entry') or not hasattr(self, 'confirm_button'):
+            return
         if self.method.get() == 'CASH':
             try:
                 self.cash_tendered_cents = to_cents(self.amount.get())
