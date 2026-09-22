@@ -192,6 +192,15 @@ CREATE TABLE IF NOT EXISTS returns (
     FOREIGN KEY(cashier_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS return_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    return_id INTEGER NOT NULL,
+    payment_method TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    FOREIGN KEY(return_id) REFERENCES returns(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_return_payments_return ON return_payments(return_id);
+
 CREATE TABLE IF NOT EXISTS return_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     return_id INTEGER NOT NULL,
@@ -401,4 +410,5 @@ def migrate(conn):
     """)
     # Backfill one payment row for legacy sales; new sales write their split directly.
     conn.execute("INSERT INTO sale_payments(sale_id,payment_method,amount_cents) SELECT s.id,s.payment_method,CASE WHEN s.payment_method='CASH' THEN s.paid_cents-s.change_cents ELSE s.paid_cents END FROM sales s WHERE NOT EXISTS (SELECT 1 FROM sale_payments sp WHERE sp.sale_id=s.id)")
-    conn.execute('PRAGMA user_version=121')
+    conn.execute("INSERT INTO return_payments(return_id,payment_method,amount_cents) SELECT r.id,r.refund_method,COALESCE(r.refund_paid_cents,r.total_cents) FROM returns r WHERE r.refund_method IN ('CASH','CARD') AND NOT EXISTS (SELECT 1 FROM return_payments rp WHERE rp.return_id=r.id)")
+    conn.execute('PRAGMA user_version=122')
