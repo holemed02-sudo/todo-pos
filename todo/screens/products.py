@@ -106,7 +106,7 @@ class ProductEditor(tk.Toplevel):
             self._keyboard_target = target
         if not self._is_text_input(self._keyboard_target):
             self._keyboard_target = self.e_bar
-        self.keyboard_frame.pack(side='bottom', fill='x', before=self.winfo_children()[0])
+        self.keyboard_frame.pack(side='bottom', fill='x')
         self.keyboard_visible = True
         self.after_idle(lambda: self._keyboard_target.focus_set() if self._is_text_input(self._keyboard_target) else None)
 
