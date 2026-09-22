@@ -1,5 +1,6 @@
 import csv
 import tkinter as tk
+from xml.sax.saxutils import escape
 from datetime import date, timedelta
 from tkinter import ttk,filedialog,messagebox
 from database import connect
@@ -10,7 +11,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -72,6 +73,24 @@ class JournalFrame(ttk.Frame):
         ttk.Label(w,text=f"Total {fmt(total)} · Coût {fmt(cost)} · Marge {fmt(total-cost)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def article_report(self):self.detail_report("article")
     def family_report(self):self.detail_report("family")
+    def export_pdf(self):
+        p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Exporter journal PDF")
+        if not p:return
+        rows=self.rows()
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Spacer
+            styles=getSampleStyleSheet();doc=SimpleDocTemplate(p,pagesize=landscape(A4),rightMargin=24,leftMargin=24,topMargin=24,bottomMargin=24)
+            data=[["Ticket","Date","Caissier","Paiement","Total","Coût","Marge"]];total=cost=0
+            for r in rows:
+                total+=r["total_cents"];cost+=r["cost"];data.append([r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(r["total_cents"]-r["cost"],"")])
+            table=Table(data,repeatRows=1,colWidths=[120,120,95,70,75,75,75]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8),("ALIGN",(4,1),(-1,-1),"RIGHT"),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
+            title=Paragraph(f"Journal des ventes — {escape(self.date_from.get())} au {escape(self.date_to.get())}",styles["Title"])
+            summary=Paragraph(f"{len(rows)} ticket(s) — Ventes nettes {fmt(total)} — Coût {fmt(cost)} — Marge brute {fmt(total-cost)}",styles["Heading3"])
+            doc.build([title,Spacer(1,10),summary,Spacer(1,10),table]);messagebox.showinfo("ToDo","PDF exporté.",parent=self)
+        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export(self):
         p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title="Exporter journal")
         if not p:return
