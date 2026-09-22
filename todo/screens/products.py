@@ -440,7 +440,29 @@ class ProductsFrame(ttk.Frame):
             if errors:
                 messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
             if not preview:raise ValueError("Aucun article valide.")
-            if not messagebox.askyesno("Import Excel",f"{len(preview)} article(s) valides. Importer maintenant ?",parent=self):return
+            # Preview + conflict scan. Duplicate barcodes are legal in ToDo, but the operator
+            # must see them before import because they will trigger the product chooser at sale.
+            with connect() as c:
+                existing={r["barcode"] for r in c.execute("SELECT DISTINCT barcode FROM product_barcodes WHERE barcode<>''")}
+            seen={};conflicts=[]
+            for line,barcode,name,cat,buy,sell,stock,alert in preview:
+                if not barcode:continue
+                if barcode in existing:conflicts.append(f"Ligne {line}: {barcode} existe déjà — {name}")
+                if barcode in seen:conflicts.append(f"Ligne {line}: {barcode} répété dans Excel (ligne {seen[barcode]})")
+                else:seen[barcode]=line
+            w=tk.Toplevel(self);w.title("Aperçu import Excel");w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
+            tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
+            for key,title,width in [("line","Ligne",55),("barcode","Barcode",145),("name","Article",220),("cat","Famille",120),("buy","Achat",75),("sell","Vente",75),("stock","Stock",70),("alert","Alerte",70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
+            tree.pack(fill="both",expand=True,padx=10,pady=10)
+            for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",f"{row[6]:g}",f"{row[7]:g}"))
+            warning=ttk.Label(w,text=(f"⚠ {len(conflicts)} conflit(s) barcode détecté(s). Les doublons sont autorisés et demanderont un choix à la vente." if conflicts else "✓ Aucun conflit barcode détecté."),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
+            warning.pack(anchor="w",padx=12)
+            if conflicts:ttk.Label(w,text="\n".join(conflicts[:6]),wraplength=930).pack(anchor="w",padx=12,pady=4)
+            decision={"ok":False}
+            def accept():decision["ok"]=True;w.destroy()
+            buttons=ttk.Frame(w);buttons.pack(fill="x",padx=10,pady=10);ttk.Button(buttons,text="Annuler",command=w.destroy).pack(side="right");ttk.Button(buttons,text=f"Importer {len(preview)} article(s)",style="Primary.TButton",command=accept).pack(side="right",padx=8)
+            self.wait_window(w)
+            if not decision["ok"]:return
             with connect() as c:
                 c.execute("BEGIN IMMEDIATE");require_admin(c)
                 for _,barcode,name,cat,buy,sell,stock,alert in preview:
