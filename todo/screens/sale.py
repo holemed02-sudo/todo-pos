@@ -52,6 +52,7 @@ class SaleFrame(ttk.Frame):
         self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))
         self.quantity_entry.pack(side='left')
         self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
+        ttk.Button(searchbar,text='×2',command=self.double_scan_quantity).pack(side='left',padx=(5,0),ipadx=5)
         self.entry.bind('<Return>',self.confirm_search)
         self.entry.bind('<KeyRelease>',self.schedule_search)
         self.entry.bind('<Down>',self.focus_catalog)
@@ -95,11 +96,15 @@ class SaleFrame(ttk.Frame):
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
         ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
+        keypad=ttk.LabelFrame(left,text='Pavé numérique / الأرقام',padding=5);keypad.pack(fill='x',pady=(8,0))
+        for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
+            ttk.Button(keypad,text=key,command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=5)
+        for col in range(3):keypad.columnconfigure(col,weight=1)
         checkout_area=ttk.Frame(right,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
         actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
         ttk.Button(checkout_area,text='Fonctions / الوظائف',command=self.functions).pack(fill='x',pady=4)
-        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
+        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
         self.total_label=ttk.Label(checkout_area,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
@@ -123,6 +128,30 @@ class SaleFrame(ttk.Frame):
             binding=app.bind(sequence,lambda e,c=command:self.shortcut(e,c),add='+')
             self.bindings.append((sequence,binding))
         self.render_products();self.refresh();self.after_idle(self.focus_search)
+
+    def double_scan_quantity(self):
+        try:
+            value=float(self.scan_quantity.get().replace(',','.'))
+            if not math.isfinite(value) or value<=0:raise ValueError()
+            self.scan_quantity.set(f"{value*2:g}")
+        except ValueError:
+            self.scan_quantity.set('2')
+        self.quantity_entry.focus_set();self.quantity_entry.selection_range(0,'end')
+
+    def double_selected(self):
+        index=self.selected()
+        if index is not None:self.update_quantity(index,self.cart[index]['qty']*2)
+
+    def keypad_press(self,key):
+        target=self.quantity_entry if self.quantity_entry.focus_get() is self.quantity_entry else self.entry
+        if key=='⌫':
+            try:
+                start=target.index(tk.INSERT)
+                if start>0:target.delete(start-1,start)
+            except tk.TclError:pass
+        else:
+            target.insert(tk.INSERT,key)
+        target.focus_set()
 
     def shortcut(self,event,command):
         if self.winfo_viewable() and event.widget.winfo_toplevel()==self.app:
