@@ -11,7 +11,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -73,6 +73,25 @@ class JournalFrame(ttk.Frame):
         ttk.Label(w,text=f"Total {fmt(total)} · Coût {fmt(cost)} · Marge {fmt(total-cost)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def article_report(self):self.detail_report("article")
     def family_report(self):self.detail_report("family")
+    def export_excel(self):
+        p=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title="Exporter journal Excel")
+        if not p:return
+        rows=self.rows()
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font,PatternFill,Alignment
+            wb=Workbook();ws=wb.active;ws.title="Journal ventes"
+            headers=["ID","Ticket","Date","Caissier","Paiement","Total","Coût","Marge brute"];ws.append(headers)
+            for cell in ws[1]:cell.font=Font(bold=True,color="FFFFFF");cell.fill=PatternFill("solid",fgColor="2563EB");cell.alignment=Alignment(horizontal="center")
+            total=cost=0
+            for r in rows:
+                total+=r["total_cents"];cost+=r["cost"];ws.append([r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],r["total_cents"]/100,r["cost"]/100,(r["total_cents"]-r["cost"])/100])
+            ws.append([]);ws.append(["","","","","TOTAL",total/100,cost/100,(total-cost)/100])
+            for col,width in {"A":8,"B":22,"C":20,"D":18,"E":14,"F":14,"G":14,"H":16}.items():ws.column_dimensions[col].width=width
+            for row in ws.iter_rows(min_row=2,min_col=6,max_col=8):
+                for cell in row:cell.number_format='#,##0.00'
+            ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions;wb.save(p);messagebox.showinfo("ToDo","Excel exporté.",parent=self)
+        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export_pdf(self):
         p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Exporter journal PDF")
         if not p:return
