@@ -113,6 +113,12 @@ class SettingsFrame(ttk.Frame):
         ttk.Label(p,text='Connecteur tiroir').grid(row=4,column=0,sticky='w')
         ttk.Combobox(p,textvariable=self.drawer_pin,values=['0','1'],state='readonly',width=5).grid(row=4,column=1,sticky='w',padx=8)
         ttk.Button(p,text='Enregistrer impression',command=self.save).grid(row=4,column=2)
+        d=ttk.LabelFrame(self,text="Écran client / شاشة الزبون",padding=10);d.pack(fill="x",pady=10)
+        self.customer_seconds=tk.StringVar(value=get_setting("customer_slide_seconds","6"))
+        ttk.Label(d,text="Durée de chaque image (secondes)").pack(side="left")
+        ttk.Spinbox(d,from_=2,to=120,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
+        ttk.Label(d,text="Dossier : customer_media · PNG/JPG/WEBP · format conseillé 16:9",foreground="#475569").pack(side="left",padx=12)
+        ttk.Button(d,text="Tester écran client",command=self.test_customer).pack(side="right")
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
         ttk.Button(b,text="Restaurer backup",command=self.restore).pack(side="left",padx=4)
@@ -130,7 +136,16 @@ class SettingsFrame(ttk.Frame):
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get())
+        try:
+            seconds=int(self.customer_seconds.get())
+            if seconds<2 or seconds>120:raise ValueError()
+        except ValueError:
+            messagebox.showerror("ToDo","Durée écran client entre 2 et 120 secondes.",parent=self);return
+        set_setting("customer_slide_seconds",str(seconds))
         messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
+    def test_customer(self):
+        self.app.toggle_customer_display()
+
     def refresh_printers(self):
         from services.printers import installed_printers
         try:self.printer_choice['values']=installed_printers()
