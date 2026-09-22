@@ -40,8 +40,11 @@ class PaymentDialog(tk.Toplevel):
         self.entry.pack(fill='x', pady=8)
         notes = ttk.Frame(body)
         notes.pack(fill='x', pady=6)
-        for value in (20, 50, 100, 200):
+        for value in (200, 100, 50, 20, 10, 5, 2, 1):
             ttk.Button(notes, text=f'{value} DH', command=lambda n=value: self.set_amount(n)).pack(side='left', expand=True, fill='x', padx=3)
+        coins = ttk.Frame(body)
+        coins.pack(fill='x', pady=(0, 6))
+        ttk.Button(coins, text='0,50 DH', command=lambda: self.set_amount(0.5)).pack(side='left', expand=True, fill='x', padx=3)
         ttk.Button(body, text='Montant exact / المبلغ بالضبط', command=self.exact).pack(fill='x', pady=4)
         self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=14)
         self.change.pack(fill='x', pady=14)
