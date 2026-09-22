@@ -88,14 +88,16 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert VirtualKeyboard._instance and VirtualKeyboard._instance.winfo_exists()
     VirtualKeyboard._instance._close()
     assert str(pid) in sale.products.get_children(), 'Products without images must be searchable'
-    assert len(sale.card_inner.winfo_children())>=1, 'Tactile grid must include products without barcodes'
+    # Photo grid is image-driven. Staff attach images only to barcode-problem exceptions;
+    # the barcode itself may be real, shared, virtual or manually entered.
     with connect() as c:
-        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('TEST Barcode Product',400,1)")
-        barcode_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        c.execute("INSERT INTO product_barcodes(product_id,barcode,is_primary,qty_multiplier) VALUES(?,?,1,1)",(barcode_pid,'REGULAR123'))
+        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Exception',400,1,'missing-test-image.jpg')")
+        photo_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,is_primary,qty_multiplier) VALUES(?,?,1,1)",(photo_pid,'REGULAR123'))
     sale.refresh_catalog();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
-    assert 'TEST Barcode Product' not in tactile_names, 'Barcode products must stay out of tactile exception grid'
+    assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
+    assert 'TEST Photo Exception' in tactile_names, 'Image-assigned exceptions must appear even when they have a barcode'
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
