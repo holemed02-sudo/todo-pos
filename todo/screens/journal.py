@@ -53,7 +53,7 @@ class JournalFrame(ttk.Frame):
         for r in rows:
             margin=int(r["total_cents"]-r["cost"]);total+=r["total_cents"];cost+=r["cost"]
             pay=r["payment_method"]
-            if pay=="MIXED":pay=f"MIXED (Cash {fmt(r[\'cash_paid\'],\'\')} + Card {fmt(r[\'card_paid\'],\'\')})"
+            if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"],""),fmt(r["card_paid"],""))
             self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
         self.summary.config(text=f"{len(rows)} ticket(s) · Ventes nettes {fmt(total)} · Coût {fmt(cost)} · Marge brute {fmt(total-cost)}")
     def detail_report(self,mode):
