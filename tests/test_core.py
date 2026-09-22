@@ -31,6 +31,18 @@ class CoreTests(unittest.TestCase):
   with db.connect() as c:return c.execute('SELECT id FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0]
  def stock(self):
   with db.connect() as c:return c.execute('SELECT stock_qty FROM products WHERE id=?',(self.pid,)).fetchone()[0]
+ def test_mixed_cash_card_payment_tracks_only_cash_in_drawer(self):
+  sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=10000)],'CASH',10000,payments=[('CASH',3000),('CARD',7000)])
+  with db.connect() as c:
+   row=c.execute('SELECT payment_method,paid_cents,change_cents FROM sales WHERE id=?',(sale['id'],)).fetchone()
+   self.assertEqual(tuple(row),('MIXED',10000,0))
+   parts=[tuple(r) for r in c.execute('SELECT payment_method,amount_cents FROM sale_payments WHERE sale_id=? ORDER BY payment_method',(sale['id'],))]
+   self.assertEqual(parts,[('CARD',7000),('CASH',3000)])
+  self.assertEqual(close_session(self.session,13000)[:2],(13000,0))
+ def test_invalid_mixed_payment_rolls_back(self):
+  with self.assertRaises(ValueError):
+   complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=10000)],'CASH',10000,payments=[('CASH',3000),('CARD',6000)])
+  with db.connect() as c:self.assertEqual(c.execute('SELECT count(*) FROM sales').fetchone()[0],0)
  def test_sale_return_cash(self):
   sale=self.sell(2,450);self.assertEqual(self.stock(),18)
   ret=create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
