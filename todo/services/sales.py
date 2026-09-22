@@ -177,6 +177,7 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
                 cash_target=rounded(Decimal(cumulative)*Decimal(original.get('CASH',0))/denominator)
                 cash_before=rounded(Decimal(prior)*Decimal(original.get('CASH',0))/denominator)
                 cash_refund=max(0,cash_target-cash_before)
+                card_refund=max(0,total-cash_refund)
                 refund_method='CASH' if cash_refund==total else ('CARD' if cash_refund==0 else 'MIXED')
             else:
                 refund_method='CARD' if sale['payment_method']=='CARD' else 'CASH'
@@ -186,6 +187,11 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
             refund_paid=max(0,total-max(0,balance))
         no=return_number()
         rid=conn.execute('INSERT INTO returns(return_no,sale_id,session_id,cashier_user_id,total_cents,refund_method,reason,refund_paid_cents) VALUES(?,?,?,?,?,?,?,?)',(no,sale_id,session_id,user_id,total,refund_method,reason,refund_paid)).lastrowid
+        if refund_method=='MIXED':
+            conn.execute("INSERT INTO return_payments(return_id,payment_method,amount_cents) VALUES(?,?,?)",(rid,'CASH',cash_refund))
+            conn.execute("INSERT INTO return_payments(return_id,payment_method,amount_cents) VALUES(?,?,?)",(rid,'CARD',card_refund))
+        elif refund_method in ('CASH','CARD'):
+            conn.execute("INSERT INTO return_payments(return_id,payment_method,amount_cents) VALUES(?,?,?)",(rid,refund_method,refund_paid))
         for si,qty,due in validated:
             conn.execute('INSERT INTO return_items(return_id,sale_item_id,product_id,qty,unit_price_cents,line_total_cents) VALUES(?,?,?,?,?,?)',(rid,si['id'],si['product_id'],qty,si['unit_price_cents'],due))
             misc=conn.execute('SELECT is_misc FROM products WHERE id=?',(si['product_id'],)).fetchone()[0]
