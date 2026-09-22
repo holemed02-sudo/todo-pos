@@ -55,7 +55,7 @@ class PaymentDialog(tk.Toplevel):
         self.confirm_button = ttk.Button(controls, text='VALIDER / تأكيد  Entrée', style='Primary.TButton', command=self.confirm)
         self.confirm_button.pack(fill='x', ipady=12, pady=8)
         ttk.Button(controls, text='Retour au ticket / رجوع  Esc', command=self.destroy).pack(fill='x', ipady=6)
-        self.amount.trace_add('write', lambda *_: self.update_amount())
+        self.amount.trace_add('write', self.amount_changed)
         self.bind('<Return>', lambda e: self.confirm())
         self.bind('<Escape>', lambda e: self.destroy())
         self.bind('<F2>', lambda e: self.choose_method('CASH'))
