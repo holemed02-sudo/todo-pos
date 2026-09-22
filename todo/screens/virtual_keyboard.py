@@ -36,7 +36,7 @@ _ROW3 = [
     ('⇧', '⇧', 2.2),
 ]
 _ROW4 = [
-    ('Sym', 'Sym', 1.5),
+    ('Sym', 'Sym', 1.2), ('AR', 'AR', 1.2),
     ('←', '←', 1),
     (' ', ' ', 5.5),
     ('→', '→', 1),
@@ -71,9 +71,15 @@ _SYM4 = [
     ('.', '.', 1), (',', ',', 1), ('✕', '✕', 1.5),
 ]
 
+_AR0=[('ض','ض',1),('ص','ص',1),('ث','ث',1),('ق','ق',1),('ف','ف',1),('غ','غ',1),('ع','ع',1),('ه','ه',1),('خ','خ',1),('ح','ح',1),('ج','ج',1),('د','د',1),('⌫','⌫',1.8)]
+_AR1=[('ش','ش',1),('س','س',1),('ي','ي',1),('ب','ب',1),('ل','ل',1),('ا','ا',1),('ت','ت',1),('ن','ن',1),('م','م',1),('ك','ك',1),('ط','ط',1),('↵','↵',1.8)]
+_AR2=[('ئ','ئ',1),('ء','ء',1),('ؤ','ؤ',1),('ر','ر',1),('ى','ى',1),('ة','ة',1),('و','و',1),('ز','ز',1),('ظ','ظ',1),('ذ','ذ',1)]
+_AR3=[('FR','FR',1.5),('123','123',1.5),('←','←',1),(' ',' ',5),('→','→',1),('.', '.',1),('،','،',1),('✕','✕',1.5)]
+
 _PAGES = {
     'alpha': [_ROW0, _ROW1, _ROW2, _ROW3, _ROW4],
     'sym':   [_SYM0, _SYM1, _SYM2, _SYM3, _SYM4],
+    'ar':    [_AR0, _AR1, _AR2, _AR3],
 }
 
 # ── Colors ─────────────────────────────────────────────────────────────────
@@ -187,7 +193,7 @@ class VirtualKeyboard(tk.Toplevel):
                     self._make_key(row_frame, *cell)
 
     def _make_key(self, parent, norm, shifted, rel_w):
-        special = norm in ('⌫', '↵', 'Tab', 'Maj', '⇧', 'Sym', 'ABC', '✕', '←', '→', ' ')
+        special = norm in ('⌫', '↵', 'Tab', 'Maj', '⇧', 'Sym', 'ABC', 'AR', 'FR', '123', '✕', '←', '→', ' ')
         bg      = _KEY_SP if special else _KEY_BG
         ipadx   = max(4, int(rel_w * 6))
         btn = tk.Button(
@@ -212,8 +218,12 @@ class VirtualKeyboard(tk.Toplevel):
             self.destroy(); return
         if norm == 'Sym':
             self._build_page('sym'); return
-        if norm == 'ABC':
+        if norm in ('ABC','FR'):
             self._build_page('alpha'); return
+        if norm == 'AR':
+            self._build_page('ar'); return
+        if norm == '123':
+            self._build_page('sym'); return
         if norm in ('⇧', 'Maj'):
             self._shift = not self._shift
             self._build_page(self._page); return
