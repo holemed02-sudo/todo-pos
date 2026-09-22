@@ -27,6 +27,7 @@ class ProductEditor(tk.Toplevel):
         # entirely inside this window.
         self.sku=tk.StringVar();self.alias=tk.StringVar();self.supplier_code=tk.StringVar();self.fraction=tk.BooleanVar();self.stock_note=tk.StringVar()
         self.bar=tk.StringVar();self.name=tk.StringVar();self.cat=tk.StringVar()
+        self.barcode_rows=[]
         self.buy=tk.StringVar(value="0");self.sell=tk.StringVar(value="0");self.stock=tk.StringVar(value="0");self.alert=tk.StringVar(value="0")
         root=ttk.Frame(self,padding=15);root.pack(fill="both",expand=True)
         self._keyboard_target = None
@@ -55,13 +56,17 @@ class ProductEditor(tk.Toplevel):
         self.e_bar.bind("<Return>",lambda e:self.e_name.focus_set())
         chain=[(self.e_name,self.e_buy),(self.e_buy,self.e_sell),(self.e_sell,self.e_stock),(self.e_stock,self.e_alert)]
         for a,b in chain:a.bind("<Return>",lambda e,n=b:n.focus_set())
-        ttk.Label(left,text="Promotions et prix par quantité",font=("Segoe UI",10,"bold")).grid(row=7,column=0,columnspan=2,sticky="w",pady=(16,4))
+        ttk.Label(left,text="Codes-barres / Packs",font=("Segoe UI",10,"bold")).grid(row=7,column=0,columnspan=2,sticky="w",pady=(14,4))
+        self.barcodes_frame=ttk.Frame(left);self.barcodes_frame.grid(row=8,column=0,columnspan=2,sticky="ew")
+        ttk.Button(left,text="+ Ajouter barcode / pack",command=self.add_barcode_row).grid(row=9,column=0,columnspan=2,sticky="w",pady=4)
+        ttk.Label(left,text="Carton/pack : multiplicateur + prix total optionnel.",wraplength=520).grid(row=10,column=0,columnspan=2,sticky="w")
+        ttk.Label(left,text="Promotions et prix par quantité",font=("Segoe UI",10,"bold")).grid(row=11,column=0,columnspan=2,sticky="w",pady=(10,4))
         self.offer_rows=[]
-        self.offers_frame=ttk.Frame(left);self.offers_frame.grid(row=8,column=0,columnspan=2,sticky="ew")
+        self.offers_frame=ttk.Frame(left);self.offers_frame.grid(row=12,column=0,columnspan=2,sticky="ew")
         self.add_offer_row()
-        ttk.Button(left,text="+ Ajouter une offre",command=self.add_offer_row).grid(row=9,column=0,columnspan=2,sticky="w",pady=4)
-        ttk.Label(left,text="Prix/unité : dès la quantité indiquée.\nLot : groupes complets, reste au prix normal.\nSi plusieurs offres : le plus grand seuil atteint s'applique.",wraplength=440).grid(row=10,column=0,columnspan=2,sticky="w",pady=6)
-        b=ttk.Frame(left);b.grid(row=11,column=0,columnspan=2,sticky="e",pady=16)
+        ttk.Button(left,text="+ Ajouter une offre",command=self.add_offer_row).grid(row=13,column=0,columnspan=2,sticky="w",pady=4)
+        ttk.Label(left,text="Prix/unité : dès la quantité indiquée.\nLot : groupes complets, reste au prix normal.\nSi plusieurs offres : le plus grand seuil atteint s'applique.",wraplength=440).grid(row=14,column=0,columnspan=2,sticky="w",pady=6)
+        b=ttk.Frame(left);b.grid(row=15,column=0,columnspan=2,sticky="e",pady=16)
         ttk.Button(b,text="Enregistrer",command=self.save).pack(side="left",padx=4)
         ttk.Button(b,text="Annuler",command=self.destroy).pack(side="left")
         ttk.Button(b,text="⌨ Clavier",command=self.toggle_embedded_keyboard).pack(side="left",padx=(10,0))
@@ -158,6 +163,29 @@ class ProductEditor(tk.Toplevel):
         self._keyboard_target = w
         self.after_idle(w.focus_set)
 
+    def add_barcode_row(self, barcode="", multiplier="1", price=""):
+        row=ttk.Frame(self.barcodes_frame);row.pack(fill="x",pady=2)
+        code=tk.StringVar(value=str(barcode));mult=tk.StringVar(value=str(multiplier));pack=tk.StringVar(value=str(price))
+        ttk.Entry(row,textvariable=code,width=22).pack(side="left",padx=3);ttk.Label(row,text="×").pack(side="left");ttk.Entry(row,textvariable=mult,width=7).pack(side="left",padx=3);ttk.Label(row,text="Prix pack").pack(side="left");ttk.Entry(row,textvariable=pack,width=10).pack(side="left",padx=3)
+        item=[code,mult,pack,row]
+        def remove():
+            row.destroy()
+            if item in self.barcode_rows:self.barcode_rows.remove(item)
+        ttk.Button(row,text="×",width=3,command=remove).pack(side="left")
+        self.barcode_rows.append(item)
+
+    def read_barcodes(self):
+        result=[];seen=set();primary=self.bar.get().strip()
+        if primary:seen.add(primary);result.append((primary,1.0,None))
+        for code,mult,pack,_ in self.barcode_rows:
+            value=code.get().strip()
+            if not value:continue
+            if value in seen:raise ValueError("Code-barres répété dans la même fiche.")
+            qty=float((mult.get() or "1").replace(",", "."));price=to_cents(pack.get()) if pack.get().strip() else None
+            if not math.isfinite(qty) or qty<=0 or (price is not None and price<0):raise ValueError("Barcode / pack invalide")
+            seen.add(value);result.append((value,qty,price))
+        return result
+
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
         minimum_var=tk.StringVar(value=str(minimum));price_var=tk.StringVar(value=str(price))
@@ -246,9 +274,15 @@ class ProductEditor(tk.Toplevel):
         with connect() as c:
             p=c.execute("""SELECT p.*,COALESCE(cat.name,'') category FROM products p LEFT JOIN categories cat ON cat.id=p.category_id WHERE p.id=?""",(self.pid,)).fetchone()
             b=c.execute("SELECT barcode FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(self.pid,)).fetchone()
+            bars=c.execute("SELECT barcode,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",(self.pid,)).fetchall()
             rs=c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=? ORDER BY min_qty",(self.pid,)).fetchall()
         self.sku.set(p["sku"]);self.alias.set(p["alias"]);self.supplier_code.set(p["supplier_code"]);self.fraction.set(bool(p["allow_fraction"]))
         self.bar.set(b["barcode"] if b else "");self.name.set(p["name"]);self.cat.set(p["category"])
+        for child in self.barcodes_frame.winfo_children():child.destroy()
+        self.barcode_rows=[]
+        for extra in bars[1:]:
+            price="" if extra["price_override_cents"] is None else f"{extra['price_override_cents']/100:.2f}"
+            self.add_barcode_row(extra["barcode"],f"{extra['qty_multiplier']:g}",price)
         self.buy.set(f"{p['purchase_price_cents']/100:.2f}");self.sell.set(f"{p['sale_price_cents']/100:.2f}")
         self.stock.set(f"{p['stock_qty']:g}");self.alert.set(f"{p['alert_qty']:g}");self.img_rel=p["image_path"] or ""
         self.loaded_stock=float(p['stock_qty'])
@@ -269,6 +303,7 @@ class ProductEditor(tk.Toplevel):
             selected_cats=[cid for cid,(var,_) in self.cat_vars.items() if var.get()]
             cat=next((name for cid,(_,name) in self.cat_vars.items() if cid in selected_cats),'Général') if selected_cats else 'Général'
             rules=self.read_offers()
+            barcodes=self.read_barcodes()
             img=self.img_rel
             if self.img_source:img=import_image(self.img_source)
             with connect() as c:
@@ -288,12 +323,8 @@ class ProductEditor(tk.Toplevel):
                     apply_stock_movement(c,pid,stock-old,'ADJUSTMENT' if self.pid else 'OPENING',buy,'product',pid,self.stock_note.get().strip() or ('Correction depuis la fiche produit' if self.pid else 'Stock initial'))
                 c.execute('UPDATE products SET sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?',(self.sku.get().strip(),self.alias.get().strip(),self.supplier_code.get().strip(),int(self.fraction.get()),pid))
                 audit(c,'PRODUCT_SAVE',pid)
-                first=c.execute("SELECT id FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(pid,)).fetchone()
-                if barcode:
-                    if first:c.execute("UPDATE product_barcodes SET barcode=? WHERE id=?",(barcode,first["id"]))
-                    else:c.execute("INSERT INTO product_barcodes(product_id,barcode) VALUES(?,?)",(pid,barcode))
-                elif first:
-                    raise ValueError('Pour retirer un code existant, utilisez la gestion des codes-barres.')
+                c.execute("DELETE FROM product_barcodes WHERE product_id=?",(pid,))
+                c.executemany("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,?,?,?)",[(pid,code,mult,price) for code,mult,price in barcodes])
                 c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in rules])
                 c.commit()
