@@ -88,7 +88,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert VirtualKeyboard._instance and VirtualKeyboard._instance.winfo_exists()
     VirtualKeyboard._instance._close()
     assert str(pid) in sale.products.get_children(), 'Products without images must be searchable'
-    assert len(sale.card_inner.winfo_children())==0, 'Photo grid must exclude products without images'
+    assert len(sale.card_inner.winfo_children())>=1, 'Tactile grid must include products without images using placeholders'
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
