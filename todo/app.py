@@ -247,53 +247,31 @@ class ToDoApp(tk.Tk):
 
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
-            self.customer_window.destroy()
-            self.customer_window = None
-            self.customer_label = None
-            return
-
-        w = tk.Toplevel(self)
-        self.customer_window = w
-        w.title("ToDo — Écran client")
-        w.geometry("900x600")
-
-        ttk.Label(
-            w,
-            text=get_setting("shop_name", "ToDo"),
-            font=("Segoe UI", 28, "bold"),
-        ).pack(pady=20)
-
-        self.customer_label = ttk.Label(
-            w,
-            text="Bienvenue",
-            font=("Segoe UI", 18),
-            justify="left",
-        )
-        self.customer_label.pack(fill="both", expand=True, padx=30, pady=20)
-
-        ttk.Label(
-            w,
-            text="جر النافذة للشاشة الثانية ثم Full Screen.",
-            font=("Segoe UI", 10),
-        ).pack(pady=10)
+            self.customer_window.destroy();self.customer_window=None;self.customer_label=None;return
+        w=tk.Toplevel(self);self.customer_window=w;w.title("ToDo — Écran client");w.configure(bg="#0F172A")
+        screens=[]
+        try:
+            from screeninfo import get_monitors
+            screens=get_monitors()
+        except Exception:pass
+        if len(screens)>1:
+            main_x=self.winfo_rootx();target=max(screens,key=lambda m:abs(m.x-main_x))
+            w.geometry(f"{target.width}x{target.height}+{target.x}+{target.y}");w.overrideredirect(True)
+        else:
+            w.geometry("1280x720")
+        w.bind("<Escape>",lambda e:self.toggle_customer_display())
+        tk.Label(w,text=get_setting("shop_name","ToDo"),bg="#0F172A",fg="white",font=("Segoe UI",34,"bold")).pack(pady=(35,8))
+        tk.Label(w,text="مرحبا بكم · Bienvenue",bg="#0F172A",fg="#FACC15",font=("Segoe UI",22,"bold")).pack()
+        self.customer_label=tk.Label(w,text="العروض والإعلانات\nOffres & promotions",bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center")
+        self.customer_label.pack(fill="both",expand=True,padx=50,pady=35)
+        tk.Label(w,text="TODO MARKET",bg="#DC2626",fg="white",font=("Segoe UI",18,"bold"),pady=10).pack(fill="x",side="bottom")
+        w.lift()
 
     def update_customer_display(self, cart, total):
-        if not (
-            self.customer_window
-            and self.customer_window.winfo_exists()
-            and self.customer_label
-        ):
-            return
-
-        lines = []
-        for x in cart[-8:]:
-            lines.append(f"{x['name']}   x{x['qty']:g}")
-
-        lines.append(
-            "\nTOTAL: "
-            + f"{total/100:.2f} {get_setting('currency', 'DH')}"
-        )
-        self.customer_label.config(text="\n".join(lines))
+        # Customer screen is intentionally advertising-first: cashier prices,
+        # ticket lines and totals are never mirrored to the public display.
+        if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_label):return
+        self.customer_label.config(text="العروض والإعلانات\nOffres & promotions")
 
     def lock_cashier(self):
         from screens.cashier_tools import CashierLock
