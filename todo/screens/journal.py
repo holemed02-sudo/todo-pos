@@ -10,7 +10,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -47,6 +47,31 @@ class JournalFrame(ttk.Frame):
             margin=int(r["total_cents"]-r["cost"]);total+=r["total_cents"];cost+=r["cost"]
             self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
         self.summary.config(text=f"{len(rows)} ticket(s) · Ventes nettes {fmt(total)} · Coût {fmt(cost)} · Marge brute {fmt(total-cost)}")
+    def detail_report(self,mode):
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+        if mode=="article":
+            group="p.id,p.name";label="Article";select="p.name"
+        else:
+            group="COALESCE(cat.id,0),COALESCE(cat.name,'Sans famille')";label="Famille";select="COALESCE(cat.name,'Sans famille')"
+        sql=f"""SELECT {select} label,SUM(si.qty) qty,SUM(si.line_total_cents) gross,
+            SUM(si.cost_price_cents*si.qty) cost
+            FROM sale_items si JOIN sales s ON s.id=si.sale_id JOIN products p ON p.id=si.product_id
+            LEFT JOIN categories cat ON cat.id=p.category_id
+            WHERE date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY {group} ORDER BY gross DESC"""
+        with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
+        w=tk.Toplevel(self);w.title(f"Rapport par {label}");w.geometry("850x560");w.transient(self.winfo_toplevel())
+        tree=ttk.Treeview(w,columns=("label","qty","sales","cost","margin"),show="headings")
+        for key,title,width in [("label",label,280),("qty","Qté",90),("sales","Ventes",120),("cost","Coût",120),("margin","Marge brute",120)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="label" else "w")
+        tree.pack(fill="both",expand=True,padx=12,pady=12)
+        total=cost=0
+        for r in rows:
+            total+=r["gross"];cost+=r["cost"];tree.insert("","end",values=(r["label"],f"{r['qty']:g}",fmt(r["gross"],""),fmt(r["cost"],""),fmt(r["gross"]-r["cost"],"")))
+        ttk.Label(w,text=f"Total {fmt(total)} · Coût {fmt(cost)} · Marge {fmt(total-cost)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+    def article_report(self):self.detail_report("article")
+    def family_report(self):self.detail_report("family")
     def export(self):
         p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title="Exporter journal")
         if not p:return
