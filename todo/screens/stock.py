@@ -10,19 +10,37 @@ class StockFrame(ttk.Frame):
         ttk.Label(top,text="Stock / المخزون",font=("Segoe UI",22,"bold")).pack(side="left")
         ttk.Label(self,text="الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في Articles.",foreground="#475569").pack(anchor="w",pady=(0,8))
         ttk.Button(top,text="Ajustement",command=self.adjust).pack(side="right")
+        self.q=tk.StringVar();self.filter=tk.StringVar(value="Tous")
+        search=ttk.Entry(top,textvariable=self.q,width=24);search.pack(side="left",padx=(20,6));search.bind("<KeyRelease>",lambda e:self.refresh())
+        box=ttk.Combobox(top,textvariable=self.filter,values=["Tous","Alertes stock","Stock négatif"],state="readonly",width=15);box.pack(side="left");box.bind("<<ComboboxSelected>>",lambda e:self.refresh())
         ttk.Button(top,text="Historique",command=self.ledger).pack(side="right",padx=8)
         if app is not None:
             ttk.Button(top,text="Articles / المنتجات",command=lambda: app.show("products")).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         for c,h,w in [("id","ID",50),("name","Article",320),("stock","Stock",100),("alert","Alerte",90),("last","Dernier mouvement",220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
-        self.t.pack(fill="both",expand=True);self.refresh()
+        self.t.pack(fill="both",expand=True)
+        self.kpi=tk.Frame(self,bg="#F6F7FB");self.kpi.pack(fill="x",pady=(8,0))
+        self.kpi_values=[]
+        for title,bg in [("Articles","#2563EB"),("Alertes","#F59E0B"),("Stock négatif","#DC2626"),("Valeur achat","#16A34A"),("Valeur vente","#7C3AED")]:
+            card=tk.Frame(self.kpi,bg=bg,height=62);card.pack(side="left",fill="x",expand=True,padx=3);card.pack_propagate(False)
+            value=tk.Label(card,text="0",bg=bg,fg="white",font=("Segoe UI",15,"bold"));value.pack(anchor="w",padx=10,pady=(5,0));tk.Label(card,text=title,bg=bg,fg="white").pack(anchor="w",padx=10);self.kpi_values.append(value)
+        self.refresh()
     def refresh(self):
-        with connect() as c:r=c.execute("""SELECT p.id,p.name,p.stock_qty,p.alert_qty,
-            COALESCE((SELECT movement_type||' '||qty_delta||' @ '||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
-            FROM products p WHERE p.active=1 ORDER BY p.name""").fetchall()
+        q=f"%{self.q.get().strip()}%";extra=""
+        if self.filter.get()=="Alertes stock":extra=" AND p.stock_qty<=p.alert_qty"
+        elif self.filter.get()=="Stock négatif":extra=" AND p.stock_qty<0"
+        with connect() as c:
+            r=c.execute("""SELECT p.id,p.name,p.stock_qty,p.alert_qty,
+                COALESCE((SELECT movement_type||' '||qty_delta||' @ '||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
+                FROM products p WHERE p.active=1 AND p.name LIKE ?"""+extra+""" ORDER BY p.name""",(q,)).fetchall()
+            st=c.execute("""SELECT COUNT(*),COALESCE(SUM(CASE WHEN stock_qty<=alert_qty THEN 1 ELSE 0 END),0),COALESCE(SUM(CASE WHEN stock_qty<0 THEN 1 ELSE 0 END),0),COALESCE(SUM(stock_qty*purchase_price_cents),0),COALESCE(SUM(stock_qty*sale_price_cents),0) FROM products WHERE active=1""").fetchone()
+        for label,value in zip(self.kpi_values,[st[0],st[1],st[2],f"{st[3]/100:.2f}",f"{st[4]/100:.2f}"]):label.config(text=str(value))
         self.t.delete(*self.t.get_children())
-        for x in r:self.t.insert("", "end",values=(x["id"],x["name"],f"{x['stock_qty']:g}",f"{x['alert_qty']:g}",x["last"]))
+        for x in r:
+            tags=('negative',) if x['stock_qty']<0 else (('alert',) if x['stock_qty']<=x['alert_qty'] else ())
+            self.t.insert("", "end",values=(x["id"],x["name"],f"{x['stock_qty']:g}",f"{x['alert_qty']:g}",x["last"]),tags=tags)
+        self.t.tag_configure('negative',background='#FEE2E2',foreground='#991B1B');self.t.tag_configure('alert',background='#FEF3C7',foreground='#92400E')
     def adjust(self):
         s=self.t.selection()
         if not s:return
