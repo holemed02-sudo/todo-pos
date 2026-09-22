@@ -25,7 +25,9 @@ def validate_session(conn,session_id,user_id):
 def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cents=0,held_id=None,client_id=None,payments=None):
     if not cart:
         raise ValueError('Ticket vide')
-    if payment_method not in ('CASH','CARD','CREDIT'):
+    if payments is None and payment_method not in ('CASH','CARD','CREDIT'):
+        raise ValueError('Mode de paiement invalide')
+    if payments is not None and payment_method not in ('CASH','CARD','MIXED'):
         raise ValueError('Mode de paiement invalide')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
