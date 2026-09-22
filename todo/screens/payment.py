@@ -18,6 +18,7 @@ class PaymentDialog(tk.Toplevel):
         self.transient(master.winfo_toplevel())
         self.method = tk.StringVar(value=method)
         self.amount = tk.StringVar(value=f'{total / 100:.2f}')
+        self.card_amount = tk.StringVar(value='0.00')
         self.print_ticket = tk.BooleanVar(value=False)
         self.cash_tendered_cents = total
         tk.Label(self, text='TOTAL À PAYER / المجموع', bg='#2563EB', fg='white',
