@@ -359,9 +359,9 @@ class SaleFrame(ttk.Frame):
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
         photo_filter=(self.query.get(),self.categories[self.cat.get()])
         if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
-        # Tactile cards are reserved for exceptions without a barcode. Barcode products
-        # stay on the fast scanner/search path so hundreds of regular items do not flood the grid.
-        photo_rows=search_products(*photo_filter,limit=61,tactile_only=True,offset=self.photo_offset)
+        # The tactile grid intentionally contains only products with an image.
+        # In this shop workflow, images are assigned only to barcode-problem exceptions.
+        photo_rows=search_products(*photo_filter,limit=61,images_only=True,offset=self.photo_offset)
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
