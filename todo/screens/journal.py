@@ -57,8 +57,10 @@ class JournalFrame(ttk.Frame):
             group="p.id,p.name";label="Article";select="p.name"
         else:
             group="COALESCE(cat.id,0),COALESCE(cat.name,'Sans famille')";label="Famille";select="COALESCE(cat.name,'Sans famille')"
-        sql=f"""SELECT {select} label,SUM(si.qty) qty,SUM(si.line_total_cents) gross,
-            SUM(si.cost_price_cents*si.qty) cost
+        sql=f"""SELECT {select} label,
+            SUM(si.qty-COALESCE((SELECT SUM(ri.qty) FROM return_items ri WHERE ri.sale_item_id=si.id),0)) qty,
+            SUM(si.line_total_cents-COALESCE((SELECT SUM(ri.total_cents) FROM return_items ri WHERE ri.sale_item_id=si.id),0)) gross,
+            SUM(si.cost_price_cents*(si.qty-COALESCE((SELECT SUM(ri.qty) FROM return_items ri WHERE ri.sale_item_id=si.id),0))) cost
             FROM sale_items si JOIN sales s ON s.id=si.sale_id JOIN products p ON p.id=si.product_id
             LEFT JOIN categories cat ON cat.id=p.category_id
             WHERE date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY {group} ORDER BY gross DESC"""
