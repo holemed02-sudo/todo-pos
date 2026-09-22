@@ -649,9 +649,9 @@ class SaleFrame(ttk.Frame):
             dialog.print_ticket.set(print_ticket and mode=='always')
             self.wait_window(dialog)
             if dialog.result is None:return
-            self.payment,paid,dialog_print=dialog.result
+            self.payment,paid,dialog_print,payments=dialog.result
             self.payment_label.config(text='Paiement : '+self.payment)
-            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
+            result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
             self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")
