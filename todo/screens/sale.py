@@ -107,7 +107,9 @@ class SaleFrame(ttk.Frame):
         for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
-        self.total_label=ttk.Label(checkout_area,text='',style='Total.TLabel');self.total_label.pack(anchor='e',pady=8)
+        total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
+        tk.Label(total_box,text='TOTAL NET',bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
+        self.total_label=tk.Label(total_box,text='',bg='#2563EB',fg='white',font=('Segoe UI',25,'bold'));self.total_label.pack(side='right')
         ttk.Button(checkout_area,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
         ttk.Button(checkout_area,text='SOLDER sans ticket',command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
         ttk.Label(right,text='Ticket en cours',style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
@@ -116,6 +118,8 @@ class SaleFrame(ttk.Frame):
         for key,label,width in [('qty','QTÉ',55),('price','P.U.',70),('discount','REMISE',75),('total','NET',85)]:
             self.ticket.heading(key,text=label);self.ticket.column(key,width=width,minwidth=40,anchor='e')
         self.ticket.tag_configure('offer',background='#DCFCE7',foreground='#166534')
+        self.ticket.tag_configure('even',background='#F8FAFC')
+        self.ticket.tag_configure('odd',background='#FFFFFF')
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
@@ -359,12 +363,12 @@ class SaleFrame(ttk.Frame):
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
-            card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=150,cursor='hand2')
+            card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',width=155,height=160,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
             thumb=self.thumbnail(row,90)
             picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
             tk.Label(card,text=row['name'],bg='white',font=('Segoe UI',9,'bold'),wraplength=140).pack()
-            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='white',fg='#2563EB').pack()
+            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#2563EB',fg='white',font=('Segoe UI',11,'bold'),pady=3).pack(fill='x')
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
@@ -488,7 +492,8 @@ class SaleFrame(ttk.Frame):
             name=x['name']+(f' · pack ×{step:g}' if step!=1 else '')
             quantity=f"{x['qty']/step:g}p" if step!=1 else f"{x['qty']:g}"
             price=fmt(line_total(x['unit_price_cents'],step),'')
-            self.ticket.insert('','end',iid=str(i),text=name,image=thumb,values=(quantity,price,fmt(gross-net,''),fmt(net,'')),tags=('offer',) if offer else ())
+            tag='offer' if offer else ('even' if i%2==0 else 'odd')
+            self.ticket.insert('','end',iid=str(i),text=name,image=thumb,values=(quantity,price,fmt(gross-net,''),fmt(net,'')),tags=(tag,))
         if self.cart:
             chosen=str(min(index if index is not None else len(self.cart)-1,len(self.cart)-1))
             self.ticket.selection_set(chosen);self.ticket.see(chosen)
