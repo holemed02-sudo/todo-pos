@@ -24,7 +24,7 @@ def validate(conn):
             actual={r[1] for r in conn.execute(f'PRAGMA table_info({table})')}
             if not needed.issubset(actual):
                 raise ValueError(f'Structure ToDo incompatible : {table}')
-    if conn.execute('PRAGMA user_version').fetchone()[0]>120:
+    if conn.execute('PRAGMA user_version').fetchone()[0]>121:
         raise ValueError('Sauvegarde issue d’une version plus récente de ToDo.')
 
 def create_backup():
