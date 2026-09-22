@@ -42,6 +42,7 @@ class ToDoApp(tk.Tk):
         self.shell = None
         self.lock_window = None
         self._keyboard_target = None
+        self.backup_after_id = None
 
         self.title("ToDo POS")
         self.geometry("460x330")
@@ -79,6 +80,23 @@ class ToDoApp(tk.Tk):
 
         self.apply_theme()
         self.show_login()
+        self.schedule_auto_backup()
+
+    def schedule_auto_backup(self):
+        if self.backup_after_id:
+            try:self.after_cancel(self.backup_after_id)
+            except Exception:pass
+            self.backup_after_id=None
+        try:minutes=int(get_setting("auto_backup_minutes","15") or 0)
+        except Exception:minutes=15
+        if minutes>0:self.backup_after_id=self.after(minutes*60000,self.run_auto_backup)
+
+    def run_auto_backup(self):
+        try:create_backup()
+        except Exception as e:
+            try:messagebox.showerror("Backup automatique",str(e),parent=self)
+            except Exception:pass
+        finally:self.schedule_auto_backup()
 
     def clear_root(self):
         for w in self.winfo_children():
