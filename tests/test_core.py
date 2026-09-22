@@ -39,6 +39,15 @@ class CoreTests(unittest.TestCase):
    parts=[tuple(r) for r in c.execute('SELECT payment_method,amount_cents FROM sale_payments WHERE sale_id=? ORDER BY payment_method',(sale['id'],))]
    self.assertEqual(parts,[('CARD',7000),('CASH',3000)])
   self.assertEqual(close_session(self.session,13000)[:2],(13000,0))
+ def test_mixed_method_and_auto_split_refund(self):
+  sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=2,unit_price_cents=5000)],'MIXED',10000,payments=[('CASH',3000),('CARD',7000)])
+  item=self.item(sale)
+  ret=create_return(sale['id'],self.session,self.uid,[(item,1)],refund_method='AUTO')
+  with db.connect() as c:
+   self.assertEqual(c.execute('SELECT refund_method FROM returns WHERE id=?',(ret['id'],)).fetchone()[0],'MIXED')
+   parts=[tuple(r) for r in c.execute('SELECT payment_method,amount_cents FROM return_payments WHERE return_id=? ORDER BY payment_method',(ret['id'],))]
+   self.assertEqual(parts,[('CARD',3500),('CASH',1500)])
+  self.assertEqual(close_session(self.session,11500)[:2],(11500,0))
  def test_invalid_mixed_payment_rolls_back(self):
   with self.assertRaises(ValueError):
    complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=10000)],'CASH',10000,payments=[('CASH',3000),('CARD',6000)])
