@@ -20,11 +20,17 @@ class ProductEditor(tk.Toplevel):
         self.pid=product_id; self.on_saved=on_saved
         self.loaded_stock=0
         self.img_source="";self.img_rel="";self.img_ref=None
-        self.title("ToDo — Article");self.geometry("920x790");self.resizable(True,True);self.transient(master);self.grab_set()
+        self.title("ToDo — Article");self.geometry("1100x900");self.resizable(True,True);self.transient(master)
+        # Do not grab the whole application: a modal grab prevents the global
+        # virtual keyboard (another Toplevel) from receiving mouse/touch events.
+        # The editor remains transient, while its own embedded keyboard works
+        # entirely inside this window.
         self.sku=tk.StringVar();self.alias=tk.StringVar();self.supplier_code=tk.StringVar();self.fraction=tk.BooleanVar();self.stock_note=tk.StringVar()
         self.bar=tk.StringVar();self.name=tk.StringVar();self.cat=tk.StringVar()
         self.buy=tk.StringVar(value="0");self.sell=tk.StringVar(value="0");self.stock=tk.StringVar(value="0");self.alert=tk.StringVar(value="0")
         root=ttk.Frame(self,padding=15);root.pack(fill="both",expand=True)
+        self._keyboard_target = None
+        self.bind_all('<FocusIn>', self._remember_keyboard_target, add='+')
         left=ttk.Frame(root);left.pack(side="left",fill="both",expand=True,padx=(0,18))
         right=ttk.LabelFrame(root,text="Image produit",padding=8);right.pack(side="right",fill="y")
         self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
@@ -58,6 +64,7 @@ class ProductEditor(tk.Toplevel):
         b=ttk.Frame(left);b.grid(row=11,column=0,columnspan=2,sticky="e",pady=16)
         ttk.Button(b,text="Enregistrer",command=self.save).pack(side="left",padx=4)
         ttk.Button(b,text="Annuler",command=self.destroy).pack(side="left")
+        ttk.Button(b,text="⌨ Clavier",command=self.toggle_embedded_keyboard).pack(side="left",padx=(10,0))
         self.preview=tk.Label(right,text="Aucune image",bg="white",relief="groove",width=25,height=13);self.preview.pack()
         ttk.Button(right,text="Choisir image",command=self.choose_image).pack(fill="x",pady=8)
         fields=ttk.LabelFrame(right,text='Recherche',padding=8);fields.pack(fill='x',pady=10)
@@ -70,7 +77,86 @@ class ProductEditor(tk.Toplevel):
         if self.pid:
             self.load()
 
+        # Embedded touch keyboard: same ProductEditor window, hidden by default.
+        self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=6, pady=6)
+        self.keyboard_visible = False
+        self._build_embedded_keyboard()
         self.after(100,lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
+
+    def _is_text_input(self, widget):
+        try:
+            return widget is not None and widget.winfo_exists() and widget.winfo_class() in (
+                'Entry', 'TEntry', 'Text', 'Spinbox', 'TSpinbox', 'TCombobox'
+            )
+        except tk.TclError:
+            return False
+
+    def _remember_keyboard_target(self, event):
+        if self._is_text_input(event.widget) and event.widget.winfo_toplevel() is self:
+            self._keyboard_target = event.widget
+
+    def toggle_embedded_keyboard(self):
+        if self.keyboard_visible:
+            self.keyboard_frame.pack_forget()
+            self.keyboard_visible = False
+            self.after_idle(lambda: self.e_bar.focus_set() if self.e_bar.winfo_exists() else None)
+            return
+        target = self.focus_get()
+        if self._is_text_input(target) and target.winfo_toplevel() is self:
+            self._keyboard_target = target
+        if not self._is_text_input(self._keyboard_target):
+            self._keyboard_target = self.e_bar
+        self.keyboard_frame.pack(side='bottom', fill='x', before=self.winfo_children()[0])
+        self.keyboard_visible = True
+        self.after_idle(lambda: self._keyboard_target.focus_set() if self._is_text_input(self._keyboard_target) else None)
+
+    def _build_embedded_keyboard(self):
+        rows = [
+            ['1','2','3','4','5','6','7','8','9','0','⌫'],
+            ['a','z','e','r','t','y','u','i','o','p'],
+            ['q','s','d','f','g','h','j','k','l','m'],
+            ['w','x','c','v','b','n',',','.','-','_'],
+            ['Espace','@','/','Effacer','Entrée','Fermer'],
+        ]
+        for keys in rows:
+            row = tk.Frame(self.keyboard_frame, bg='#1E293B')
+            row.pack(fill='x', pady=2)
+            for key in keys:
+                tk.Button(
+                    row, text=key, font=('Segoe UI', 11, 'bold'),
+                    bg='#334155', fg='white', activebackground='#475569',
+                    activeforeground='white', relief='flat', bd=0,
+                    padx=8, pady=7,
+                    command=lambda k=key: self._keyboard_press(k)
+                ).pack(side='left', fill='x', expand=True, padx=2)
+
+    def _keyboard_press(self, key):
+        w = self._keyboard_target
+        if not self._is_text_input(w):
+            w = self.focus_get()
+        if not self._is_text_input(w) or w.winfo_toplevel() is not self:
+            w = self.e_bar
+            self._keyboard_target = w
+        if key == 'Fermer':
+            self.toggle_embedded_keyboard()
+            return
+        if key == '⌫':
+            w.event_generate('<BackSpace>')
+        elif key == 'Entrée':
+            w.event_generate('<Return>')
+        elif key == 'Effacer':
+            try:
+                w.delete(0, tk.END)
+            except tk.TclError:
+                w.delete('1.0', tk.END)
+        else:
+            char = ' ' if key == 'Espace' else key
+            try:
+                w.insert(tk.INSERT, char)
+            except tk.TclError:
+                pass
+        self._keyboard_target = w
+        self.after_idle(w.focus_set)
 
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
