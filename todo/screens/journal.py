@@ -16,7 +16,7 @@ class JournalFrame(ttk.Frame):
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
         ttk.Label(filters,text="Caissier").pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
-        ttk.Label(filters,text="Paiement").pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=["Tous","CASH","CARD","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
+        ttk.Label(filters,text="Paiement").pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=["Tous","CASH","CARD","MIXED","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
         ttk.Button(filters,text="Aujourd’hui",command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text="7 jours",command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text="30 jours",command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text="Consulter",command=self.refresh).pack(side="right")
         cols=("id","ticket","date","cashier","pay","total","cost","margin")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
@@ -35,8 +35,14 @@ class JournalFrame(ttk.Frame):
             messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return []
         where=["date(s.created_at)>=?","date(s.created_at)<=?"];params=[self.date_from.get(),self.date_to.get()]
         if self.cashier.get()!="Tous":where.append("u.display_name=?");params.append(self.cashier.get())
-        if self.payment.get()!="Tous":where.append("s.payment_method=?");params.append(self.payment.get())
+        if self.payment.get()!="Tous":
+            if self.payment.get() in ("CASH","CARD"):
+                where.append("EXISTS (SELECT 1 FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=?)");params.append(self.payment.get())
+            else:
+                where.append("s.payment_method=?");params.append(self.payment.get())
         sql="""SELECT s.id,s.sale_no,s.created_at,u.display_name,s.payment_method,
+          COALESCE((SELECT SUM(sp.amount_cents) FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=\'CASH\'),0) cash_paid,
+          COALESCE((SELECT SUM(sp.amount_cents) FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=\'CARD\'),0) card_paid,
           s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0) total_cents,
           COALESCE((SELECT SUM(si.cost_price_cents*si.qty) FROM sale_items si WHERE si.sale_id=s.id),0)
           -COALESCE((SELECT SUM(ri.qty*si.cost_price_cents) FROM return_items ri JOIN sale_items si ON si.id=ri.sale_item_id WHERE si.sale_id=s.id),0) cost
@@ -46,7 +52,9 @@ class JournalFrame(ttk.Frame):
         rows=self.rows();self.t.delete(*self.t.get_children());total=cost=0
         for r in rows:
             margin=int(r["total_cents"]-r["cost"]);total+=r["total_cents"];cost+=r["cost"]
-            self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
+            pay=r["payment_method"]
+            if pay=="MIXED":pay=f"MIXED (Cash {fmt(r[\'cash_paid\'],\'\')} + Card {fmt(r[\'card_paid\'],\'\')})"
+            self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
         self.summary.config(text=f"{len(rows)} ticket(s) · Ventes nettes {fmt(total)} · Coût {fmt(cost)} · Marge brute {fmt(total-cost)}")
     def detail_report(self,mode):
         try:
