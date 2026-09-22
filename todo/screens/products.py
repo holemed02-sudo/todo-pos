@@ -472,7 +472,7 @@ class ProductsFrame(ttk.Frame):
             for key,title,width in [("line","Ligne",55),("barcode","Barcode",145),("name","Article",220),("cat","Famille",120),("buy","Achat",75),("sell","Vente",75),("stock","Stock",70),("alert","Alerte",70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
             tree.pack(fill="both",expand=True,padx=10,pady=10)
             for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",f"{row[6]:g}",f"{row[7]:g}"))
-            warning=ttk.Label(w,text=(f"⚠ {len(conflicts)} conflit(s) barcode détecté(s). Les doublons sont autorisés et demanderont un choix à la vente." if conflicts else "✓ Aucun conflit barcode détecté."),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
+            warning=ttk.Label(w,text=(f"⚠ {len(conflicts)} barcode(s) partagé(s) détecté(s). Ils seront conservés et demanderont un choix à la vente." if conflicts else "✓ Aucun barcode partagé détecté."),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
             warning.pack(anchor="w",padx=12)
             if conflicts:ttk.Label(w,text="\n".join(conflicts[:6]),wraplength=930).pack(anchor="w",padx=12,pady=4)
             decision={"ok":False}
