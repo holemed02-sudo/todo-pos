@@ -108,6 +108,15 @@ CREATE TABLE IF NOT EXISTS sales (
     FOREIGN KEY(cashier_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS sale_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sale_id INTEGER NOT NULL,
+    payment_method TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL,
+    FOREIGN KEY(sale_id) REFERENCES sales(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_sale_payments_sale ON sale_payments(sale_id);
+
 CREATE TABLE IF NOT EXISTS sale_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sale_id INTEGER NOT NULL,
@@ -291,11 +300,11 @@ def connect():
 
 def init_db():
     with connect() as conn:
-        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='products'").fetchone() and conn.execute('PRAGMA user_version').fetchone()[0] < 120:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE name='products'").fetchone() and conn.execute('PRAGMA user_version').fetchone()[0] < 121:
             from datetime import datetime
             backup_dir=DB_PATH.parent / 'migration_backups'
             backup_dir.mkdir(parents=True,exist_ok=True)
-            destination=sqlite3.connect(backup_dir / f"before_120_{datetime.now():%Y%m%d_%H%M%S_%f}.db")
+            destination=sqlite3.connect(backup_dir / f"before_121_{datetime.now():%Y%m%d_%H%M%S_%f}.db")
             try:
                 conn.backup(destination)
             finally:
@@ -390,4 +399,6 @@ def migrate(conn):
           INSERT OR IGNORE INTO product_categories SELECT new.id,new.category_id WHERE new.category_id IS NOT NULL;
         END;
     """)
-    conn.execute('PRAGMA user_version=120')
+    # Backfill one payment row for legacy sales; new sales write their split directly.
+    conn.execute("INSERT INTO sale_payments(sale_id,payment_method,amount_cents) SELECT s.id,s.payment_method,CASE WHEN s.payment_method='CASH' THEN s.paid_cents-s.change_cents ELSE s.paid_cents END FROM sales s WHERE NOT EXISTS (SELECT 1 FROM sale_payments sp WHERE sp.sale_id=s.id)")
+    conn.execute('PRAGMA user_version=121')
