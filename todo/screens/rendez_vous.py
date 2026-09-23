@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import datetime
-from database import connect
+from database import connect, get_setting
 
 
 def _init_table():
@@ -24,8 +24,9 @@ def _init_table():
 class RendezVousFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=16)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         _init_table()
-        ttk.Label(self, text='Rendez-vous / المواعيد',
+        ttk.Label(self, text=self.tr('Rendez-vous','المواعيد'),
                   font=('Segoe UI', 20, 'bold')).pack(anchor='w')
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=10)
@@ -34,15 +35,15 @@ class RendezVousFrame(ttk.Frame):
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
         self.show_done = tk.BooleanVar(value=False)
-        ttk.Checkbutton(toolbar, text='Afficher terminés',
+        ttk.Checkbutton(toolbar, text=self.tr('Afficher terminés','إظهار المنتهية'),
                         variable=self.show_done,
                         command=self.refresh).pack(side='left', padx=8)
-        ttk.Button(toolbar, text='+ Nouveau',
+        ttk.Button(toolbar, text=self.tr('+ Nouveau','+ جديد'),
                    style='Primary.TButton',
                    command=self.new_rdv).pack(side='right')
-        ttk.Button(toolbar, text='Marquer fait',
+        ttk.Button(toolbar, text=self.tr('Marquer fait','تحديد كمنجز'),
                    command=self.mark_done).pack(side='right', padx=6)
-        ttk.Button(toolbar, text='Supprimer',
+        ttk.Button(toolbar, text=self.tr('Supprimer','حذف'),
                    command=self.delete_rdv).pack(side='right')
 
         cols = ('date', 'time', 'title', 'contact', 'notes', 'done')
@@ -93,7 +94,7 @@ class RendezVousFrame(ttk.Frame):
                 tag = 'today'
             else:
                 tag = ''
-            status = 'Fait' if r['done'] else ('Passe' if r['rdv_date'] < today else 'A venir')
+            status = self.tr('Fait','منجز') if r['done'] else (self.tr('Passé','فات') if r['rdv_date'] < today else self.tr('À venir','قادم'))
             self.tree.insert('', 'end', iid=key,
                 values=(r['rdv_date'], r['rdv_time'], r['title'],
                         r['contact'], r['notes'], status),
@@ -128,9 +129,10 @@ class RendezVousFrame(ttk.Frame):
 class RdvEditor(tk.Toplevel):
     def __init__(self, master_frame, rdv=None):
         super().__init__(master_frame)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.master_frame = master_frame
         self.rdv_id = rdv['id'] if rdv else None
-        self.title('Rendez-vous')
+        self.title(self.tr('Rendez-vous','المواعيد'))
         self.resizable(False, False)
         self.transient(master_frame.winfo_toplevel())
         self.grab_set()
@@ -152,7 +154,7 @@ class RdvEditor(tk.Toplevel):
                 row=row, column=1, sticky='ew', padx=12)
             self.vars[key] = var
 
-        ttk.Button(f, text='Enregistrer', style='Primary.TButton',
+        ttk.Button(f, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton',
                    command=self.save).grid(
                        row=len(fields), column=0, columnspan=2,
                        sticky='ew', pady=14)
