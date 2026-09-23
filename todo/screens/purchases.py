@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk,messagebox,simpledialog
-from database import connect
+from database import get_setting, connect
 from services.money import to_cents,fmt
 from services.purchases import receive_purchase
 from services.suppliers import list_suppliers, save_supplier
@@ -9,18 +9,19 @@ from screens.suppliers import SupplierEditor
 class PurchasesFrame(ttk.Frame):
     def __init__(self,master):
         super().__init__(master,padding=10);self.lines=[]
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text="Réceptions / المشتريات",font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(top,text=self.tr('Réceptions','المشتريات'),font=("Segoe UI",22,"bold")).pack(side="left")
         self.supplier=tk.StringVar();self.invoice=tk.StringVar()
         self.supplier_choice=ttk.Combobox(top,textvariable=self.supplier,width=22)
         self.supplier_choice.pack(side="left",padx=(20,5))
         self.supplier_choice.bind('<<ComboboxSelected>>',self.select_supplier)
         self.supplier_id=None
         self.supplier.trace_add('write',lambda *args:setattr(self,'supplier_id',None))
-        ttk.Label(top,text="Fournisseur").pack(side="left")
+        ttk.Label(top,text=self.tr('Fournisseur','المورد')).pack(side="left")
         ttk.Button(top,text='+',width=3,command=lambda:SupplierEditor(self,on_saved=self.refresh_suppliers)).pack(side='left')
         self.refresh_suppliers()
-        ttk.Entry(top,textvariable=self.invoice,width=18).pack(side="left",padx=(20,5));ttk.Label(top,text="Facture").pack(side="left")
+        ttk.Entry(top,textvariable=self.invoice,width=18).pack(side="left",padx=(20,5));ttk.Label(top,text=self.tr('Facture','الفاتورة')).pack(side="left")
         body=ttk.Panedwindow(self,orient="horizontal");body.pack(fill="both",expand=True,pady=8)
         p=ttk.Frame(body);body.add(p,weight=2)
         self.q=tk.StringVar();e=ttk.Entry(p,textvariable=self.q);e.pack(fill="x",pady=4);e.bind("<KeyRelease>",lambda x:self.search())
@@ -28,13 +29,13 @@ class PurchasesFrame(ttk.Frame):
         for c,h,w in [("id","ID",50),("name","Article",240),("stock","Stock",80),("cost","Achat",80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
         self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.prod.bind("<Return>",lambda e:self.addline());self.search()
         r=ttk.Frame(body);body.add(r,weight=3)
-        ttk.Button(r,text="VALIDER réception / تأكيد المشتريات",style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
+        ttk.Button(r,text=self.tr('VALIDER réception','تأكيد المشتريات'),style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
         self.lines_t=ttk.Treeview(r,columns=("name","qty","cost","total"),show="headings")
         for c,h,w in [("name","Article",230),("qty","Qté",80),("cost","Coût",90),("total","Total",100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
         self.lines_t.pack(fill="both",expand=True)
         line_actions=ttk.Frame(r);line_actions.pack(fill="x",pady=4)
-        ttk.Button(line_actions,text="Modifier ligne",command=self.edit_line).pack(side="left")
-        ttk.Button(line_actions,text="Supprimer ligne",command=self.remove_line).pack(side="left",padx=6)
+        ttk.Button(line_actions,text=self.tr('Modifier ligne','تعديل السطر'),command=self.edit_line).pack(side="left")
+        ttk.Button(line_actions,text=self.tr('Supprimer ligne','حذف السطر'),command=self.remove_line).pack(side="left",padx=6)
         self.total_label=ttk.Label(line_actions,text="Total : 0.00 DH",font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
     def refresh_suppliers(self, selected=None):
         self.suppliers=list_suppliers()
