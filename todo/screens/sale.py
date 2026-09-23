@@ -42,16 +42,16 @@ class SaleFrame(ttk.Frame):
         top=ttk.Frame(self)
         top.pack(fill='x',pady=(0,12))
         ttk.Label(top,text=self.tr('Vente','البيع'),style='Title.TLabel').pack(side='left')
-        self.payment_label=ttk.Label(top,text='Paiement : CASH',style='Accent.TLabel')
+        self.payment_label=ttk.Label(top,text=self.tr('Paiement : CASH','الأداء: نقداً'),style='Accent.TLabel')
         self.payment_label.pack(side='right')
-        self.client_button=ttk.Button(top,text='F6 Client : passage',command=self.choose_client)
+        self.client_button=ttk.Button(top,text=self.tr('F6 Client : passage','F6 الزبون: عابر'),command=self.choose_client)
         self.client_button.pack(side='left',padx=18)
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
             self.seller_button.pack(side='left',padx=(0,12))
         searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
         searchbar.pack(fill='x',pady=(0,12))
-        ttk.Label(searchbar,text='⌕  Scanner ou rechercher',style='Card.TLabel').pack(side='left',padx=(0,12))
+        ttk.Label(searchbar,text=self.tr('⌕  Scanner ou rechercher','⌕  مسح أو بحث'),style='Card.TLabel').pack(side='left',padx=(0,12))
         self.query=tk.StringVar()
         self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
         self.entry.pack(side='left',fill='x',expand=True)
@@ -86,13 +86,13 @@ class SaleFrame(ttk.Frame):
         self.catalog_tabs.add(self.photo_page,text=self.tr('Photos','اختيار بالصورة'));self.catalog_tabs.add(self.list_page,text=self.tr('Liste','لائحة'))
         self.catalog_tabs.pack(fill='both',expand=True)
         self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
-        self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
+        self.products.heading('#0',text=self.tr('PRODUIT','المنتوج'));self.products.column('#0',width=240,minwidth=160)
         for key,label in [('price','PRIX'),('stock','STOCK')]:
             self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
         self.products.pack(fill='both',expand=True)
         photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
-        ttk.Button(photo_nav,text='Précédent',command=lambda:self.photo_next(-1)).pack(side='left')
-        self.photo_more=ttk.Button(photo_nav,text='Suivant',command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
+        ttk.Button(photo_nav,text=self.tr('Précédent','السابق'),command=lambda:self.photo_next(-1)).pack(side='left')
+        self.photo_more=ttk.Button(photo_nav,text=self.tr('Suivant','التالي'),command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
         self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
@@ -116,13 +116,13 @@ class SaleFrame(ttk.Frame):
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
         total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
-        tk.Label(total_box,text='TOTAL NET',bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
+        tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
         self.total_label=tk.Label(total_box,text='',bg='#2563EB',fg='white',font=('Segoe UI',25,'bold'));self.total_label.pack(side='right')
         ttk.Button(checkout_area,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
-        ttk.Button(checkout_area,text='SOLDER sans ticket',command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
+        ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
         ttk.Label(right,text='Ticket en cours',style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
         self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
-        self.ticket.heading('#0',text='ARTICLE');self.ticket.column('#0',width=170,minwidth=100)
+        self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=170,minwidth=100)
         for key,label,width in [('qty','QTÉ',55),('price','P.U.',70),('discount','REMISE',75),('total','NET',85)]:
             self.ticket.heading(key,text=label);self.ticket.column(key,width=width,minwidth=40,anchor='e')
         self.ticket.tag_configure('offer',background='#DCFCE7',foreground='#166534')
@@ -631,7 +631,7 @@ class SaleFrame(ttk.Frame):
             if not clear and not tree.selection():return
             self.client_id=None if clear else int(tree.selection()[0])
             self.update_client_label();window.destroy();self.focus_search()
-        ttk.Button(buttons,text='Choisir',command=select).pack(side='left')
+        ttk.Button(buttons,text=self.tr('Choisir','اختيار'),command=select).pack(side='left')
         ttk.Button(buttons,text='Client de passage',command=lambda:select(True)).pack(side='left',padx=10)
         tree.bind('<Double-1>',lambda e:select());entry.bind('<KeyRelease>',refresh);refresh();entry.focus_set()
 
@@ -644,7 +644,7 @@ class SaleFrame(ttk.Frame):
         self.payment=method;self.payment_label.config(text='Paiement : '+method);self.focus_search()
 
     def clear(self):
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text='Paiement : CASH');self.update_client_label();self.update_seller_label();self.refresh();self.focus_search()
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : CASH','الأداء: نقداً'));self.update_client_label();self.update_seller_label();self.refresh();self.focus_search()
 
     def cancel(self):
         if self.cart and not messagebox.askyesno('Annuler','Vider le ticket en cours ? Un ticket en attente reste sauvegardé.',parent=self):return
@@ -718,6 +718,6 @@ class SaleFrame(ttk.Frame):
         ttk.Button(buttons,text=self.tr('Enregistrer PDF','حفظ PDF'),command=save_pdf).pack(side='left',padx=8,pady=8)
         text=tk.Text(w,font=('Consolas',11),padx=16,pady=16)
         text.pack(fill='both',expand=True);text.insert('1.0',build_receipt(result['id']));text.config(state='disabled')
-        ttk.Button(buttons,text='Imprimer',command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
-        ttk.Button(buttons,text='Fermer',command=w.destroy).pack(side='right',padx=12,pady=12)
+        ttk.Button(buttons,text=self.tr('Imprimer','طباعة'),command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
+        ttk.Button(buttons,text=self.tr('Fermer','إغلاق'),command=w.destroy).pack(side='right',padx=12,pady=12)
         w.bind('<Escape>',lambda e:w.destroy())
