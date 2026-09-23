@@ -94,7 +94,9 @@ class SettingsFrame(ttk.Frame):
         self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
         self.require_client=tk.BooleanVar(value=get_setting('require_client_on_sale','0')=='1')
         self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
+        self.language=tk.StringVar(value=get_setting("language","fr"))
         ttk.Label(f,text="Nom magasin").grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
+        ttk.Label(f,text="Langue").grid(row=0,column=2,sticky="w",padx=(18,4));ttk.Combobox(f,textvariable=self.language,values=("fr","ar"),state="readonly",width=8).grid(row=0,column=3,sticky="w")
         ttk.Label(f,text="Devise").grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.cur,width=10).grid(row=1,column=1,sticky="w",padx=8)
         ttk.Checkbutton(f,text="Autoriser stock négatif",variable=self.neg).grid(row=2,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text="Bloquer vente si stock insuffisant",variable=self.block_insufficient).grid(row=3,column=0,columnspan=2,sticky="w")
@@ -153,7 +155,7 @@ class SettingsFrame(ttk.Frame):
             messagebox.showerror("ToDo","Limite recherche بين 1 و1000.",parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
-        set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0')
+        set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('language',self.language.get())
         try:
             seconds=int(self.customer_seconds.get())
             if seconds<2 or seconds>120:raise ValueError()
