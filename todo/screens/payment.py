@@ -122,7 +122,9 @@ class PaymentDialog(tk.Toplevel):
         self.update_amount()
 
     def paid_cents(self):
-        return self.total if self.method.get() == 'CARD' else to_cents(self.amount.get())
+        if self.method.get() == 'CARD': return self.total
+        cash=to_cents(self.amount.get())
+        return cash + (to_cents(self.card_amount.get()) if self.method.get() == 'MIXED' else 0)
 
     def update_amount(self):
         method = self.method.get()
