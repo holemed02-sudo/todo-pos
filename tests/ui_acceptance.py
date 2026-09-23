@@ -107,9 +107,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with patch('tkinter.simpledialog.askstring',return_value='4.00'):
         button(menu,'Modifier prix').invoke()
     assert sale.totals()[1]==800
-    sale.functions();app.update()
-    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
-    button(menu,'Prix normal').invoke()
+    # Restore the base product price directly; the old "Prix normal" menu action was replaced by price grids.
+    sale.restore_price()
     assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askstring',return_value='Test held ticket'):
         sale.hold()
