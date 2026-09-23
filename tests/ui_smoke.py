@@ -32,8 +32,9 @@ sale.change(1);assert sale.cart[0]['qty']==2
 for key in ['home','products','cash','stock','purchases','returns','journal','settings','statistics','sale']:
  app.show(key);app.update_idletasks()
 assert app.sale_frame.cart[0]['qty']==2
-dialog=PaymentDialog(app,10000,method='MIXED')
-dialog.withdraw();dialog.method.set('MIXED');dialog.amount.set('30.00');dialog.card_amount.set('70.00');dialog.update_amount();app.update_idletasks()
+dialog=PaymentDialog(app,10000,method='CASH')
+dialog.withdraw();dialog.amount.set('30.00');dialog.method.set('MIXED');app.update_idletasks()
+assert dialog.card_amount.get()=='70.00'
 assert dialog.paid_cents()==10000
 assert str(dialog.confirm_button.cget('state'))!='disabled'
 dialog.confirm();assert dialog.result[0]=='MIXED' and dialog.result[1]==10000 and dialog.result[3]==[('CASH',3000),('CARD',7000)]
