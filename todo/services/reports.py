@@ -90,6 +90,17 @@ def top_cashiers(period='month'):
            GROUP BY u.id ORDER BY revenue DESC LIMIT 10""",(start,end,start,end)).fetchall()
     return [dict(r) for r in rows]
 
+def top_month(year=None):
+    year = int(year or datetime.date.today().year)
+    start,end=f'{year}-01-01',f'{year}-12-31'
+    with connect() as c:
+        row=c.execute(EVENTS+"""SELECT strftime('%m',created_at,'localtime') month,
+            COALESCE(SUM(revenue),0) revenue FROM period_events
+            GROUP BY month ORDER BY revenue DESC LIMIT 1""",(start,end)).fetchone()
+    if not row:
+        return {'month': None, 'revenue': 0}
+    return {'month': int(row['month']), 'revenue': row['revenue']}
+
 def top_clients(period='month'):
     start,end,_=_date_range(period)
     with connect() as c:
