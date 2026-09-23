@@ -127,8 +127,11 @@ class SettingsFrame(ttk.Frame):
         self.printer_choice.grid(row=0,column=1,padx=8)
         ttk.Button(p,text=self.tr('Actualiser imprimantes','تحديث الطابعات'),command=self.refresh_printers).grid(row=0,column=2,padx=5)
         ttk.Label(p,text=self.tr('Après validation','بعد تأكيد البيع')).grid(row=1,column=0,sticky="w",pady=5)
-        ttk.Combobox(p,textvariable=self.print_mode,values=['ask','always','never'],state='readonly',width=12).grid(row=1,column=1,sticky='w',padx=8)
-        ttk.Label(p,text=self.tr('ask = demander, always = imprimer, never = ne pas imprimer','ask = يسأل، always = يطبع، never = بدون طباعة')).grid(row=2,column=0,columnspan=2,sticky='w')
+        self.print_mode_box=ttk.Combobox(p,state='readonly',width=18)
+        self.print_mode_labels={self.tr('Demander','سؤال'):'ask',self.tr('Toujours imprimer','الطباعة دائماً'):'always',self.tr('Ne jamais imprimer','عدم الطباعة'):'never'}
+        self.print_mode_box['values']=list(self.print_mode_labels);self.print_mode_box.set(next((k for k,v in self.print_mode_labels.items() if v==self.print_mode.get()),list(self.print_mode_labels)[0]));self.print_mode_box.grid(row=1,column=1,sticky='w',padx=8)
+        ttk.Label(p,text=self.tr('Comportement impression','سلوك الطباعة')).grid(row=2,column=0,sticky='w')
+        ttk.Label(p,text=self.tr('Demander / Toujours / Jamais','سؤال / دائماً / أبداً')).grid(row=2,column=1,columnspan=2,sticky='w')
         self.drawer_enabled=tk.BooleanVar(value=get_setting('drawer_enabled','0')=='1');self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
         self.drawer_pin=tk.StringVar(value=get_setting('drawer_pin','0'))
         ttk.Checkbutton(p,text=self.tr('Tiroir connecté à une imprimante ESC/POS','درج النقود متصل بطابعة ESC/POS'),variable=self.drawer_enabled).grid(row=3,column=0,columnspan=2,sticky='w')
@@ -203,7 +206,7 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Limite de recherche entre 1 et 1000.","حد البحث بين 1 و1000."),parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
-        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
+        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode_labels.get(self.print_mode_box.get(),'ask'))
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');set_setting('language',self.language.get());self.app.after_idle(lambda:self.app.change_language(self.language.get()))
         try:
             seconds=int(self.customer_seconds.get())
