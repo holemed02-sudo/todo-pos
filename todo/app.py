@@ -176,11 +176,19 @@ class ToDoApp(tk.Tk):
             if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
             b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
             b.pack(side="left",fill="y");self.nav_buttons[key]=b
-        tk.Button(bar,text="⌨ Clavier",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_keyboard).pack(side="right",padx=4)
-        tk.Button(bar,text="Écran client",bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
+        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ Clavier"),bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_keyboard).pack(side="right",padx=4)
+        tk.Button(bar,text=("شاشة الزبون" if lang=="ar" else "Écran client"),bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
         tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",font=("Segoe UI",9)).pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
         self.apply_theme()
+
+    def change_language(self, language):
+        if language not in ('fr','ar'): return
+        set_setting('language',language)
+        key=getattr(self,'current_key','sale')
+        self.sale_frame=None
+        self.current=None
+        self.build_shell();self.show(key)
 
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
