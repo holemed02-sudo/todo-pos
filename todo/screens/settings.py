@@ -123,6 +123,14 @@ class SettingsFrame(ttk.Frame):
         ttk.Spinbox(d,from_=2,to=120,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
         ttk.Label(d,text="Dossier : customer_media · PNG/JPG/WEBP · format conseillé 16:9",foreground="#475569").pack(side="left",padx=12)
         ttk.Button(d,text="Tester écran client",command=self.test_customer).pack(side="right")
+        hw=ttk.LabelFrame(self,text="Périphériques / الأجهزة",padding=10);hw.pack(fill="x",pady=10)
+        self.customer_port=tk.StringVar(value=get_setting("customer_display_port",""))
+        self.scale_port=tk.StringVar(value=get_setting("scale_serial_port",""))
+        self.rfid_enabled=tk.BooleanVar(value=get_setting("rfid_enabled","0")=="1")
+        ttk.Label(hw,text="Port écran client").grid(row=0,column=0,sticky="w");ttk.Entry(hw,textvariable=self.customer_port,width=18).grid(row=0,column=1,padx=8,sticky="w")
+        ttk.Label(hw,text="Port balance").grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(hw,textvariable=self.scale_port,width=18).grid(row=1,column=1,padx=8,sticky="w")
+        ttk.Checkbutton(hw,text="Activer RFID",variable=self.rfid_enabled).grid(row=2,column=0,columnspan=2,sticky="w")
+
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
         self.auto_backup=tk.StringVar(value=get_setting("auto_backup_minutes","15"))
@@ -150,6 +158,9 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo","Durée écran client entre 2 et 120 secondes.",parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
+        set_setting("customer_display_port",self.customer_port.get().strip())
+        set_setting("scale_serial_port",self.scale_port.get().strip())
+        set_setting("rfid_enabled","1" if self.rfid_enabled.get() else "0")
         set_setting("auto_backup_minutes",self.auto_backup.get())
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
