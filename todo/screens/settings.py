@@ -127,7 +127,7 @@ class SettingsFrame(ttk.Frame):
         ttk.Label(b,text="min (0 = désactivé)").pack(side="left",padx=4)
         ttk.Button(b,text="Restaurer backup",command=self.restore).pack(side="left",padx=4)
         u=ttk.LabelFrame(self,text="Utilisateurs",padding=10);u.pack(fill="x")
-        ttk.Button(u,text="Nouvel utilisateur",command=self.new_user).pack(side="left")
+        ttk.Button(u,text="Nouvel utilisateur",command=self.new_user).pack(side="left");ttk.Button(u,text="Gérer utilisateurs",command=self.manage_users).pack(side="left",padx=8)
         ttk.Button(u,text="Changer mon PIN",command=self.change_pin).pack(side="left",padx=8)
         ttk.Button(u,text="Journal des actions",command=self.audit_log).pack(side="left",padx=8)
         ttk.Label(u,text="Admin initial: admin / PIN 1234 — changez-le.").pack(side="left",padx=15)
@@ -184,6 +184,38 @@ class SettingsFrame(ttk.Frame):
             with connect() as c:c.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES(?,?,?,?)",(user,name,hash_pin(pin),role));c.commit()
             messagebox.showinfo("ToDo","Utilisateur créé.",parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
+
+    def manage_users(self):
+        with connect() as conn: require_admin(conn)
+        w=tk.Toplevel(self);w.title("Utilisateurs");w.geometry("720x500");w.transient(self.winfo_toplevel())
+        tree=ttk.Treeview(w,columns=("id","username","name","role","active"),show="headings")
+        for key,label,width in [("id","ID",55),("username","Utilisateur",150),("name","Nom",190),("role","Rôle",100),("active","Actif",70)]:tree.heading(key,text=label);tree.column(key,width=width,anchor="center" if key in ("id","role","active") else "w")
+        tree.pack(fill="both",expand=True,padx=12,pady=12);bar=ttk.Frame(w);bar.pack(fill="x",padx=12,pady=(0,12))
+        def reload():
+            tree.delete(*tree.get_children())
+            with connect() as conn: rows=conn.execute("SELECT id,username,display_name,role,active FROM users ORDER BY display_name").fetchall()
+            for r in rows:tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],r["role"],"Oui" if r["active"] else "Non"))
+        def selected():
+            sel=tree.selection()
+            if not sel: messagebox.showwarning("Utilisateurs","Sélectionnez un utilisateur.",parent=w);return None
+            return int(sel[0])
+        def toggle():
+            uid=selected()
+            if uid is None:return
+            if uid==self.app.user["id"]:messagebox.showwarning("Utilisateurs","Impossible de désactiver votre propre compte.",parent=w);return
+            with connect() as conn:
+                require_admin(conn);row=conn.execute("SELECT active FROM users WHERE id=?",(uid,)).fetchone();new=0 if row["active"] else 1
+                conn.execute("UPDATE users SET active=? WHERE id=?",(new,uid));audit(conn,"USER_ACTIVE_TOGGLE",uid,str(new));conn.commit()
+            reload()
+        def role():
+            uid=selected()
+            if uid is None:return
+            if uid==self.app.user["id"]:messagebox.showwarning("Utilisateurs","Modifiez un autre compte.",parent=w);return
+            with connect() as conn:
+                require_admin(conn);row=conn.execute("SELECT role FROM users WHERE id=?",(uid,)).fetchone();new="admin" if row["role"]!="admin" else "cashier"
+                conn.execute("UPDATE users SET role=? WHERE id=?",(new,uid));audit(conn,"USER_ROLE_CHANGE",uid,new);conn.commit()
+            reload()
+        ttk.Button(bar,text="Activer / Désactiver",command=toggle).pack(side="left");ttk.Button(bar,text="Admin ↔ Caissier",command=role).pack(side="left",padx=8);reload()
 
     def change_pin(self):
         pin=simpledialog.askstring('PIN','Nouveau PIN (4 chiffres minimum):',parent=self,show='*')
