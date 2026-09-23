@@ -362,7 +362,7 @@ class StatisticsFrame(ttk.Frame):
             messagebox.showerror('Statistiques',str(e),parent=self)
 
     def _load_kpis(self):
-        data = period_summary(self._period)
+        data = period_summary(self._period, self._year if self._period=='year' else None)
         self._kpi_labels['net_sales'].config(   text=fmt(data['net_sales']))
         self._kpi_labels['gross_margin'].config( text=fmt(data['gross_margin']))
         self._kpi_labels['tickets'].config(      text=str(data['tickets']))
@@ -382,7 +382,7 @@ class StatisticsFrame(ttk.Frame):
         self._kpi_labels['top_month'].config(text=label)
 
     def _load_payments(self):
-        data=payment_breakdown(self._period)
+        data=payment_breakdown(self._period, self._year if self._period=='year' else None)
         parts=[]
         for method,label in [('CASH','Espèces'),('CARD','Carte'),('CREDIT','Crédit')]:
             amount=data.get(method,0)
@@ -395,12 +395,12 @@ class StatisticsFrame(ttk.Frame):
         self.evo_chart.update_data(labels, values)
 
     def _load_top_products(self):
-        rows = top_products(8, self._period)
+        rows = top_products(8, self._period, self._year if self._period=='year' else None)
         items = [(r['name'], r['revenue']) for r in rows]
         self.top_chart.update_data(items)
 
     def _load_cashiers(self):
-        rows = top_cashiers(self._period)
+        rows = top_cashiers(self._period, self._year if self._period=='year' else None)
         items = [(r['name'], r['revenue']) for r in rows]
         self.cashier_chart.update_data(items)
 
@@ -424,12 +424,12 @@ class StatisticsFrame(ttk.Frame):
         self.article_chart.update_data(x,y)
 
     def _load_clients(self):
-        rows = top_clients(self._period)
+        rows = top_clients(self._period, self._year if self._period=='year' else None)
         items = [(r['name'], r['revenue']) for r in rows]
         self.client_chart.update_data(items)
 
     def _load_categories(self):
-        rows = category_breakdown(self._period)
+        rows = category_breakdown(self._period, self._year if self._period=='year' else None)
         items = [(r['name'], r['revenue']) for r in rows]
         self.cat_chart.update_data(items)
 
