@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from services.reports import (
     today_summary, period_summary, sales_evolution, top_products,
-    top_cashiers, top_clients, category_breakdown, payment_breakdown,
+    top_cashiers, top_clients, top_month, category_breakdown, payment_breakdown,
 )
 from services.money import fmt
 from database import connect
@@ -205,6 +205,7 @@ class StatisticsFrame(ttk.Frame):
             ('alerts',       'Stock faible',   '#DC2626'),
             ('stock_value',   'Valeur stock',    '#7C3AED'),
             ('returns',       'Retours',         '#0891B2'),
+            ('top_month',     'Top mois',        '#6B7280'),
         ]
         for i, (key, title, color) in enumerate(kpi_defs):
             card = tk.Frame(self.kpi_frame, bg=color, height=76)
@@ -314,6 +315,10 @@ class StatisticsFrame(ttk.Frame):
             returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
         self._kpi_labels['stock_value'].config(text=fmt(stock))
         self._kpi_labels['returns'].config(text=fmt(returns))
+        best=top_month()
+        month_names=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc']
+        label='—' if not best['month'] else f"{month_names[best['month']-1]} · {fmt(best['revenue'])}"
+        self._kpi_labels['top_month'].config(text=label)
 
     def _load_payments(self):
         data=payment_breakdown(self._period)
