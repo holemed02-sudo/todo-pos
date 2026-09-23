@@ -492,7 +492,7 @@ class ProductsFrame(ttk.Frame):
                                      FROM product_barcodes b JOIN products p ON p.id=b.product_id
                                      WHERE b.barcode<>'' ORDER BY p.name"""):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
-            seen={};conflicts=[];group_fingerprints={}
+            seen={};conflicts=[];group_fingerprints={};file_group_barcodes={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
                 product_key=meta[-1] if meta else ''
                 if product_key:
@@ -501,13 +501,21 @@ class ProductsFrame(ttk.Frame):
                         errors.append(f"Ligne {line}: product key {product_key} contient des données produit incohérentes")
                     else:group_fingerprints[product_key]=fingerprint
                 if not barcode:continue
+                if product_key:
+                    group_codes=file_group_barcodes.setdefault(product_key,set())
+                    if barcode in group_codes:
+                        errors.append(f"Ligne {line}: barcode {barcode} répété dans le même product key {product_key}")
+                    group_codes.add(barcode)
                 if barcode in existing:
                     names=", ".join(x["name"] for x in existing[barcode][:3])
                     conflicts.append(f"Ligne {line}: {barcode} existe déjà — {names}")
-                if barcode in seen:conflicts.append(f"Ligne {line}: {barcode} répété dans Excel (ligne {seen[barcode]})")
-                else:seen[barcode]=line
+                if barcode in seen:
+                    previous_key=seen[barcode][1]
+                    if not product_key or product_key!=previous_key:
+                        conflicts.append(f"Ligne {line}: {barcode} partagé entre plusieurs produits (première ligne {seen[barcode][0]})")
+                else:seen[barcode]=(line,product_key)
             if errors:
-                messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé: mêmes product keys avec données produit différentes.\n","تم إلغاء الاستيراد: نفس product key يحتوي بيانات منتوج مختلفة.\n")+"\n".join(errors[:15]),parent=self);return
+                messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé: le fichier contient des groupes produit incohérents ou des barcodes dupliqués dans le même produit.\n","تم إلغاء الاستيراد: الملف يحتوي مجموعات منتوج غير متناسقة أو باركود مكرر داخل نفس المنتوج.\n")+"\n".join(errors[:15]),parent=self);return
             w=tk.Toplevel(self);w.title("Aperçu import Excel");w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
             for key,title,width in [("line","Ligne",55),("barcode","Barcode",145),("name","Article",220),("cat","Famille",120),("buy","Achat",75),("sell","Vente",75),("stock","Stock",70),("alert","Alerte",70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
