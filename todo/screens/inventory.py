@@ -1,7 +1,7 @@
 """screens/inventory.py — Inventaire (comptage physique) + Sorties de stock."""
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
-from database import connect
+from database import connect, get_setting
 from services.inventory import apply_stock_movement
 from services.money import fmt
 
@@ -13,9 +13,10 @@ class InventaireFrame(ttk.Frame):
 
     def __init__(self, master):
         super().__init__(master, padding=16)
-        ttk.Label(self, text='📝  Inventaire / الجرد',
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        ttk.Label(self, text=self.tr('📝  Inventaire','📝  الجرد'),
                   font=('Segoe UI', 20, 'bold')).pack(anchor='w')
-        ttk.Label(self, text='Saisissez la quantité réelle comptée. Validez pour ajuster le stock.',
+        ttk.Label(self, text=self.tr('Saisissez la quantité réelle comptée. Validez pour ajuster le stock.','أدخل الكمية الحقيقية المحسوبة ثم أكد لتعديل المخزون.'),
                   foreground='#475569').pack(anchor='w', pady=(0, 10))
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=(0, 8))
@@ -23,9 +24,9 @@ class InventaireFrame(ttk.Frame):
         entry = ttk.Entry(toolbar, textvariable=self.query, width=32)
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
-        ttk.Button(toolbar, text='✔  Valider les écarts',
+        ttk.Button(toolbar, text=self.tr('✔  Valider les écarts','✔  تأكيد الفروقات'),
                    style='Primary.TButton', command=self.apply_all).pack(side='right')
-        ttk.Button(toolbar, text='↺ Actualiser', command=self.refresh).pack(side='right', padx=8)
+        ttk.Button(toolbar, text=self.tr('↺ Actualiser','↺ تحديث'), command=self.refresh).pack(side='right', padx=8)
 
         cols = ('id', 'name', 'theory', 'counted', 'diff')
         self.tree = ttk.Treeview(self, columns=cols, show='headings')
@@ -120,9 +121,10 @@ class SortiesFrame(ttk.Frame):
 
     def __init__(self, master):
         super().__init__(master, padding=16)
-        ttk.Label(self, text='📤  Sorties de stock / إخراج المخزون',
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        ttk.Label(self, text=self.tr('📤  Sorties de stock','📤  إخراج المخزون'),
                   font=('Segoe UI', 20, 'bold')).pack(anchor='w')
-        ttk.Label(self, text='Casse, perte, don, consommation interne.',
+        ttk.Label(self, text=self.tr('Casse, perte, don, consommation interne.','كسر، ضياع، تبرع، استهلاك داخلي.'),
                   foreground='#475569').pack(anchor='w', pady=(0, 10))
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=(0, 8))
@@ -130,7 +132,7 @@ class SortiesFrame(ttk.Frame):
         entry = ttk.Entry(toolbar, textvariable=self.query, width=32)
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
-        ttk.Button(toolbar, text='📤 Enregistrer une sortie',
+        ttk.Button(toolbar, text=self.tr('📤 Enregistrer une sortie','📤 تسجيل إخراج'),
                    style='Primary.TButton', command=self.add_exit).pack(side='right')
 
         cols = ('id', 'name', 'stock', 'last_exit')
@@ -149,7 +151,7 @@ class SortiesFrame(ttk.Frame):
         self.tree.pack(fill='both', expand=True)
 
         # Recent exits log
-        ttk.Label(self, text='Dernières sorties',
+        ttk.Label(self, text=self.tr('Dernières sorties','آخر عمليات الإخراج'),
                   font=('Segoe UI', 11, 'bold')).pack(anchor='w', pady=(10, 4))
         log_cols = ('date', 'product', 'qty', 'reason')
         self.log = ttk.Treeview(self, columns=log_cols, show='headings', height=5)
