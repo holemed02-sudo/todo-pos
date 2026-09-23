@@ -7,7 +7,7 @@ from services.bootstrap import ensure_defaults
 from services.security import current_user
 from services.cash import open_session
 from services.sales import complete_sale,create_return
-from services.reports import today_summary,period_summary,sales_evolution,top_products,top_cashiers,category_breakdown
+from services.reports import today_summary,period_summary,sales_evolution,top_products,top_cashiers,category_breakdown,payment_breakdown
 
 class StatisticsTests(unittest.TestCase):
     def setUp(self):
@@ -50,6 +50,12 @@ class StatisticsTests(unittest.TestCase):
         self.assert_revenue(-1250)
         self.assertEqual(period_summary()['tickets'],0)
         self.assertEqual(period_summary()['gross_margin'],-450)
+    def test_payment_breakdown_deducts_split_refunds_by_method(self):
+        sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=2,unit_price_cents=5000)],'MIXED',10000,payments=[('CASH',3000),('CARD',7000)])
+        with database.connect() as c:item=c.execute('SELECT id FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0]
+        self.assertEqual(payment_breakdown(),{'CARD':7000,'CASH':3000})
+        create_return(sale['id'],self.session,self.uid,[(item,1)],refund_method='AUTO')
+        self.assertEqual(payment_breakdown(),{'CARD':3500,'CASH':1500})
     def test_multiple_families_do_not_duplicate_revenue(self):
         from services.catalog import set_product_categories
         with database.connect() as c:
