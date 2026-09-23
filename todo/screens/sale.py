@@ -75,7 +75,7 @@ class SaleFrame(ttk.Frame):
         self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
-        self.catalog_tabs.add(self.photo_page,text='Photos / بيع بدون باركود');self.catalog_tabs.add(self.list_page,text='Liste')
+        self.catalog_tabs.add(self.photo_page,text='Photos / اختيار بالصورة');self.catalog_tabs.add(self.list_page,text='Liste')
         self.catalog_tabs.pack(fill='both',expand=True)
         self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
         self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
