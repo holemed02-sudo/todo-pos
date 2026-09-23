@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from services.reports import (
     today_summary, period_summary, sales_evolution, top_products,
-    top_cashiers, category_breakdown, payment_breakdown,
+    top_cashiers, top_clients, category_breakdown, payment_breakdown,
 )
 from services.money import fmt
 from database import connect
@@ -225,6 +225,7 @@ class StatisticsFrame(ttk.Frame):
         charts.columnconfigure(1, weight=2)
         charts.rowconfigure(0, weight=3)
         charts.rowconfigure(1, weight=2)
+        charts.rowconfigure(2, weight=2)
 
         # Evolution bar chart (big, top-left)
         evo_card = ttk.LabelFrame(charts, text='Évolution des ventes', padding=4)
@@ -250,6 +251,12 @@ class StatisticsFrame(ttk.Frame):
         cash_card.grid(row=1, column=1, sticky='nsew')
         self.cashier_chart = HBarChart(cash_card, [], height=160)
         self.cashier_chart.pack(fill='both', expand=True)
+
+        # Top clients (third row, full width)
+        client_card = ttk.LabelFrame(charts, text='Top 10 clients', padding=4)
+        client_card.grid(row=2, column=0, columnspan=2, sticky='nsew', pady=(6, 0))
+        self.client_chart = HBarChart(client_card, [], height=150)
+        self.client_chart.pack(fill='both', expand=True)
 
         # recent transactions sidebar
         recent_card = ttk.LabelFrame(self, text='Dernières opérations', padding=6)
@@ -288,6 +295,7 @@ class StatisticsFrame(ttk.Frame):
             self._load_evolution()
             self._load_top_products()
             self._load_cashiers()
+            self._load_clients()
             self._load_categories()
             self._load_recent()
             self._load_payments()
@@ -329,6 +337,11 @@ class StatisticsFrame(ttk.Frame):
         rows = top_cashiers(self._period)
         items = [(r['name'], r['revenue']) for r in rows]
         self.cashier_chart.update_data(items)
+
+    def _load_clients(self):
+        rows = top_clients(self._period)
+        items = [(r['name'], r['revenue']) for r in rows]
+        self.client_chart.update_data(items)
 
     def _load_categories(self):
         rows = category_breakdown(self._period)
