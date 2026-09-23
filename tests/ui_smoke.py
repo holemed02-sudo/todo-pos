@@ -10,6 +10,7 @@ from database import connect
 from services.security import current_user
 from services.inventory import apply_stock_movement
 from screens.products import ProductEditor
+from screens.payment import PaymentDialog
 from tkinter import messagebox
 def unexpected_dialog(title,message,**kwargs):
  raise AssertionError(f'{title}: {message}')
@@ -31,6 +32,11 @@ sale.change(1);assert sale.cart[0]['qty']==2
 for key in ['home','products','cash','stock','purchases','returns','journal','settings','statistics','sale']:
  app.show(key);app.update_idletasks()
 assert app.sale_frame.cart[0]['qty']==2
+dialog=PaymentDialog(app,10000,method='MIXED')
+dialog.withdraw();dialog.method.set('MIXED');dialog.amount.set('30.00');dialog.card_amount.set('70.00');dialog.update_amount();app.update_idletasks()
+assert dialog.paid_cents()==10000
+assert str(dialog.confirm_button.cget('state'))!='disabled'
+dialog.confirm();assert dialog.result[0]=='MIXED' and dialog.result[1]==10000 and dialog.result[3]==[('CASH',3000),('CARD',7000)]
 editor=ProductEditor(app,product_id=pid)
 editor.withdraw();editor.update_idletasks()
 assert str(editor.e_stock.cget('state'))!='disabled'
