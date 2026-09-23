@@ -56,7 +56,7 @@ EVENTS = """WITH events AS (
  SELECT * FROM events WHERE date(created_at,'localtime') BETWEEN ? AND ?
 ) """
 
-def period_summary(period='month'):
+def period_summary(period='month',year=None):
     start,end,_=_date_range(period)
     with connect() as c:
         row=c.execute(EVENTS+'SELECT COALESCE(SUM(revenue),0),COALESCE(SUM(cost),0) FROM period_events',(start,end)).fetchone()
@@ -91,13 +91,13 @@ def product_evolution(product_id, period='month', year=None):
           [(datetime.date.fromisoformat(start)+datetime.timedelta(days=i)).isoformat() for i in range(len(labels))])
     return labels,[totals.get(k,0) for k in keys]
 
-def top_products(limit=10,period='month'):
+def top_products(limit=10,period='month',year=None):
     start,end,_=_date_range(period)
     with connect() as c:
         rows=c.execute(EVENTS+"SELECT name,SUM(qty) qty,SUM(revenue) revenue FROM period_events GROUP BY product_id,name ORDER BY revenue DESC LIMIT ?",(start,end,limit)).fetchall()
     return [dict(r) for r in rows]
 
-def top_cashiers(period='month'):
+def top_cashiers(period='month',year=None):
     start,end,_=_date_range(period)
     with connect() as c:
         rows=c.execute(EVENTS+"""SELECT u.display_name name,SUM(e.revenue) revenue,
@@ -118,8 +118,10 @@ def top_month(year=None):
         return {'month': None, 'revenue': 0}
     return {'month': int(row['month']), 'revenue': row['revenue']}
 
-def top_clients(period='month'):
+def top_clients(period='month',year=None):
     start,end,_=_date_range(period)
+    if period=='year' and year is not None:
+        year=int(year);start,end=f'{year}-01-01',f'{year}-12-31'
     with connect() as c:
         rows=c.execute(EVENTS+"""SELECT COALESCE(cl.name,'Client comptoir') name,SUM(e.revenue) revenue
             FROM period_events e LEFT JOIN clients cl ON cl.id=e.client_id
@@ -127,7 +129,7 @@ def top_clients(period='month'):
             GROUP BY e.client_id ORDER BY revenue DESC LIMIT 10""",(start,end)).fetchall()
     return [dict(r) for r in rows]
 
-def category_breakdown(period='month'):
+def category_breakdown(period='month',year=None):
     start,end,_=_date_range(period)
     with connect() as c:
         rows=c.execute(EVENTS+"""SELECT COALESCE(c.name,'Sans famille') name,SUM(e.revenue) revenue
@@ -136,9 +138,11 @@ def category_breakdown(period='month'):
     return [dict(r) for r in rows]
 
 
-def payment_breakdown(period='month'):
+def payment_breakdown(period='month',year=None):
     """Net settled amounts by payment method, with refunds deducted by method."""
     start,end,_=_date_range(period)
+    if period=='year' and year is not None:
+        year=int(year);start,end=f'{year}-01-01',f'{year}-12-31'
     sql="""WITH p AS (
       SELECT sp.payment_method method,sp.amount_cents amount
       FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
