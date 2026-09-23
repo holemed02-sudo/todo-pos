@@ -153,7 +153,7 @@ class SettingsFrame(ttk.Frame):
             limit=int(self.search_limit.get())
             if limit<1 or limit>1000:raise ValueError()
         except ValueError:
-            messagebox.showerror("ToDo","Limite recherche بين 1 و1000.",parent=self);return
+            messagebox.showerror("ToDo",self.tr("Limite de recherche entre 1 et 1000.","حد البحث بين 1 و1000."),parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get())
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('language',self.language.get());self.app.after_idle(lambda:self.app.change_language(self.language.get()))
@@ -161,7 +161,7 @@ class SettingsFrame(ttk.Frame):
             seconds=int(self.customer_seconds.get())
             if seconds<2 or seconds>120:raise ValueError()
         except ValueError:
-            messagebox.showerror("ToDo","Durée écran client entre 2 et 120 secondes.",parent=self);return
+            messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 120 secondes.","مدة شاشة الزبون بين 2 و120 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
         set_setting("customer_display_port",self.customer_port.get().strip())
         set_setting("scale_serial_port",self.scale_port.get().strip())
@@ -169,7 +169,7 @@ class SettingsFrame(ttk.Frame):
         set_setting("station_id",self.station_id.get().strip() or "CAISSE-1")
         set_setting("auto_backup_minutes",self.auto_backup.get())
         self.app.schedule_auto_backup()
-        messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
+        messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
     def test_customer(self):
         self.app.toggle_customer_display()
 
@@ -184,7 +184,7 @@ class SettingsFrame(ttk.Frame):
     def restore(self):
         p=filedialog.askopenfilename(parent=self,filetypes=[("SQLite DB","*.db"),("Tous","*.*")])
         if not p:return
-        if not messagebox.askyesno("ToDo","Restaurer ce backup ? Une copie de sécurité sera créée.",parent=self):return
+        if not messagebox.askyesno("ToDo",self.tr("Restaurer ce backup ? Une copie de sécurité sera créée.","استرجاع هذه النسخة؟ سيتم إنشاء نسخة أمان أولاً."),parent=self):return
         try:
             s=restore_backup(p)
             messagebox.showinfo('ToDo',f'Restauré. Copie sécurité: {s}\nLe programme va se fermer. Relancez ToDo.',parent=self)
@@ -197,18 +197,18 @@ class SettingsFrame(ttk.Frame):
         pin=simpledialog.askstring("Utilisateur","PIN:",parent=self,show="*")
         if not pin:return
         if not pin.isdigit() or len(pin)<4:
-            messagebox.showerror("ToDo","PIN: au moins 4 chiffres",parent=self);return
+            messagebox.showerror("ToDo",self.tr("PIN : au moins 4 chiffres","PIN: أربعة أرقام على الأقل"),parent=self);return
         role=simpledialog.askstring("Utilisateur","Role (admin/cashier):",parent=self) or "cashier"
         if role not in ("admin","cashier"):
-            messagebox.showerror("ToDo","Rôle invalide",parent=self);return
+            messagebox.showerror("ToDo",self.tr("Rôle invalide","صلاحية غير صالحة"),parent=self);return
         try:
             with connect() as c:c.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES(?,?,?,?)",(user,name,hash_pin(pin),role));c.commit()
-            messagebox.showinfo("ToDo","Utilisateur créé.",parent=self)
+            messagebox.showinfo("ToDo",self.tr("Utilisateur créé.","تم إنشاء المستخدم."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
 
     def manage_users(self):
         with connect() as conn: require_admin(conn)
-        w=tk.Toplevel(self);w.title("Utilisateurs");w.geometry("720x500");w.transient(self.winfo_toplevel())
+        w=tk.Toplevel(self);w.title(self.tr("Utilisateurs","المستخدمون"));w.geometry("720x500");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("id","username","name","role","active"),show="headings")
         for key,label,width in [("id","ID",55),("username","Utilisateur",150),("name","Nom",190),("role","Rôle",100),("active","Actif",70)]:tree.heading(key,text=label);tree.column(key,width=width,anchor="center" if key in ("id","role","active") else "w")
         tree.pack(fill="both",expand=True,padx=12,pady=12);bar=ttk.Frame(w);bar.pack(fill="x",padx=12,pady=(0,12))
@@ -218,12 +218,12 @@ class SettingsFrame(ttk.Frame):
             for r in rows:tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],r["role"],"Oui" if r["active"] else "Non"))
         def selected():
             sel=tree.selection()
-            if not sel: messagebox.showwarning("Utilisateurs","Sélectionnez un utilisateur.",parent=w);return None
+            if not sel: messagebox.showwarning(self.tr("Utilisateurs","المستخدمون"),self.tr("Sélectionnez un utilisateur.","اختر مستخدماً."),parent=w);return None
             return int(sel[0])
         def toggle():
             uid=selected()
             if uid is None:return
-            if uid==self.app.user["id"]:messagebox.showwarning("Utilisateurs","Impossible de désactiver votre propre compte.",parent=w);return
+            if uid==self.app.user["id"]:messagebox.showwarning(self.tr("Utilisateurs","المستخدمون"),self.tr("Impossible de désactiver votre propre compte.","لا يمكن تعطيل حسابك الحالي."),parent=w);return
             with connect() as conn:
                 require_admin(conn);row=conn.execute("SELECT active FROM users WHERE id=?",(uid,)).fetchone();new=0 if row["active"] else 1
                 conn.execute("UPDATE users SET active=? WHERE id=?",(new,uid));audit(conn,"USER_ACTIVE_TOGGLE",uid,str(new));conn.commit()
@@ -231,25 +231,25 @@ class SettingsFrame(ttk.Frame):
         def role():
             uid=selected()
             if uid is None:return
-            if uid==self.app.user["id"]:messagebox.showwarning("Utilisateurs","Modifiez un autre compte.",parent=w);return
+            if uid==self.app.user["id"]:messagebox.showwarning(self.tr("Utilisateurs","المستخدمون"),self.tr("Modifiez un autre compte.","اختر حساباً آخر للتعديل."),parent=w);return
             with connect() as conn:
                 require_admin(conn);row=conn.execute("SELECT role FROM users WHERE id=?",(uid,)).fetchone();new="admin" if row["role"]!="admin" else "cashier"
                 conn.execute("UPDATE users SET role=? WHERE id=?",(new,uid));audit(conn,"USER_ROLE_CHANGE",uid,new);conn.commit()
             reload()
-        ttk.Button(bar,text="Activer / Désactiver",command=toggle).pack(side="left");ttk.Button(bar,text="Admin ↔ Caissier",command=role).pack(side="left",padx=8);reload()
+        ttk.Button(bar,text=self.tr('Activer / Désactiver','تفعيل / تعطيل'),command=toggle).pack(side="left");ttk.Button(bar,text=self.tr('Admin ↔ Caissier','مدير ↔ كاشير'),command=role).pack(side="left",padx=8);reload()
 
     def change_pin(self):
         pin=simpledialog.askstring('PIN','Nouveau PIN (4 chiffres minimum):',parent=self,show='*')
         if pin is None:return
         if not pin.isdigit() or len(pin)<4:
-            messagebox.showerror('ToDo','Utilisez au moins 4 chiffres.',parent=self);return
+            messagebox.showerror('ToDo',self.tr('Utilisez au moins 4 chiffres.','استعمل أربعة أرقام على الأقل.'),parent=self);return
         with connect() as conn:
             conn.execute('UPDATE users SET pin_hash=? WHERE id=?',(hash_pin(pin),self.app.user['id']))
             audit(conn,'PIN_CHANGE',self.app.user['id'])
-        messagebox.showinfo('ToDo','PIN modifié.',parent=self)
+        messagebox.showinfo('ToDo',self.tr('PIN modifié.','تم تغيير PIN.'),parent=self)
 
     def audit_log(self):
-        w=tk.Toplevel(self);w.title('Journal des actions');w.geometry('960x520')
+        w=tk.Toplevel(self);w.title(self.tr('Journal des actions','سجل العمليات'));w.geometry('960x520')
         tree=ttk.Treeview(w,columns=('date','user','action','document','details'),show='headings')
         for key,label,width in [('date','Date',150),('user','Utilisateur',140),('action','Action',140),('document','Document',100),('details','Détails',300)]:
             tree.heading(key,text=label);tree.column(key,width=width)
