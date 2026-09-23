@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from database import connect
+from database import connect, get_setting
 from services.money import fmt
 from services.suppliers import list_suppliers, save_supplier
 
@@ -8,7 +8,8 @@ from services.suppliers import list_suppliers, save_supplier
 class SupplierEditor(tk.Toplevel):
     def __init__(self, master, supplier=None, on_saved=None):
         super().__init__(master)
-        self.title('Fournisseur')
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        self.title(self.tr('Fournisseur','المورد'))
         self.transient(master.winfo_toplevel())
         self.grab_set()
         self.supplier_id = supplier['id'] if supplier else None
@@ -17,15 +18,15 @@ class SupplierEditor(tk.Toplevel):
         self.phone = tk.StringVar(value=(supplier or {}).get('phone', ''))
         form = ttk.Frame(self, padding=20)
         form.pack(fill='both', expand=True)
-        for row, (label, variable) in enumerate([('Nom / الاسم', self.name), ('Téléphone / الهاتف', self.phone)]):
+        for row, (label, variable) in enumerate([(self.tr('Nom','الاسم'), self.name), (self.tr('Téléphone','الهاتف'), self.phone)]):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky='w', pady=8)
             ttk.Entry(form, textvariable=variable, width=36).grid(row=row, column=1, padx=12)
-        ttk.Label(form, text='Notes / ملاحظات').grid(row=2, column=0, sticky='nw')
+        ttk.Label(form, text=self.tr('Notes','ملاحظات')).grid(row=2, column=0, sticky='nw')
         self.notes = tk.Text(form, width=36, height=5)
         self.notes.grid(row=2, column=1, padx=12)
         self.notes.insert('1.0', (supplier or {}).get('notes', ''))
-        ttk.Button(form, text='Enregistrer', style='Primary.TButton', command=self.save).grid(row=3, column=1, sticky='ew', padx=12, pady=16)
-        ttk.Button(form, text='Annuler', command=self.destroy).grid(row=3, column=0)
+        ttk.Button(form, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton', command=self.save).grid(row=3, column=1, sticky='ew', padx=12, pady=16)
+        ttk.Button(form, text=self.tr('Annuler','إلغاء'), command=self.destroy).grid(row=3, column=0)
 
     def save(self):
         try:
@@ -41,16 +42,17 @@ class SupplierEditor(tk.Toplevel):
 class SuppliersFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=16)
-        ttk.Label(self, text='Fournisseurs / الموردون', style='Title.TLabel').pack(anchor='w')
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        ttk.Label(self, text=self.tr('Fournisseurs','الموردون'), style='Title.TLabel').pack(anchor='w')
         toolbar = ttk.Frame(self)
         toolbar.pack(fill='x', pady=12)
         self.query = tk.StringVar()
         entry = ttk.Entry(toolbar, textvariable=self.query)
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<KeyRelease>', lambda event: self.refresh())
-        ttk.Button(toolbar, text='Nouveau', command=lambda: SupplierEditor(self, on_saved=self.refresh)).pack(side='left', padx=8)
-        ttk.Button(toolbar, text='Modifier', command=self.edit).pack(side='left')
-        ttk.Button(toolbar, text='Réceptions du fournisseur', command=self.history).pack(side='left', padx=8)
+        ttk.Button(toolbar, text=self.tr('Nouveau','جديد'), command=lambda: SupplierEditor(self, on_saved=self.refresh)).pack(side='left', padx=8)
+        ttk.Button(toolbar, text=self.tr('Modifier','تعديل'), command=self.edit).pack(side='left')
+        ttk.Button(toolbar, text=self.tr('Réceptions du fournisseur','استلامات المورد'), command=self.history).pack(side='left', padx=8)
         self.tree = ttk.Treeview(self, columns=('name', 'phone', 'notes'), show='headings')
         for key, label, width in [('name', 'Nom', 250), ('phone', 'Téléphone', 160), ('notes', 'Notes', 400)]:
             self.tree.heading(key, text=label)
@@ -82,7 +84,7 @@ class SuppliersFrame(ttk.Frame):
             return
         supplier = self.rows[selected[0]]
         window = tk.Toplevel(self)
-        window.title('Réceptions — ' + supplier['name'])
+        window.title(self.tr('Réceptions','الاستلامات')+' — '+supplier['name'])
         window.geometry('760x420')
         with connect() as conn:
             rows = conn.execute('SELECT * FROM purchases WHERE supplier_id=? ORDER BY id DESC', (supplier['id'],)).fetchall()
