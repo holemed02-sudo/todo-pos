@@ -428,11 +428,14 @@ class ProductsFrame(ttk.Frame):
                 rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
-            for r in rows:
-                with connect() as c:
-                    codes=c.execute("SELECT barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",(r["id"],)).fetchall()
-                if not codes:codes=[{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
-                for code in codes:ws.append([f"TODO-{r['id']}",code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
+                barcode_rows=c.execute("SELECT product_id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes ORDER BY product_id,id").fetchall()
+            barcodes_by_product={}
+            for code in barcode_rows:barcodes_by_product.setdefault(code["product_id"],[]).append(code)
+            for seq,r in enumerate(rows,start=1):
+                codes=barcodes_by_product.get(r["id"]) or [{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
+                # product key is an exchange-file grouping token only; it is deliberately not a database id.
+                exchange_key=f"TODO-{seq:06d}"
+                for code in codes:ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
             for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":18,"I":14,"J":14,"K":18,"L":10}.items():ws.column_dimensions[col].width=width
             wb.save(path)
