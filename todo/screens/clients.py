@@ -43,7 +43,7 @@ class ClientEditor(tk.Toplevel):
             cid = save_client(self.name.get(), self.phone.get(),
                               self.notes.get('1.0', 'end-1c'), self.client_id)
         except (ValueError, PermissionError) as e:
-            messagebox.showerror('Client', str(e), parent=self); return
+            messagebox.showerror(self.tr('Client','زبون'), str(e), parent=self); return
         self.destroy()
         if self.on_saved: self.on_saved(cid)
 
@@ -198,7 +198,7 @@ class CreditStateWindow(tk.Toplevel):
                 values=(r['name'], r['phone'],
                         fmt(r['billed_cents'], ''), fmt(r['paid_cents'], ''), fmt(bal, '')),
                 tags=(tag,))
-        self.lbl_total.config(text=f"Total dû global : {fmt(grand, 'DH')}")
+        self.lbl_total.config(text=f"{self.tr('Total dû global','إجمالي الرصيد المستحق')} : {fmt(grand, 'DH')}")
 
 
 # ── Écran principal clients ───────────────────────────────────────────────────
@@ -271,7 +271,7 @@ class ClientsFrame(ttk.Frame):
     def payments(self):
         c = self._selected()
         if not c:
-            messagebox.showinfo('Clients', 'Sélectionnez un client.', parent=self); return
+            messagebox.showinfo(self.tr('Clients','الزبائن'), self.tr('Sélectionnez un client.','اختر زبوناً.'), parent=self); return
         PaymentsWindow(self, c)
 
     def credit_state(self):
