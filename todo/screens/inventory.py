@@ -95,7 +95,7 @@ class InventaireFrame(ttk.Frame):
     def apply_all(self):
         diffs = {pid: cnt for pid, cnt in self.counted.items()}
         if not diffs:
-            messagebox.showinfo('Inventaire', 'Aucun écart saisi.', parent=self); return
+            messagebox.showinfo(self.tr('Inventaire','الجرد'), self.tr('Aucun écart saisi.','لم يتم إدخال أي فرق.'), parent=self); return
         n_adj = 0
         with connect() as conn:
             conn.execute('BEGIN IMMEDIATE')
@@ -109,7 +109,7 @@ class InventaireFrame(ttk.Frame):
                                      note=f'Inventaire : théorique {theory:g} → compté {counted:g}')
                 n_adj += 1
             conn.commit()
-        messagebox.showinfo('Inventaire', f'{n_adj} article(s) ajusté(s).', parent=self)
+        messagebox.showinfo(self.tr('Inventaire','الجرد'), self.tr(f'{n_adj} article(s) ajusté(s).',f'تمت تسوية {n_adj} منتج.'), parent=self)
         self.counted.clear()
         self.refresh()
 
@@ -191,14 +191,14 @@ class SortiesFrame(ttk.Frame):
     def add_exit(self):
         sel = self.tree.selection()
         if not sel:
-            messagebox.showinfo('Sorties', 'Sélectionnez un article.', parent=self); return
+            messagebox.showinfo(self.tr('Sorties','الإخراج'), self.tr('Sélectionnez un article.','اختر منتجاً.'), parent=self); return
         pid   = int(sel[0])
         pname = self.rows[sel[0]]['name']
         qty   = simpledialog.askfloat('Sortie', f'Quantité sortie — {pname} :', parent=self)
         if qty is None or qty <= 0: return
         reason = simpledialog.askstring('Sortie', 'Raison obligatoire (casse, perte, don…) :', parent=self)
         if reason is None or not reason.strip():
-            messagebox.showinfo('Sorties','La raison est obligatoire.',parent=self); return
+            messagebox.showinfo(self.tr('Sorties','الإخراج'),self.tr('La raison est obligatoire.','السبب إلزامي.'),parent=self); return
         try:
             with connect() as conn:
                 conn.execute('BEGIN IMMEDIATE')
@@ -206,4 +206,4 @@ class SortiesFrame(ttk.Frame):
                 conn.commit()
             self.refresh()
         except Exception as e:
-            messagebox.showerror('Sortie', str(e), parent=self)
+            messagebox.showerror(self.tr('Sortie','إخراج'), str(e), parent=self)
