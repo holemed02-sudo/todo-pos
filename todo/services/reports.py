@@ -47,7 +47,7 @@ EVENTS = """WITH events AS (
  FROM sale_items si JOIN sales s ON s.id=si.sale_id
  LEFT JOIN products p ON p.id=si.product_id WHERE s.status='COMPLETED'
  UNION ALL
- SELECT ri.product_id,si.name_snapshot,p.category_id,s.cashier_user_id,
+ SELECT ri.product_id,si.name_snapshot,p.category_id,s.cashier_user_id,s.client_id,
         r.created_at,-ri.qty,-ri.line_total_cents,-si.cost_price_cents*ri.qty
  FROM return_items ri JOIN returns r ON r.id=ri.return_id
  JOIN sale_items si ON si.id=ri.sale_item_id JOIN sales s ON s.id=si.sale_id
