@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
-from database import connect
+from database import connect, get_setting
 from services.inventory import apply_stock_movement
 from services.security import require_admin, audit
 import math
@@ -20,7 +20,7 @@ class ProductEditor(tk.Toplevel):
         self.pid=product_id; self.on_saved=on_saved
         self.loaded_stock=0
         self.img_source="";self.img_rel="";self.img_ref=None
-        self.title("ToDo — Article");self.geometry("1100x900");self.resizable(True,True);self.transient(master)
+        self.title('ToDo — '+self.tr('Article','المنتوج'));self.geometry("1100x900");self.resizable(True,True);self.transient(master)
         # Do not grab the whole application: a modal grab prevents the global
         # virtual keyboard (another Toplevel) from receiving mouse/touch events.
         # The editor remains transient, while its own embedded keyboard works
@@ -33,12 +33,12 @@ class ProductEditor(tk.Toplevel):
         self._keyboard_target = None
         self.bind_all('<FocusIn>', self._remember_keyboard_target, add='+')
         left=ttk.Frame(root);left.pack(side="left",fill="both",expand=True,padx=(0,18))
-        right=ttk.LabelFrame(root,text="Image produit",padding=8);right.pack(side="right",fill="y")
-        self.e_bar=labeled_entry(left,"CODE-BARRES / الباركود",self.bar,0,bold=True)
-        self.e_name=labeled_entry(left,"Article / المنتوج",self.name,1)
-        ttk.Label(left,text="Familles / العائلات").grid(row=2,column=0,sticky='nw',pady=4)
+        right=ttk.LabelFrame(root,text=self.tr('Image produit','صورة المنتوج'),padding=8);right.pack(side="right",fill="y")
+        self.e_bar=labeled_entry(left,self.tr('CODE-BARRES','الباركود'),self.bar,0,bold=True)
+        self.e_name=labeled_entry(left,self.tr('Article','المنتوج'),self.name,1)
+        ttk.Label(left,text=self.tr('Familles','العائلات')).grid(row=2,column=0,sticky='nw',pady=4)
         cat_outer=ttk.Frame(left);cat_outer.grid(row=2,column=1,columnspan=2,sticky='ew',pady=4)
-        ttk.Button(cat_outer,text="+ Famille",command=self.add_category).pack(side='bottom',anchor='w',pady=(4,0))
+        ttk.Button(cat_outer,text=self.tr('+ Famille','+ عائلة'),command=self.add_category).pack(side='bottom',anchor='w',pady=(4,0))
         cat_canvas=tk.Canvas(cat_outer,height=100,highlightthickness=0)
         cat_canvas.pack(side='left',fill='x',expand=True)
         scrollbar=ttk.Scrollbar(cat_outer,orient='vertical',command=cat_canvas.yview)
@@ -337,16 +337,16 @@ class ProductsFrame(ttk.Frame):
         super().__init__(master,padding=10)
         self.page=0
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
-        ttk.Label(top,text="Articles / المنتجات",font=("Segoe UI",20,"bold")).pack(side="left")
-        ttk.Label(self,text="بطاقة المنتوج، الباركودات، الصور، الأثمنة والعروض.",foreground="#475569").pack(anchor="w",pady=(0,8))
+        ttk.Label(top,text=self.tr('Articles','المنتجات'),font=("Segoe UI",20,"bold")).pack(side="left")
+        ttk.Label(self,text=self.tr('Fiche article, codes-barres, images, prix et offres.','بطاقة المنتوج، الباركودات، الصور، الأثمنة والعروض.'),foreground="#475569").pack(anchor="w",pady=(0,8))
         self.q=tk.StringVar();e=ttk.Entry(top,textvariable=self.q,width=28);e.pack(side="left",padx=15);e.bind("<KeyRelease>",lambda x:self.go_page(0))
         self.filter=tk.StringVar(value="Tous")
         ttk.Combobox(top,textvariable=self.filter,values=["Tous","Alertes stock","Stock négatif","Promotions"],state="readonly",width=16).pack(side="left",padx=4)
         self.filter.trace_add("write",lambda *_:self.go_page(0))
-        ttk.Button(top,text="+ Nouveau",command=self.new).pack(side="right",padx=3)
-        ttk.Button(top,text="Importer Excel",command=self.import_excel).pack(side="right",padx=3)
-        ttk.Button(top,text="Étiquette PDF",command=self.label_pdf).pack(side="right",padx=3)
-        ttk.Button(top,text="Modifier",command=self.edit).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('+ Nouveau','+ جديد'),command=self.new).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('Importer Excel','استيراد Excel'),command=self.import_excel).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('Étiquette PDF','ملصق PDF'),command=self.label_pdf).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('Modifier','تعديل'),command=self.edit).pack(side="right",padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         cfg=[("id","ID",50),("barcode","Barcode",145),("name","Article",260),("cat","Famille",130),("buy","Achat",85),("sell","Vente",85),("stock","Stock",80),("alert","Alerte",80),("img","Img",45)]
