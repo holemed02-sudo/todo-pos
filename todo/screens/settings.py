@@ -91,6 +91,7 @@ class SettingsFrame(ttk.Frame):
         f=ttk.LabelFrame(self,text="Magasin et vente",padding=10);f.pack(fill="x")
         self.shop=tk.StringVar(value=get_setting("shop_name","ToDo"));self.cur=tk.StringVar(value=get_setting("currency","DH"));self.neg=tk.BooleanVar(value=get_setting("allow_negative_stock","1")=="1")
         self.footer=tk.StringVar(value=get_setting("receipt_footer","Merci"))
+        self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
         self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
         ttk.Label(f,text="Nom magasin").grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
         ttk.Label(f,text="Devise").grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.cur,width=10).grid(row=1,column=1,sticky="w",padx=8)
