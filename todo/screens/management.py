@@ -12,8 +12,8 @@ GROUPS = [
     ],
     [
         ("🚚", "Fournisseurs",              "suppliers",  "#EA580C", "#fff"),
-        ("💳", "Règlements fournisseurs",   None,         "#64748B", "#fff"),
-        ("📊", "État crédits fournisseurs", None,         "#64748B", "#fff"),
+        ("💳", "Règlements fournisseurs",   "supplier_payments", "#EA580C", "#fff"),
+        ("📊", "État crédits fournisseurs", "supplier_credits",  "#DC2626", "#fff"),
     ],
     [
         ("👥", "Clients",             "clients",         "#2563EB", "#fff"),
@@ -22,7 +22,7 @@ GROUPS = [
     ],
     [
         ("💸", "Dépenses",    "cash", "#D97706", "#fff"),
-        ("📅", "Rendez-vous", None,   "#64748B", "#fff"),
+        ("📅", "Rendez-vous", "rendez_vous", "#0891B2", "#fff"),
     ],
 ]
 
@@ -119,6 +119,9 @@ class ManagementFrame(ttk.Frame):
         if key == "clients_credits":
             from screens.clients import CreditStateWindow
             CreditStateWindow(app); return
+        if key == "supplier_credits":
+            from screens.supplier_payments import SupplierCreditStateWindow
+            SupplierCreditStateWindow(app); return
         if key:
             app.show(key)
             if label == "Dépenses":
