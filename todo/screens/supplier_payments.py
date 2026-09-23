@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 from services.money import fmt, to_cents
+from database import get_setting
 from services.supplier_payments import (
     add_supplier_payment, list_supplier_payments,
     supplier_credit_statement, supplier_purchases,
@@ -13,8 +14,9 @@ class SupplierPaymentsWindow(tk.Toplevel):
     """Règlements d'un fournisseur: factures à gauche, paiements à droite."""
     def __init__(self, master, supplier):
         super().__init__(master)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.supplier = supplier
-        self.title(f"Règlements — {supplier['name']}")
+        self.title(f"{self.tr('Règlements','التسديدات')} — {supplier['name']}")
         self.geometry('860x500')
         self.transient(master.winfo_toplevel())
         self._build()
@@ -23,13 +25,13 @@ class SupplierPaymentsWindow(tk.Toplevel):
         top = ttk.Frame(self, padding=(16, 10, 16, 0)); top.pack(fill='x')
         self.lbl_balance = ttk.Label(top, font=('Segoe UI', 14, 'bold'))
         self.lbl_balance.pack(side='left')
-        ttk.Button(top, text='+ Ajouter règlement', style='Primary.TButton',
+        ttk.Button(top, text=self.tr('+ Ajouter règlement','+ إضافة تسديد'), style='Primary.TButton',
                    command=self._add).pack(side='right')
 
         paned = ttk.Panedwindow(self, orient='horizontal')
         paned.pack(fill='both', expand=True, padx=16, pady=10)
 
-        lf = ttk.LabelFrame(paned, text='Achats / الفواتير', padding=6)
+        lf = ttk.LabelFrame(paned, text=self.tr('Achats','الفواتير'), padding=6)
         paned.add(lf, weight=3)
         self.pur_tree = ttk.Treeview(lf,
             columns=('inv','date','total','paid','balance'), show='headings', height=14)
@@ -43,7 +45,7 @@ class SupplierPaymentsWindow(tk.Toplevel):
         sb.pack(side='right', fill='y')
         self.pur_tree.configure(yscrollcommand=sb.set); self.pur_tree.pack(fill='both', expand=True)
 
-        rf = ttk.LabelFrame(paned, text='Paiements effectués', padding=6)
+        rf = ttk.LabelFrame(paned, text=self.tr('Paiements effectués','التسديدات المنجزة'), padding=6)
         paned.add(rf, weight=2)
         self.pay_tree = ttk.Treeview(rf, columns=('date','amount','note'), show='headings', height=14)
         for col,lbl,w in [('date','Date',120),('amount','Montant',90),('note','Note',180)]:
@@ -96,16 +98,17 @@ class SupplierCreditStateWindow(tk.Toplevel):
     """État des crédits fournisseurs — ce qu'on doit."""
     def __init__(self, master):
         super().__init__(master)
-        self.title('État crédits fournisseurs / ما نديناه')
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        self.title(self.tr('État crédits fournisseurs','حالة ديون الموردين'))
         self.geometry('720x440')
         self.transient(master.winfo_toplevel())
         self._build()
 
     def _build(self):
         top = ttk.Frame(self, padding=(16, 12, 16, 0)); top.pack(fill='x')
-        ttk.Label(top, text='Fournisseurs avec solde impayé',
+        ttk.Label(top, text=self.tr('Fournisseurs avec solde impayé','موردون برصيد غير مؤدى'),
                   font=('Segoe UI', 14, 'bold')).pack(side='left')
-        ttk.Button(top, text='↺ Actualiser', command=self._refresh).pack(side='right')
+        ttk.Button(top, text=self.tr('↺ Actualiser','↺ تحديث'), command=self._refresh).pack(side='right')
 
         self.tree = ttk.Treeview(self,
             columns=('name','phone','billed','paid','balance'), show='headings')
@@ -144,7 +147,8 @@ class SupplierReglementFrame(ttk.Frame):
     """Page principale règlements fournisseurs."""
     def __init__(self, master):
         super().__init__(master, padding=16)
-        ttk.Label(self, text='Règlements fournisseurs / الموردون',
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        ttk.Label(self, text=self.tr('Règlements fournisseurs','تسديدات الموردين'),
                   style='Title.TLabel').pack(anchor='w')
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=10)
@@ -152,8 +156,8 @@ class SupplierReglementFrame(ttk.Frame):
         entry = ttk.Entry(toolbar, textvariable=self.query)
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<KeyRelease>', lambda e: self.refresh())
-        ttk.Button(toolbar, text='Règlements',    command=self.payments).pack(side='left', padx=4)
-        ttk.Button(toolbar, text='État crédits',  command=self.credit_state).pack(side='left', padx=4)
+        ttk.Button(toolbar, text=self.tr('Règlements','التسديدات'),    command=self.payments).pack(side='left', padx=4)
+        ttk.Button(toolbar, text=self.tr('État crédits','حالة الديون'),  command=self.credit_state).pack(side='left', padx=4)
 
         self.tree = ttk.Treeview(self,
             columns=('name','phone','billed','paid','balance'), show='headings')
