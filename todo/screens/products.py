@@ -483,14 +483,19 @@ class ProductsFrame(ttk.Frame):
                 sample=", ".join(map(str,numeric_barcode_lines[:10]))
                 if not messagebox.askyesno("Import Excel",f"Barcode numérique détecté (lignes {sample}).\n\nExcel peut supprimer les zéros au début. Vérifiez le fichier et mettez la colonne Barcode au format Texte si nécessaire.\n\nContinuer quand même ?",parent=self):return
             if not preview:raise ValueError("Aucun article valide.")
-            # Preview + conflict scan. Duplicate barcodes are legal in ToDo, but the operator
-            # must see them before import because they will trigger the product chooser at sale.
+            # Existing barcode conflicts are resolved explicitly during catalogue exchange.
             with connect() as c:
-                existing={r["barcode"] for r in c.execute("SELECT DISTINCT barcode FROM product_barcodes WHERE barcode<>''")}
+                existing={}
+                for r in c.execute("""SELECT b.barcode,p.id,p.name,p.purchase_price_cents,p.sale_price_cents
+                                     FROM product_barcodes b JOIN products p ON p.id=b.product_id
+                                     WHERE b.barcode<>'' ORDER BY p.name"""):
+                    existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[]
             for line,barcode,name,cat,buy,sell,stock,alert in preview:
                 if not barcode:continue
-                if barcode in existing:conflicts.append(f"Ligne {line}: {barcode} existe déjà — {name}")
+                if barcode in existing:
+                    names=", ".join(x["name"] for x in existing[barcode][:3])
+                    conflicts.append(f"Ligne {line}: {barcode} existe déjà — {names}")
                 if barcode in seen:conflicts.append(f"Ligne {line}: {barcode} répété dans Excel (ligne {seen[barcode]})")
                 else:seen[barcode]=line
             w=tk.Toplevel(self);w.title("Aperçu import Excel");w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
@@ -506,17 +511,36 @@ class ProductsFrame(ttk.Frame):
             buttons=ttk.Frame(w);buttons.pack(fill="x",padx=10,pady=10);ttk.Button(buttons,text="Annuler",command=w.destroy).pack(side="right");ttk.Button(buttons,text=f"Importer {len(preview)} article(s)",style="Primary.TButton",command=accept).pack(side="right",padx=8)
             self.wait_window(w)
             if not decision["ok"]:return
+            resolved=[]
+            for item in preview:
+                line,barcode,name,cat,buy,sell,stock,alert=item
+                matches=existing.get(barcode,[]) if barcode else []
+                if not matches:
+                    resolved.append(("new",item,None));continue
+                current="; ".join(f'{x["name"]} ({x["sale_price_cents"]/100:.2f})' for x in matches[:4])
+                answer=messagebox.askyesnocancel(self.tr("Conflit barcode","تعارض الباركود"),
+                    self.tr(f"Barcode {barcode}\n\nExistant: {current}\nImporté: {name} ({sell/100:.2f})\n\nOui = mettre à jour le premier article existant\nNon = ajouter comme barcode partagé\nAnnuler = ignorer cette ligne",
+                            f"الباركود {barcode}\n\nالموجود: {current}\nالمستورَد: {name} ({sell/100:.2f})\n\nنعم = تحديث أول منتوج موجود\nلا = إضافة منتوج جديد بنفس الباركود\nإلغاء = تجاهل هذا السطر"),parent=self)
+                resolved.append(("replace" if answer is True else ("shared" if answer is False else "skip"),item,matches[0]))
             with connect() as c:
                 c.execute("BEGIN IMMEDIATE");require_admin(c)
-                for _,barcode,name,cat,buy,sell,stock,alert in preview:
+                imported=updated=skipped=0
+                for action,item,target in resolved:
+                    _,barcode,name,cat,buy,sell,stock,alert=item
+                    if action=="skip":skipped+=1;continue
                     c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
+                    if action=="replace":
+                        pid=target["id"]
+                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=? WHERE id=?",(name,catid,buy,sell,alert,pid))
+                        set_product_categories(c,pid,[catid]);audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
+                        continue
                     cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty) VALUES(?,?,?,?,0,?)",(name,catid,buy,sell,alert));pid=cur.lastrowid
                     set_product_categories(c,pid,[catid])
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(pid,barcode))
                     if abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
-                    audit(c,'PRODUCT_IMPORT',pid)
+                    audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
-            messagebox.showinfo("Import Excel",f"{len(preview)} article(s) importés.",parent=self);self.refresh()
+            messagebox.showinfo(self.tr("Import Excel","استيراد Excel"),self.tr(f"{imported} ajouté(s), {updated} mis à jour, {skipped} ignoré(s).",f"تمت إضافة {imported}، تحديث {updated}، وتجاهل {skipped}."),parent=self);self.refresh()
         except Exception as e:messagebox.showerror("Import Excel",str(e),parent=self)
 
     def sel(self):
