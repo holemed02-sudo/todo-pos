@@ -130,6 +130,8 @@ class SettingsFrame(ttk.Frame):
         ttk.Label(hw,text="Port écran client").grid(row=0,column=0,sticky="w");ttk.Entry(hw,textvariable=self.customer_port,width=18).grid(row=0,column=1,padx=8,sticky="w")
         ttk.Label(hw,text="Port balance").grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(hw,textvariable=self.scale_port,width=18).grid(row=1,column=1,padx=8,sticky="w")
         ttk.Checkbutton(hw,text="Activer RFID",variable=self.rfid_enabled).grid(row=2,column=0,columnspan=2,sticky="w")
+        self.station_id=tk.StringVar(value=get_setting("station_id","CAISSE-1"))
+        ttk.Label(hw,text="Identifiant poste").grid(row=3,column=0,sticky="w",pady=5);ttk.Entry(hw,textvariable=self.station_id,width=18).grid(row=3,column=1,padx=8,sticky="w")
 
         b=ttk.LabelFrame(self,text="Données",padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text="Backup maintenant",command=self.backup).pack(side="left",padx=4)
@@ -161,6 +163,7 @@ class SettingsFrame(ttk.Frame):
         set_setting("customer_display_port",self.customer_port.get().strip())
         set_setting("scale_serial_port",self.scale_port.get().strip())
         set_setting("rfid_enabled","1" if self.rfid_enabled.get() else "0")
+        set_setting("station_id",self.station_id.get().strip() or "CAISSE-1")
         set_setting("auto_backup_minutes",self.auto_backup.get())
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo","الإعدادات تسجلات.",parent=self)
