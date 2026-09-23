@@ -97,3 +97,20 @@ def category_breakdown(period='month'):
             FROM period_events e LEFT JOIN categories c ON c.id=e.category_id
             GROUP BY e.category_id ORDER BY revenue DESC LIMIT 8""",(start,end)).fetchall()
     return [dict(r) for r in rows]
+
+
+def payment_breakdown(period='month'):
+    """Net settled amounts by payment method, with refunds deducted by method."""
+    start,end,_=_date_range(period)
+    sql="""WITH p AS (
+      SELECT sp.payment_method method,sp.amount_cents amount
+      FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
+      WHERE s.status='COMPLETED' AND date(s.created_at,'localtime') BETWEEN ? AND ?
+      UNION ALL
+      SELECT rp.payment_method,-rp.amount_cents
+      FROM return_payments rp JOIN returns r ON r.id=rp.return_id
+      WHERE date(r.created_at,'localtime') BETWEEN ? AND ?
+    ) SELECT method,COALESCE(SUM(amount),0) amount_cents FROM p GROUP BY method ORDER BY method"""
+    with connect() as c:
+        rows=c.execute(sql,(start,end,start,end)).fetchall()
+    return {r['method']:r['amount_cents'] for r in rows}
