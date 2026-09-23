@@ -358,7 +358,7 @@ class StatisticsFrame(ttk.Frame):
         self.payment_summary.config(text='   ·   '.join(parts) if parts else 'Aucun paiement')
 
     def _load_evolution(self):
-        labels, values = sales_evolution(self._period)
+        labels, values = sales_evolution(self._period, self._year if self._period=='year' else None)
         self.evo_chart.update_data(labels, values)
 
     def _load_top_products(self):
@@ -387,7 +387,7 @@ class StatisticsFrame(ttk.Frame):
             product_id=int(self.article_choice.get().rsplit('#',1)[1])
         except (ValueError, IndexError):
             return
-        x,y=product_evolution(product_id,self._period)
+        x,y=product_evolution(product_id,self._period,self._year if self._period=='year' else None)
         self.article_chart.update_data(x,y)
 
     def _load_clients(self):
