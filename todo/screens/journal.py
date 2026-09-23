@@ -11,7 +11,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -85,6 +85,25 @@ class JournalFrame(ttk.Frame):
         ttk.Label(w,text=f"Total {fmt(total)} · Coût {fmt(cost)} · Marge {fmt(total-cost)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def article_report(self):self.detail_report("article")
     def family_report(self):self.detail_report("family")
+    def client_report(self):
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+        sql="""SELECT COALESCE(cl.name,'Client comptoir') label,COUNT(DISTINCT s.id) tickets,
+            SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)) sales
+            FROM sales s LEFT JOIN clients cl ON cl.id=s.client_id
+            WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?
+            GROUP BY s.client_id ORDER BY sales DESC"""
+        with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
+        w=tk.Toplevel(self);w.title("Rapport clients");w.geometry("700x540");w.transient(self.winfo_toplevel())
+        tree=ttk.Treeview(w,columns=("client","tickets","sales"),show="headings")
+        for key,title,width in [("client","Client",330),("tickets","Tickets",100),("sales","Ventes nettes",150)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="client" else "w")
+        tree.pack(fill="both",expand=True,padx=12,pady=12)
+        total=0
+        for r in rows:
+            total+=r["sales"] or 0;tree.insert("","end",values=(r["label"],r["tickets"],fmt(r["sales"] or 0,"")))
+        ttk.Label(w,text=f"Total ventes nettes {fmt(total)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def export_excel(self):
         p=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title="Exporter journal Excel")
         if not p:return
