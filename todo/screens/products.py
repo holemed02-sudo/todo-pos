@@ -467,8 +467,11 @@ class ProductsFrame(ttk.Frame):
                     else:barcode=str(raw_barcode).strip()
                     if not name:raise ValueError("nom vide")
                     buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
-                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock):raise ValueError("valeurs invalides")
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert))
+                    bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
+                    pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
+                    sku=str(get('sku') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
+                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError("valeurs invalides")
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
