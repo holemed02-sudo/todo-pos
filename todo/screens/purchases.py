@@ -26,17 +26,17 @@ class PurchasesFrame(ttk.Frame):
         p=ttk.Frame(body);body.add(p,weight=2)
         self.q=tk.StringVar();e=ttk.Entry(p,textvariable=self.q);e.pack(fill="x",pady=4);e.bind("<KeyRelease>",lambda x:self.search())
         self.prod=ttk.Treeview(p,columns=("id","name","stock","cost"),show="headings")
-        for c,h,w in [("id","ID",50),("name","Article",240),("stock","Stock",80),("cost","Achat",80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
+        for c,h,w in [("id","ID",50),("name",self.tr("Article","المنتوج"),240),("stock",self.tr("Stock","المخزون"),80),("cost",self.tr("Achat","الشراء"),80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
         self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.prod.bind("<Return>",lambda e:self.addline());self.search()
         r=ttk.Frame(body);body.add(r,weight=3)
         ttk.Button(r,text=self.tr('VALIDER réception','تأكيد المشتريات'),style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
         self.lines_t=ttk.Treeview(r,columns=("name","qty","cost","total"),show="headings")
-        for c,h,w in [("name","Article",230),("qty","Qté",80),("cost","Coût",90),("total","Total",100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
+        for c,h,w in [("name",self.tr("Article","المنتوج"),230),("qty",self.tr("Qté","الكمية"),80),("cost",self.tr("Coût","التكلفة"),90),("total",self.tr("Total","المجموع"),100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
         self.lines_t.pack(fill="both",expand=True)
         line_actions=ttk.Frame(r);line_actions.pack(fill="x",pady=4)
         ttk.Button(line_actions,text=self.tr('Modifier ligne','تعديل السطر'),command=self.edit_line).pack(side="left")
         ttk.Button(line_actions,text=self.tr('Supprimer ligne','حذف السطر'),command=self.remove_line).pack(side="left",padx=6)
-        self.total_label=ttk.Label(line_actions,text="Total : 0.00 DH",font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
+        self.total_label=ttk.Label(line_actions,text=self.tr("Total : 0.00 DH","المجموع: 0.00 DH"),font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
     def refresh_suppliers(self, selected=None):
         self.suppliers=list_suppliers()
         self.supplier_choice['values']=[f"{r['name']} · #{r['id']}" for r in self.suppliers]
@@ -58,9 +58,9 @@ class PurchasesFrame(ttk.Frame):
         s=self.prod.selection()
         if not s:return
         vals=self.prod.item(s[0],"values");pid=int(vals[0]);name=vals[1]
-        qty=simpledialog.askfloat("Qté",f"{name}\nQuantité reçue:",parent=self,minvalue=0.001)
+        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{name}\n{self.tr('Quantité reçue:','الكمية المستلمة:')}",parent=self,minvalue=0.001)
         if qty is None:return
-        cost=simpledialog.askfloat("Coût",f"Prix achat unitaire {name}:",parent=self,minvalue=0)
+        cost=simpledialog.askfloat(self.tr("Coût","التكلفة"),f"{self.tr('Prix achat unitaire','ثمن الشراء للوحدة')} {name}:",parent=self,minvalue=0)
         if cost is None:return
         self.lines.append(dict(product_id=pid,name=name,qty=qty,unit_cost_cents=to_cents(cost)));self.refresh_lines()
     def refresh_lines(self):
@@ -78,9 +78,9 @@ class PurchasesFrame(ttk.Frame):
         i=self._selected_line_index()
         if i is None:return
         x=self.lines[i]
-        qty=simpledialog.askfloat("Qté",f"{x['name']}\nQuantité reçue:",initialvalue=x['qty'],parent=self,minvalue=0.001)
+        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{x['name']}\n{self.tr('Quantité reçue:','الكمية المستلمة:')}",initialvalue=x['qty'],parent=self,minvalue=0.001)
         if qty is None:return
-        cost=simpledialog.askfloat("Coût",f"Prix achat unitaire {x['name']}:",initialvalue=x['unit_cost_cents']/100,parent=self,minvalue=0)
+        cost=simpledialog.askfloat(self.tr("Coût","التكلفة"),f"{self.tr('Prix achat unitaire','ثمن الشراء للوحدة')} {x['name']}:",initialvalue=x['unit_cost_cents']/100,parent=self,minvalue=0)
         if cost is None:return
         x['qty']=qty;x['unit_cost_cents']=to_cents(cost);self.refresh_lines()
     def remove_line(self):
@@ -100,5 +100,5 @@ class PurchasesFrame(ttk.Frame):
                 supplier_id=rows[0]['id'] if rows else save_supplier(sname)
                 self.refresh_suppliers(supplier_id)
             pid,total=receive_purchase(supplier_id,self.invoice.get().strip(),self.lines)
-            messagebox.showinfo("ToDo",f"Réception #{pid}\nTotal: {fmt(total)}",parent=self);self.lines=[];self.refresh_lines();self.search()
+            messagebox.showinfo("ToDo",f"{self.tr('Réception','استلام')} #{pid}\n{self.tr('Total','المجموع')}: {fmt(total)}",parent=self);self.lines=[];self.refresh_lines();self.search()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
