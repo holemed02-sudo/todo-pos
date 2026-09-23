@@ -97,7 +97,9 @@ class JournalFrame(ttk.Frame):
             for cell in ws[1]:cell.font=Font(bold=True,color="FFFFFF");cell.fill=PatternFill("solid",fgColor="2563EB");cell.alignment=Alignment(horizontal="center")
             total=cost=0
             for r in rows:
-                total+=r["total_cents"];cost+=r["cost"];ws.append([r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],r["total_cents"]/100,r["cost"]/100,(r["total_cents"]-r["cost"])/100])
+                total+=r["total_cents"];cost+=r["cost"];pay=r["payment_method"]
+                if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
+                ws.append([r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,r["total_cents"]/100,r["cost"]/100,(r["total_cents"]-r["cost"])/100])
             ws.append([]);ws.append(["","","","","TOTAL",total/100,cost/100,(total-cost)/100])
             for col,width in {"A":8,"B":22,"C":20,"D":18,"E":14,"F":14,"G":14,"H":16}.items():ws.column_dimensions[col].width=width
             for row in ws.iter_rows(min_row=2,min_col=6,max_col=8):
@@ -116,7 +118,9 @@ class JournalFrame(ttk.Frame):
             styles=getSampleStyleSheet();doc=SimpleDocTemplate(p,pagesize=landscape(A4),rightMargin=24,leftMargin=24,topMargin=24,bottomMargin=24)
             data=[["Ticket","Date","Caissier","Paiement","Total","Coût","Marge"]];total=cost=0
             for r in rows:
-                total+=r["total_cents"];cost+=r["cost"];data.append([r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(r["total_cents"]-r["cost"],"")])
+                total+=r["total_cents"];cost+=r["cost"];pay=r["payment_method"]
+                if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
+                data.append([r["sale_no"],r["created_at"],r["display_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(r["total_cents"]-r["cost"],"")])
             table=Table(data,repeatRows=1,colWidths=[120,120,95,70,75,75,75]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8),("ALIGN",(4,1),(-1,-1),"RIGHT"),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
             title=Paragraph(f"Journal des ventes — {escape(self.date_from.get())} au {escape(self.date_to.get())}",styles["Title"])
             summary=Paragraph(f"{len(rows)} ticket(s) — Ventes nettes {fmt(total)} — Coût {fmt(cost)} — Marge brute {fmt(total-cost)}",styles["Heading3"])
@@ -128,5 +132,8 @@ class JournalFrame(ttk.Frame):
         rows=self.rows()
         with open(p,"w",newline="",encoding="utf-8-sig") as f:
             wr=csv.writer(f);wr.writerow(["ID","Ticket","Date","Caissier","Paiement","Total cents","Cost cents","Margin cents"])
-            for r in rows:wr.writerow([r["id"],r["sale_no"],r["created_at"],r["display_name"],r["payment_method"],r["total_cents"],r["cost"],r["total_cents"]-r["cost"]])
+            for r in rows:
+                pay=r["payment_method"]
+                if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
+                wr.writerow([r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,r["total_cents"],r["cost"],r["total_cents"]-r["cost"]])
         messagebox.showinfo("ToDo","Export terminé.",parent=self)
