@@ -65,25 +65,6 @@ class CategoryEditor(tk.Toplevel):
         self.swatch.config(bg=self.color_var.get(), text=self.color_var.get(),
                            fg='#ffffff', font=('Consolas', 8))
 
-    def refresh_price_grids(self):
-        for w in self.price_grids_frame.winfo_children():w.destroy()
-        with connect() as c:rows=c.execute("SELECT id,name,active FROM price_grids ORDER BY name COLLATE NOCASE").fetchall()
-        for r in rows:
-            line=ttk.Frame(self.price_grids_frame);line.pack(fill="x",pady=2)
-            ttk.Label(line,text=r["name"],width=30).pack(side="left")
-            ttk.Label(line,text=self.tr("Active","نشطة") if r["active"] else self.tr("Inactive","معطلة"),width=12).pack(side="left")
-            ttk.Button(line,text=self.tr("Désactiver","تعطيل") if r["active"] else self.tr("Activer","تفعيل"),command=lambda gid=r["id"],a=r["active"]:self.toggle_price_grid(gid,a)).pack(side="left",padx=4)
-    def add_price_grid(self):
-        name=self.new_grid_name.get().strip()
-        if not name:return
-        try:
-            with connect() as c:c.execute("INSERT INTO price_grids(name,active) VALUES(?,1)",(name,))
-            self.new_grid_name.set("");self.refresh_price_grids()
-        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
-    def toggle_price_grid(self,grid_id,active):
-        with connect() as c:c.execute("UPDATE price_grids SET active=? WHERE id=?",(0 if active else 1,grid_id))
-        self.refresh_price_grids()
-
     def save(self):
         name  = self.name_var.get().strip()
         color = self.color_var.get().strip() or '#2563EB'
@@ -176,6 +157,25 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(u,text=self.tr('Changer mon PIN','تغيير PIN'),command=self.change_pin).pack(side="left",padx=8)
         ttk.Button(u,text=self.tr('Journal des actions','سجل العمليات'),command=self.audit_log).pack(side="left",padx=8)
         ttk.Label(u,text=self.tr('Admin initial: admin / PIN 1234 — changez-le.','المدير الأولي: admin / PIN 1234 — غيّره.')).pack(side="left",padx=15)
+    def refresh_price_grids(self):
+        for w in self.price_grids_frame.winfo_children():w.destroy()
+        with connect() as c:rows=c.execute("SELECT id,name,active FROM price_grids ORDER BY name COLLATE NOCASE").fetchall()
+        for r in rows:
+            line=ttk.Frame(self.price_grids_frame);line.pack(fill="x",pady=2)
+            ttk.Label(line,text=r["name"],width=30).pack(side="left")
+            ttk.Label(line,text=self.tr("Active","نشطة") if r["active"] else self.tr("Inactive","معطلة"),width=12).pack(side="left")
+            ttk.Button(line,text=self.tr("Désactiver","تعطيل") if r["active"] else self.tr("Activer","تفعيل"),command=lambda gid=r["id"],a=r["active"]:self.toggle_price_grid(gid,a)).pack(side="left",padx=4)
+    def add_price_grid(self):
+        name=self.new_grid_name.get().strip()
+        if not name:return
+        try:
+            with connect() as c:c.execute("INSERT INTO price_grids(name,active) VALUES(?,1)",(name,))
+            self.new_grid_name.set("");self.refresh_price_grids()
+        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
+    def toggle_price_grid(self,grid_id,active):
+        with connect() as c:c.execute("UPDATE price_grids SET active=? WHERE id=?",(0 if active else 1,grid_id))
+        self.refresh_price_grids()
+
     def save(self):
         try:
             limit=int(self.search_limit.get())
