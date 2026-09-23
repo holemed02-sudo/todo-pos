@@ -335,6 +335,7 @@ class ProductEditor(tk.Toplevel):
 class ProductsFrame(ttk.Frame):
     def __init__(self,master):
         super().__init__(master,padding=10)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.page=0
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
         ttk.Label(top,text=self.tr('Articles','المنتجات'),font=("Segoe UI",20,"bold")).pack(side="left")
