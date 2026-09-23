@@ -12,7 +12,7 @@ class JournalFrame(ttk.Frame):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text=self.tr('Journal','السجل'),font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport caissiers','تقرير الكاشير'),command=self.cashier_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport global','التقرير العام'),command=self.global_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Entête','الرؤوس'),command=self.header_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Journal détaillé','السجل المفصل'),command=self.movement_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport caissiers','تقرير الكاشير'),command=self.cashier_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport global','التقرير العام'),command=self.global_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Entête','الرؤوس'),command=self.header_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Journal détaillé','السجل المفصل'),command=self.movement_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Imprimer','طباعة'),command=self.print_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.all_label=self.tr('Tous','الكل');self.cashier=tk.StringVar(value=self.all_label);self.seller=tk.StringVar(value=self.all_label);self.payment=tk.StringVar(value=self.all_label)
         for label,var,width in [(self.tr('Du','من'),self.date_from,11),(self.tr('Au','إلى'),self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -172,6 +172,27 @@ class JournalFrame(ttk.Frame):
         for r in rows:
             total+=r["sales"] or 0;tree.insert("","end",values=(r["day"],r["tickets"],fmt(r["sales"] or 0,"")))
         ttk.Label(w,text=f"Total ventes nettes {fmt(total)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+
+    def print_report(self):
+        rows=self.rows()
+        if not rows:
+            messagebox.showinfo("ToDo",self.tr("Aucune donnée à imprimer.","لا توجد بيانات للطباعة."),parent=self);return
+        p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Imprimer le rapport","طباعة التقرير"))
+        if not p:return
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4,landscape
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Spacer
+            data=[[self.tr("Ticket","التذكرة"),self.tr("Date","التاريخ"),self.tr("Caissier","الكاشير"),self.tr("Vendeur","البائع"),self.tr("Paiement","الدفع"),self.tr("Total","المجموع")]]
+            for r in rows:data.append([r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],r["payment_method"],fmt(r["total_cents"],"")])
+            doc=SimpleDocTemplate(p,pagesize=landscape(A4),rightMargin=24,leftMargin=24,topMargin=24,bottomMargin=24)
+            table=Table(data,repeatRows=1,colWidths=[125,125,110,110,90,90]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8)]))
+            styles=getSampleStyleSheet();doc.build([Paragraph(self.tr("Rapport Journal","تقرير السجل"),styles["Title"]),Spacer(1,8),Paragraph(f"{self.date_from.get()} - {self.date_to.get()}",styles["Heading3"]),Spacer(1,8),table])
+            import os
+            if os.name=="nt":os.startfile(p,"print")
+            else:messagebox.showinfo("ToDo",self.tr("PDF prêt pour impression.","ملف PDF جاهز للطباعة."),parent=self)
+        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
 
     def movement_report(self):
         try:
