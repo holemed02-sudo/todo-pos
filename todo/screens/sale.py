@@ -21,6 +21,8 @@ class SaleFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=16)
         self.app=app
+        self.lang=get_setting('language','fr')
+        self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.client_id=None
         self.cart=[]
         self.ticket_discount_cents=0
@@ -36,7 +38,7 @@ class SaleFrame(ttk.Frame):
         self.bindings=[]
         top=ttk.Frame(self)
         top.pack(fill='x',pady=(0,12))
-        ttk.Label(top,text='Vente / البيع',style='Title.TLabel').pack(side='left')
+        ttk.Label(top,text=self.tr('Vente','البيع'),style='Title.TLabel').pack(side='left')
         self.payment_label=ttk.Label(top,text='Paiement : CASH',style='Accent.TLabel')
         self.payment_label.pack(side='right')
         self.client_button=ttk.Button(top,text='F6 Client : passage',command=self.choose_client)
@@ -47,7 +49,7 @@ class SaleFrame(ttk.Frame):
         self.query=tk.StringVar()
         self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
         self.entry.pack(side='left',fill='x',expand=True)
-        ttk.Label(searchbar,text='Qté / الكمية').pack(side='left',padx=(12,4))
+        ttk.Label(searchbar,text=self.tr('Qté','الكمية')).pack(side='left',padx=(12,4))
         self.scan_quantity=tk.StringVar(value='1')
         self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))
         self.quantity_entry.pack(side='left')
@@ -75,7 +77,7 @@ class SaleFrame(ttk.Frame):
         self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
-        self.catalog_tabs.add(self.photo_page,text='Photos / اختيار بالصورة');self.catalog_tabs.add(self.list_page,text='Liste')
+        self.catalog_tabs.add(self.photo_page,text=self.tr('Photos','اختيار بالصورة'));self.catalog_tabs.add(self.list_page,text='Liste')
         self.catalog_tabs.pack(fill='both',expand=True)
         self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
         self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
@@ -96,14 +98,14 @@ class SaleFrame(ttk.Frame):
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
         ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
-        keypad=ttk.LabelFrame(left,text='Pavé numérique / الأرقام',padding=5);keypad.pack(fill='x',pady=(8,0))
+        keypad=ttk.LabelFrame(left,text=self.tr('Pavé numérique','الأرقام'),padding=5);keypad.pack(fill='x',pady=(8,0))
         for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
             ttk.Button(keypad,text=key,command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=5)
         for col in range(3):keypad.columnconfigure(col,weight=1)
         checkout_area=ttk.Frame(right,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
         actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
-        ttk.Button(checkout_area,text='Fonctions / الوظائف',command=self.functions).pack(fill='x',pady=4)
+        ttk.Button(checkout_area,text=self.tr('Fonctions','الوظائف'),command=self.functions).pack(fill='x',pady=4)
         for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
@@ -184,33 +186,33 @@ class SaleFrame(ttk.Frame):
             card.grid_configure(row=index//columns,column=index%columns)
 
     def functions(self):
-        window=tk.Toplevel(self);window.title('Fonctions / الوظائف')
+        window=tk.Toplevel(self);window.title(self.tr('Fonctions','الوظائف'))
         window.transient(self.winfo_toplevel());window.grab_set()
         def run(command):
             window.destroy();command()
-        commands=[('Duplicata / نسخة التيكي',self.duplicate_receipt),
-                  ('Divers / منتوج أو مبلغ إضافي',self.add_misc),
-                  ('Modifier quantité / الكمية',self.set_qty),
-                  ('Modifier prix / الثمن',self.set_price),
-                  ('Remise ticket / تخفيض',self.discount),
+        commands=[(self.tr('Duplicata','نسخة التذكرة'),self.duplicate_receipt),
+                  (self.tr('Divers','منتوج أو مبلغ إضافي'),self.add_misc),
+                  (self.tr('Modifier quantité','تعديل الكمية'),self.set_qty),
+                  (self.tr('Modifier prix','تعديل الثمن'),self.set_price),
+                  (self.tr('Remise ticket','تخفيض التذكرة'),self.discount),
                   ('Remise ligne',self.line_discount),
-                  ('Supprimer ligne / حذف السطر',self.remove),
-                  ('PRIX 1 / الثمن العادي',self.restore_price),
-                  ('Compter la caisse / الصندوق',self.cash_tools),
-                  ('Clôture / إغلاق الصندوق',lambda:self.cash_tools('close')),
-                  ('Dépenses / المصاريف',lambda:self.cash_tools('expense')),
-                  ('Rapport / التقارير',lambda:self.app.show('journal')),
-                  ('Raccourcis / الاختصارات',self.show_shortcuts),
-                  ('⌨ Clavier / لوحة المفاتيح',self.toggle_keyboard),
-                  ('Calculatrice / الحاسبة',self.calculator),
-                  ('Lock / قفل الصندوق',self.app.lock_cashier),
-                  ('Thème / الألوان',self.app.choose_theme),
-                  ('Tiroir / درج النقود',self.open_drawer),
-                  ('Attente / انتظار',self.hold),
-                  ("Liste d’attente / المعلقات",self.show_held)]
+                  (self.tr('Supprimer ligne','حذف السطر'),self.remove),
+                  (self.tr('PRIX 1','الثمن العادي'),self.restore_price),
+                  (self.tr('Compter la caisse','حساب الصندوق'),self.cash_tools),
+                  (self.tr('Clôture','إغلاق الصندوق'),lambda:self.cash_tools('close')),
+                  (self.tr('Dépenses','المصاريف'),lambda:self.cash_tools('expense')),
+                  (self.tr('Rapport','التقارير'),lambda:self.app.show('journal')),
+                  (self.tr('Raccourcis','الاختصارات'),self.show_shortcuts),
+                  (self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),self.toggle_keyboard),
+                  (self.tr('Calculatrice','الحاسبة'),self.calculator),
+                  (self.tr('Verrouiller','قفل الصندوق'),self.app.lock_cashier),
+                  (self.tr('Thème','الألوان'),self.app.choose_theme),
+                  (self.tr('Tiroir','درج النقود'),self.open_drawer),
+                  (self.tr('Attente','انتظار'),self.hold),
+                  (self.tr("Liste d’attente",'المعلقات'),self.show_held)]
         for index,(label,command) in enumerate(commands):
             ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//3,column=index%3,padx=6,pady=6,ipadx=4,ipady=10,sticky='ew')
-        ttk.Button(window,text='Fermer / رجوع',command=lambda:run(self.focus_search)).grid(row=(len(commands)+2)//3,column=0,columnspan=3,pady=12)
+        ttk.Button(window,text=self.tr('Fermer','رجوع'),command=lambda:run(self.focus_search)).grid(row=(len(commands)+2)//3,column=0,columnspan=3,pady=12)
         window.bind('<Escape>',lambda e:run(self.focus_search))
 
     def restore_price(self):
