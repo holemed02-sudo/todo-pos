@@ -210,16 +210,16 @@ class JournalFrame(ttk.Frame):
             from openpyxl import Workbook
             from openpyxl.styles import Font,PatternFill,Alignment
             wb=Workbook();ws=wb.active;ws.title="Journal ventes"
-            headers=["ID","Ticket","Date","Caissier","Paiement","Total","Coût","Marge brute"];ws.append(headers)
+            headers=["ID","Ticket","Date","Caissier","Vendeur","Paiement","Total","Coût","Marge brute"];ws.append(headers)
             for cell in ws[1]:cell.font=Font(bold=True,color="FFFFFF");cell.fill=PatternFill("solid",fgColor="2563EB");cell.alignment=Alignment(horizontal="center")
             total=cost=0
             for r in rows:
                 total+=r["total_cents"];cost+=r["cost"];pay=r["payment_method"]
                 if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
-                ws.append([r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,r["total_cents"]/100,r["cost"]/100,(r["total_cents"]-r["cost"])/100])
-            ws.append([]);ws.append(["","","","","TOTAL",total/100,cost/100,(total-cost)/100])
-            for col,width in {"A":8,"B":22,"C":20,"D":18,"E":14,"F":14,"G":14,"H":16}.items():ws.column_dimensions[col].width=width
-            for row in ws.iter_rows(min_row=2,min_col=6,max_col=8):
+                ws.append([r["id"],r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],pay,r["total_cents"]/100,r["cost"]/100,(r["total_cents"]-r["cost"])/100])
+            ws.append([]);ws.append(["","","","","","TOTAL",total/100,cost/100,(total-cost)/100])
+            for col,width in {"A":8,"B":22,"C":20,"D":18,"E":18,"F":14,"G":14,"H":14,"I":16}.items():ws.column_dimensions[col].width=width
+            for row in ws.iter_rows(min_row=2,min_col=7,max_col=9):
                 for cell in row:cell.number_format='#,##0.00'
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions;wb.save(p);messagebox.showinfo("ToDo",self.tr("Excel exporté.","تم تصدير Excel."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
@@ -233,12 +233,12 @@ class JournalFrame(ttk.Frame):
             from reportlab.lib.styles import getSampleStyleSheet
             from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Spacer
             styles=getSampleStyleSheet();doc=SimpleDocTemplate(p,pagesize=landscape(A4),rightMargin=24,leftMargin=24,topMargin=24,bottomMargin=24)
-            data=[["Ticket","Date","Caissier","Paiement","Total","Coût","Marge"]];total=cost=0
+            data=[["Ticket","Date","Caissier","Vendeur","Paiement","Total","Coût","Marge"]];total=cost=0
             for r in rows:
                 total+=r["total_cents"];cost+=r["cost"];pay=r["payment_method"]
                 if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
-                data.append([r["sale_no"],r["created_at"],r["display_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(r["total_cents"]-r["cost"],"")])
-            table=Table(data,repeatRows=1,colWidths=[120,120,95,70,75,75,75]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8),("ALIGN",(4,1),(-1,-1),"RIGHT"),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
+                data.append([r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(r["total_cents"]-r["cost"],"")])
+            table=Table(data,repeatRows=1,colWidths=[105,105,80,80,65,70,70,70]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8),("ALIGN",(5,1),(-1,-1),"RIGHT"),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
             title=Paragraph(f"Journal des ventes — {escape(self.date_from.get())} au {escape(self.date_to.get())}",styles["Title"])
             summary=Paragraph(f"{len(rows)} ticket(s) — Ventes nettes {fmt(total)} — Coût {fmt(cost)} — Marge brute {fmt(total-cost)}",styles["Heading3"])
             doc.build([title,Spacer(1,10),summary,Spacer(1,10),table]);messagebox.showinfo("ToDo",self.tr("PDF exporté.","تم تصدير PDF."),parent=self)
@@ -248,9 +248,9 @@ class JournalFrame(ttk.Frame):
         if not p:return
         rows=self.rows()
         with open(p,"w",newline="",encoding="utf-8-sig") as f:
-            wr=csv.writer(f);wr.writerow(["ID","Ticket","Date","Caissier","Paiement","Total cents","Cost cents","Margin cents"])
+            wr=csv.writer(f);wr.writerow(["ID","Ticket","Date","Caissier","Vendeur","Paiement","Total cents","Cost cents","Margin cents"])
             for r in rows:
                 pay=r["payment_method"]
                 if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
-                wr.writerow([r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,r["total_cents"],r["cost"],r["total_cents"]-r["cost"]])
+                wr.writerow([r["id"],r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],pay,r["total_cents"],r["cost"],r["total_cents"]-r["cost"]])
         messagebox.showinfo("ToDo",self.tr("Export terminé.","تم التصدير."),parent=self)
