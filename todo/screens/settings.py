@@ -112,6 +112,12 @@ class SettingsFrame(ttk.Frame):
         ttk.Entry(row,textvariable=self.new_grid_name,width=28).pack(side="left")
         ttk.Button(row,text=self.tr('+ Ajouter grille','+ إضافة لائحة'),command=self.add_price_grid).pack(side="left",padx=6)
         self.refresh_price_grids()
+        sellers=ttk.LabelFrame(self,text=self.tr('Vendeurs','البائعون'),padding=10);sellers.pack(fill="x",pady=10)
+        self.sellers_frame=ttk.Frame(sellers);self.sellers_frame.pack(fill="x",pady=(0,6))
+        self.new_seller_name=tk.StringVar();sr=ttk.Frame(sellers);sr.pack(fill="x")
+        ttk.Entry(sr,textvariable=self.new_seller_name,width=28).pack(side="left")
+        ttk.Button(sr,text=self.tr('+ Ajouter vendeur','+ إضافة بائع'),command=self.add_seller).pack(side="left",padx=6)
+        self.refresh_sellers()
         p=ttk.LabelFrame(self,text=self.tr('Impression','الطباعة'),padding=10);p.pack(fill="x",pady=10)
         self.printer=tk.StringVar(value=get_setting("printer_name",""));self.print_mode=tk.StringVar(value=get_setting("print_mode","ask"))
         ttk.Label(p,text=self.tr('Imprimante (optionnel)','الطابعة (اختياري)')).grid(row=0,column=0,sticky="w")
@@ -157,6 +163,25 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(u,text=self.tr('Changer mon PIN','تغيير PIN'),command=self.change_pin).pack(side="left",padx=8)
         ttk.Button(u,text=self.tr('Journal des actions','سجل العمليات'),command=self.audit_log).pack(side="left",padx=8)
         ttk.Label(u,text=self.tr('Admin initial: admin / PIN 1234 — changez-le.','المدير الأولي: admin / PIN 1234 — غيّره.')).pack(side="left",padx=15)
+    def refresh_sellers(self):
+        for w in self.sellers_frame.winfo_children():w.destroy()
+        with connect() as c:rows=c.execute("SELECT id,name,active FROM sellers ORDER BY name COLLATE NOCASE").fetchall()
+        for r in rows:
+            line=ttk.Frame(self.sellers_frame);line.pack(fill="x",pady=2)
+            ttk.Label(line,text=r["name"],width=30).pack(side="left")
+            ttk.Label(line,text=self.tr("Actif","نشط") if r["active"] else self.tr("Inactif","معطل"),width=12).pack(side="left")
+            ttk.Button(line,text=self.tr("Désactiver","تعطيل") if r["active"] else self.tr("Activer","تفعيل"),command=lambda sid=r["id"],a=r["active"]:self.toggle_seller(sid,a)).pack(side="left",padx=4)
+    def add_seller(self):
+        name=self.new_seller_name.get().strip()
+        if not name:return
+        try:
+            with connect() as c:c.execute("INSERT INTO sellers(name,active) VALUES(?,1)",(name,))
+            self.new_seller_name.set("");self.refresh_sellers()
+        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
+    def toggle_seller(self,seller_id,active):
+        with connect() as c:c.execute("UPDATE sellers SET active=? WHERE id=?",(0 if active else 1,seller_id))
+        self.refresh_sellers()
+
     def refresh_price_grids(self):
         for w in self.price_grids_frame.winfo_children():w.destroy()
         with connect() as c:rows=c.execute("SELECT id,name,active FROM price_grids ORDER BY name COLLATE NOCASE").fetchall()
