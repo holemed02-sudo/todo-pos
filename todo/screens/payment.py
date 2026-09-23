@@ -162,9 +162,9 @@ class PaymentDialog(tk.Toplevel):
             difference = paid - self.total
             credit=method=='CREDIT' and self.client_name is not None
             valid=(0<=paid<=self.total) if credit else (difference>=0 if method=='CASH' else difference==0)
-            self.change.configure(text=('Reste à payer / باقي : ' if difference < 0 else 'Monnaie / الصرف : ') + fmt(abs(difference), self.currency), fg='#DC2626' if difference < 0 else '#166534')
+            self.change.configure(text=(self.tr('Reste à payer : ','الباقي للأداء: ') if difference < 0 else self.tr('Monnaie : ','الصرف: ')) + fmt(abs(difference), self.currency), fg='#DC2626' if difference < 0 else '#166534')
             self.confirm_button.configure(state='normal' if valid else 'disabled')
-            self.error.configure(text='Reste enregistré en dette client. Acompte en espèces.' if credit and valid else ('' if valid else 'Le paiement mixte doit couvrir exactement le ticket.' if mixed else 'Montant reçu invalide ou insuffisant.'))
+            self.error.configure(text=self.tr('Reste enregistré en dette client. Acompte en espèces.','تم تسجيل الباقي كدين على الزبون. التسبيق نقدي.') if credit and valid else ('' if valid else self.tr('Le paiement mixte doit couvrir exactement le ticket.','يجب أن يغطي الأداء المختلط مبلغ التذكرة بالكامل.') if mixed else self.tr('Montant reçu invalide ou insuffisant.','المبلغ المدفوع غير صالح أو غير كافٍ.')))
         except Exception:
             self.change.configure(text='—'); self.error.configure(text=self.tr('Saisissez un montant valide','أدخل مبلغا صحيحا')); self.confirm_button.configure(state='disabled')
 
