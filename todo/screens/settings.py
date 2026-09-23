@@ -19,6 +19,7 @@ class CategoryEditor(tk.Toplevel):
 
     def __init__(self, master, cat=None, on_saved=None):
         super().__init__(master)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.cat_id  = cat['id']   if cat else None
         self.on_saved= on_saved
         self.title('Famille / عائلة')
