@@ -38,6 +38,9 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
             raise ValueError('Client introuvable.')
         if payment_method=='CREDIT' and client_id is None:
             raise ValueError('Choisissez un client pour une vente à crédit.')
+        require_client=conn.execute("SELECT value FROM settings WHERE key='require_client_on_sale'").fetchone()
+        if require_client and require_client[0]=='1' and client_id is None:
+            raise ValueError('Choisissez un client avant encaissement.')
         normalized=[]
         for line in cart:
             pid=int(line['product_id']);qty=float(line['qty'])
