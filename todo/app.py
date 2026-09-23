@@ -167,7 +167,10 @@ class ToDoApp(tk.Tk):
         self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
         tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
-        nav=[("🛒 Vente","sale"),("📦 Stock","stock"),("📋 Journal","journal"),("🗂 Gestion","management"),("⚙ Paramètres","settings"),("📊 Statistiques","statistics")]
+        lang=get_setting("language","fr")
+        nav_fr=[("🛒 Vente","sale"),("📦 Stock","stock"),("📋 Journal","journal"),("🗂 Gestion","management"),("⚙ Paramètres","settings"),("📊 Statistiques","statistics")]
+        nav_ar=[("🛒 البيع","sale"),("📦 المخزون","stock"),("📋 السجل","journal"),("🗂 الإدارة","management"),("⚙ الإعدادات","settings"),("📊 الإحصائيات","statistics")]
+        nav=nav_ar if lang=="ar" else nav_fr
         self.nav_buttons={}
         for txt,key in nav:
             if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
