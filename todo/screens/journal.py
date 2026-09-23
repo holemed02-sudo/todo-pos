@@ -12,7 +12,7 @@ class JournalFrame(ttk.Frame):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text=self.tr('Journal','السجل'),font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Entête','الرؤوس'),command=self.header_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport caissiers','تقرير الكاشير'),command=self.cashier_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport global','التقرير العام'),command=self.global_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Entête','الرؤوس'),command=self.header_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.all_label=self.tr('Tous','الكل');self.cashier=tk.StringVar(value=self.all_label);self.seller=tk.StringVar(value=self.all_label);self.payment=tk.StringVar(value=self.all_label)
         for label,var,width in [(self.tr('Du','من'),self.date_from,11),(self.tr('Au','إلى'),self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -91,6 +91,30 @@ class JournalFrame(ttk.Frame):
         ttk.Label(w,text=f"Total {fmt(total)} · Coût {fmt(cost)} · Marge {fmt(total-cost)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def article_report(self):self.detail_report("article")
     def family_report(self):self.detail_report("family")
+    def global_report(self):
+        rows=self.rows();total=sum(r["total_cents"] for r in rows);cost=sum(r["cost"] for r in rows)
+        cash=sum(r["cash_paid"]-r["cash_refund"] for r in rows);card=sum(r["card_paid"]-r["card_refund"] for r in rows)
+        self._simple_report(self.tr("Rapport global","التقرير العام"),
+            (self.tr("Indicateur","المؤشر"),self.tr("Valeur","القيمة")),
+            [(self.tr("Période","الفترة"),f"{self.date_from.get()} → {self.date_to.get()}"),
+             (self.tr("Tickets","التذاكر"),len(rows)),(self.tr("Ventes nettes","صافي المبيعات"),fmt(total,"")),
+             (self.tr("Coût","التكلفة"),fmt(cost,"")),(self.tr("Marge brute","الهامش الإجمالي"),fmt(total-cost,"")),
+             (self.tr("Cash net","صافي النقد"),fmt(cash,"")),(self.tr("Carte nette","صافي البطاقة"),fmt(card,""))])
+    def cashier_report(self):
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
+        sql="""SELECT u.display_name label,COUNT(*) tickets,
+            SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)) sales
+            FROM sales s JOIN users u ON u.id=s.cashier_user_id
+            WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?
+            GROUP BY s.cashier_user_id ORDER BY sales DESC"""
+        with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
+        self._simple_report(self.tr("Rapport caissiers","تقرير الكاشير"),
+            (self.tr("Caissier","الكاشير"),self.tr("Tickets","التذاكر"),self.tr("Ventes nettes","صافي المبيعات")),
+            [(r["label"],r["tickets"],fmt(r["sales"] or 0,"")) for r in rows])
+
     def seller_report(self):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
