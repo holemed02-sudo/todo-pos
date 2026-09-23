@@ -28,6 +28,8 @@ class SaleFrame(ttk.Frame):
         self.ticket_discount_cents=0
         self.held_id=None
         self.payment='CASH'
+        self.price_grid_id=None
+        self.price_grid_name=self.tr('Normal','عادي')
         self.category=None
         self.photo_offset=0
         self.photo_filter=None
