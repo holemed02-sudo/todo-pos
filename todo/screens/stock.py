@@ -19,11 +19,11 @@ class StockFrame(ttk.Frame):
             ttk.Button(top,text=self.tr('Articles','المنتجات'),command=lambda: app.show("products")).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
-        for c,h,w in [("id","ID",50),("name","Article",320),("stock","Stock",100),("alert","Alerte",90),("last","Dernier mouvement",220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
+        for c,h,w in [("id","ID",50),("name",self.tr("Article","المنتوج"),320),("stock",self.tr("Stock","المخزون"),100),("alert",self.tr("Alerte","التنبيه"),90),("last",self.tr("Dernier mouvement","آخر حركة"),220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True)
         self.kpi=tk.Frame(self,bg="#F6F7FB");self.kpi.pack(fill="x",pady=(8,0))
         self.kpi_values=[]
-        for title,bg in [("Articles","#2563EB"),("Alertes","#F59E0B"),("Stock négatif","#DC2626"),("Valeur achat","#16A34A"),("Valeur vente","#7C3AED")]:
+        for title,bg in [(self.tr("Articles","المنتجات"),"#2563EB"),(self.tr("Alertes","التنبيهات"),"#F59E0B"),(self.tr("Stock négatif","المخزون السالب"),"#DC2626"),(self.tr("Valeur achat","قيمة الشراء"),"#16A34A"),(self.tr("Valeur vente","قيمة البيع"),"#7C3AED")]:
             card=tk.Frame(self.kpi,bg=bg,height=62);card.pack(side="left",fill="x",expand=True,padx=3);card.pack_propagate(False)
             value=tk.Label(card,text="0",bg=bg,fg="white",font=("Segoe UI",15,"bold"));value.pack(anchor="w",padx=10,pady=(5,0));tk.Label(card,text=title,bg=bg,fg="white").pack(anchor="w",padx=10);self.kpi_values.append(value)
         self.refresh()
@@ -45,9 +45,9 @@ class StockFrame(ttk.Frame):
     def adjust(self):
         s=self.t.selection()
         if not s:return
-        pid=int(self.t.item(s[0],"values")[0]);q=simpledialog.askfloat("Ajustement","Variation (+/-):",parent=self)
+        pid=int(self.t.item(s[0],"values")[0]);q=simpledialog.askfloat(self.tr("Ajustement","تسوية المخزون"),self.tr("Variation (+/-):","التغيير (+/-):"),parent=self)
         if q is None or q==0:return
-        note=simpledialog.askstring("Ajustement","Raison obligatoire:",parent=self) or ""
+        note=simpledialog.askstring(self.tr("Ajustement","تسوية المخزون"),self.tr("Raison obligatoire:","السبب إجباري:"),parent=self) or ""
         if not note.strip():return
         try:
             with connect() as c:c.execute("BEGIN IMMEDIATE");apply_stock_movement(c,pid,q,"ADJUSTMENT",note=note);c.commit()
@@ -58,9 +58,9 @@ class StockFrame(ttk.Frame):
         selection=self.t.selection()
         if not selection:return
         pid=int(self.t.item(selection[0],'values')[0])
-        w=tk.Toplevel(self);w.title('Historique des mouvements');w.geometry('1050x550');w.transient(self)
+        w=tk.Toplevel(self);w.title(self.tr("Historique des mouvements","سجل حركات المخزون"));w.geometry('1050x550');w.transient(self)
         tree=ttk.Treeview(w,columns=('date','user','type','old','delta','new','document','reason'),show='headings')
-        for key,label,width in [('date','Date',145),('user','Utilisateur',100),('type','Type',100),('old','Avant',70),('delta','Variation',70),('new','Après',70),('document','Document',100),('reason','Raison',220)]:
+        for key,label,width in [('date',self.tr('Date','التاريخ'),145),('user',self.tr('Utilisateur','المستخدم'),100),('type',self.tr('Type','النوع'),100),('old',self.tr('Avant','قبل'),70),('delta',self.tr('Variation','التغيير'),70),('new',self.tr('Après','بعد'),70),('document',self.tr('Document','الوثيقة'),100),('reason',self.tr('Raison','السبب'),220)]:
             tree.heading(key,text=label);tree.column(key,width=width)
         tree.pack(fill='both',expand=True,padx=12,pady=12)
         with connect() as conn:
