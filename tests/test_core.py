@@ -36,7 +36,7 @@ class CoreTests(unittest.TestCase):
    gid=c.execute("INSERT INTO price_grids(name) VALUES('Pro')").lastrowid
    c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(self.pid,gid,750))
    self.assertEqual(resolve_unit_price(self.pid,1,conn=c,grid_id=gid),750)
-   other=self.product('Sans prix grille')
+   other=c.execute("INSERT INTO products(name,sale_price_cents,purchase_price_cents) VALUES('Sans prix grille',1000,300)").lastrowid
    self.assertEqual(resolve_unit_price(other,1,conn=c,grid_id=gid),1000)
  def test_inactive_price_grid_is_not_applied(self):
   with db.connect() as c:
