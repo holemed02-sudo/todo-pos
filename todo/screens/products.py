@@ -17,6 +17,7 @@ except Exception:
 class ProductEditor(tk.Toplevel):
     def __init__(self,master,product_id=None,on_saved=None):
         super().__init__(master)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.pid=product_id; self.on_saved=on_saved
         self.loaded_stock=0
         self.img_source="";self.img_rel="";self.img_ref=None
