@@ -31,6 +31,18 @@ class CoreTests(unittest.TestCase):
   with db.connect() as c:return c.execute('SELECT id FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0]
  def stock(self):
   with db.connect() as c:return c.execute('SELECT stock_qty FROM products WHERE id=?',(self.pid,)).fetchone()[0]
+ def test_price_grid_overrides_base_price_and_falls_back(self):
+  with db.connect() as c:
+   gid=c.execute("INSERT INTO price_grids(name) VALUES('Pro')").lastrowid
+   c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(self.pid,gid,750))
+   self.assertEqual(resolve_unit_price(self.pid,1,conn=c,grid_id=gid),750)
+   other=self.product('Sans prix grille')
+   self.assertEqual(resolve_unit_price(other,1,conn=c,grid_id=gid),1000)
+ def test_inactive_price_grid_is_not_applied(self):
+  with db.connect() as c:
+   gid=c.execute("INSERT INTO price_grids(name,active) VALUES('Promo',0)").lastrowid
+   c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(self.pid,gid,700))
+   self.assertEqual(resolve_unit_price(self.pid,1,conn=c,grid_id=gid),1000)
  def test_mixed_cash_card_payment_tracks_only_cash_in_drawer(self):
   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=10000)],'CASH',10000,payments=[('CASH',3000),('CARD',7000)])
   with db.connect() as c:
