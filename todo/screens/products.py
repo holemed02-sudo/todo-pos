@@ -432,7 +432,7 @@ class ProductsFrame(ttk.Frame):
                 with connect() as c:
                     codes=c.execute("SELECT barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",(r["id"],)).fetchall()
                 if not codes:codes=[{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
-                for code in codes:ws.append([r["id"],code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
+                for code in codes:ws.append([f"TODO-{r['id']}",code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
             for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":18,"I":14,"J":14,"K":18,"L":10}.items():ws.column_dimensions[col].width=width
             wb.save(path)
@@ -492,14 +492,22 @@ class ProductsFrame(ttk.Frame):
                                      FROM product_barcodes b JOIN products p ON p.id=b.product_id
                                      WHERE b.barcode<>'' ORDER BY p.name"""):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
-            seen={};conflicts=[]
+            seen={};conflicts=[];group_fingerprints={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
+                product_key=meta[-1] if meta else ''
+                if product_key:
+                    fingerprint=(name,cat,buy,sell,alert,meta[-3],meta[-2])
+                    if product_key in group_fingerprints and group_fingerprints[product_key]!=fingerprint:
+                        errors.append(f"Ligne {line}: product key {product_key} contient des données produit incohérentes")
+                    else:group_fingerprints[product_key]=fingerprint
                 if not barcode:continue
                 if barcode in existing:
                     names=", ".join(x["name"] for x in existing[barcode][:3])
                     conflicts.append(f"Ligne {line}: {barcode} existe déjà — {names}")
                 if barcode in seen:conflicts.append(f"Ligne {line}: {barcode} répété dans Excel (ligne {seen[barcode]})")
                 else:seen[barcode]=line
+            if errors:
+                messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé: mêmes product keys avec données produit différentes.\n","تم إلغاء الاستيراد: نفس product key يحتوي بيانات منتوج مختلفة.\n")+"\n".join(errors[:15]),parent=self);return
             w=tk.Toplevel(self);w.title("Aperçu import Excel");w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
             for key,title,width in [("line","Ligne",55),("barcode","Barcode",145),("name","Article",220),("cat","Famille",120),("buy","Achat",75),("sell","Vente",75),("stock","Stock",70),("alert","Alerte",70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
