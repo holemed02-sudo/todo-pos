@@ -213,6 +213,8 @@ class StatisticsFrame(ttk.Frame):
             ('alerts',       'Stock faible',   '#DC2626'),
             ('stock_value',   'Valeur stock',    '#7C3AED'),
             ('returns',       'Retours',         '#0891B2'),
+            ('return_cash',   'Retours remboursés','#DC2626'),
+            ('return_credit', 'Retours crédit',    '#2563EB'),
             ('top_month',     'Top mois',        '#6B7280'),
         ]
         for i, (key, title, color) in enumerate(kpi_defs):
@@ -341,8 +343,12 @@ class StatisticsFrame(ttk.Frame):
         with connect() as conn:
             stock=conn.execute('SELECT COALESCE(SUM(stock_qty*purchase_price_cents),0) FROM products WHERE active=1').fetchone()[0]
             returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
+            return_cash=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE refund_method!='CREDIT' AND date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
+            return_credit=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE refund_method='CREDIT' AND date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
         self._kpi_labels['stock_value'].config(text=fmt(stock))
         self._kpi_labels['returns'].config(text=fmt(returns))
+        self._kpi_labels['return_cash'].config(text=fmt(return_cash))
+        self._kpi_labels['return_credit'].config(text=fmt(return_credit))
         best=top_month(self._year)
         month_names=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc']
         label='—' if not best['month'] else f"{month_names[best['month']-1]} · {fmt(best['revenue'])}"
