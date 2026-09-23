@@ -249,32 +249,32 @@ class StatisticsFrame(ttk.Frame):
         charts.rowconfigure(2, weight=2)
 
         # Evolution bar chart (big, top-left)
-        evo_card = ttk.LabelFrame(charts, text='Évolution des ventes', padding=4)
+        evo_card = ttk.LabelFrame(charts, text=self.tr('Évolution des ventes','تطور المبيعات'), padding=4)
         evo_card.grid(row=0, column=0, sticky='nsew', padx=(0, 6), pady=(0, 6))
         self.evo_chart = BarChart(evo_card, [], [], color='#2563EB',
                                   height=200)
         self.evo_chart.pack(fill='both', expand=True)
 
         # Category breakdown (top-right)
-        cat_card = ttk.LabelFrame(charts, text='Ventes par famille', padding=4)
+        cat_card = ttk.LabelFrame(charts, text=self.tr('Ventes par famille','المبيعات حسب الفئة'), padding=4)
         cat_card.grid(row=0, column=1, sticky='nsew', pady=(0, 6))
         self.cat_chart = HBarChart(cat_card, [], height=200)
         self.cat_chart.pack(fill='both', expand=True)
 
         # Top products (bottom-left)
-        top_card = ttk.LabelFrame(charts, text='Top 8 articles', padding=4)
+        top_card = ttk.LabelFrame(charts, text=self.tr('Top 8 articles','أفضل 8 منتجات'), padding=4)
         top_card.grid(row=1, column=0, sticky='nsew', padx=(0, 6))
         self.top_chart = HBarChart(top_card, [], height=160)
         self.top_chart.pack(fill='both', expand=True)
 
         # Top cashiers (bottom-right)
-        cash_card = ttk.LabelFrame(charts, text='Top caissiers', padding=4)
+        cash_card = ttk.LabelFrame(charts, text=self.tr('Top caissiers','أفضل الكاشيرات'), padding=4)
         cash_card.grid(row=1, column=1, sticky='nsew')
         self.cashier_chart = HBarChart(cash_card, [], height=160)
         self.cashier_chart.pack(fill='both', expand=True)
 
         # Article evolution selector
-        article_card = ttk.LabelFrame(charts, text='Évolution article', padding=6)
+        article_card = ttk.LabelFrame(charts, text=self.tr('Évolution article','تطور المنتوج'), padding=6)
         article_card.grid(row=2, column=0, sticky='nsew', padx=(0, 6), pady=(6, 0))
         article_head = ttk.Frame(article_card)
         article_head.pack(fill='x')
@@ -285,13 +285,13 @@ class StatisticsFrame(ttk.Frame):
         self.article_chart.pack(fill='both', expand=True, pady=(4, 0))
 
         # Top clients (third row, full width)
-        client_card = ttk.LabelFrame(charts, text='Top 10 clients', padding=4)
+        client_card = ttk.LabelFrame(charts, text=self.tr('Top 10 clients','أفضل 10 زبائن'), padding=4)
         client_card.grid(row=2, column=1, sticky='nsew', pady=(6, 0))
         self.client_chart = HBarChart(client_card, [], height=150)
         self.client_chart.pack(fill='both', expand=True)
 
         # recent transactions sidebar
-        recent_card = ttk.LabelFrame(self, text='Dernières opérations', padding=6)
+        recent_card = ttk.LabelFrame(self, text=self.tr('Dernières opérations','آخر العمليات'), padding=6)
         recent_card.pack(fill='x', pady=(10, 0))
         self.recent_tree = ttk.Treeview(recent_card,
             columns=('doc', 'amount', 'kind', 'time'), show='headings', height=5)
@@ -306,7 +306,7 @@ class StatisticsFrame(ttk.Frame):
         self.recent_tree.tag_configure('return', foreground='#DC2626')
         self.recent_tree.pack(fill='x')
 
-        pay_card = ttk.LabelFrame(self, text='Paiements nets', padding=6)
+        pay_card = ttk.LabelFrame(self, text=self.tr('Paiements nets','صافي الدفعات'), padding=6)
         pay_card.pack(fill='x', pady=(8, 0))
         self.payment_summary = ttk.Label(pay_card, text='—', font=('Segoe UI', 11, 'bold'))
         self.payment_summary.pack(anchor='w')
@@ -336,10 +336,10 @@ class StatisticsFrame(ttk.Frame):
             start=datetime.date.fromisoformat(self._date_from.get());end=datetime.date.fromisoformat(self._date_to.get())
             if start>end: raise ValueError
         except ValueError:
-            messagebox.showerror('Statistiques','Période invalide. Format YYYY-MM-DD.',parent=self);return
+            messagebox.showerror(self.tr('Statistiques','الإحصائيات'),self.tr('Période invalide. Format YYYY-MM-DD.','الفترة غير صالحة. الصيغة YYYY-MM-DD.'),parent=self);return
         with connect() as conn:
             row=conn.execute("""SELECT COUNT(*) tickets,COALESCE(SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)),0) sales FROM sales s WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?""",(str(start),str(end))).fetchone()
-        messagebox.showinfo('Statistiques',f"Période {start} → {end}\\nTickets: {row['tickets']}\\nVentes nettes: {fmt(row['sales'])}",parent=self)
+        messagebox.showinfo(self.tr('Statistiques','الإحصائيات'),self.tr(f"Période {start} → {end}\\nTickets: {row['tickets']}\\nVentes nettes: {fmt(row['sales'])}",f"الفترة {start} → {end}\\nالتذاكر: {row['tickets']}\\nصافي المبيعات: {fmt(row['sales'])}"),parent=self)
 
     def refresh(self):
         try:
@@ -383,7 +383,7 @@ class StatisticsFrame(ttk.Frame):
             amount=data.get(method,0)
             if amount or method in ('CASH','CARD'):
                 parts.append(f'{label}: {fmt(amount)}')
-        self.payment_summary.config(text='   ·   '.join(parts) if parts else 'Aucun paiement')
+        self.payment_summary.config(text='   ·   '.join(parts) if parts else self.tr('Aucun paiement','لا توجد دفعات'))
 
     def _load_evolution(self):
         labels, values = sales_evolution(self._period, self._year if self._period=='year' else None)
