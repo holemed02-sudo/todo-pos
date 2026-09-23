@@ -77,7 +77,7 @@ class SaleFrame(ttk.Frame):
         self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
         self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
-        self.catalog_tabs.add(self.photo_page,text=self.tr('Photos','اختيار بالصورة'));self.catalog_tabs.add(self.list_page,text='Liste')
+        self.catalog_tabs.add(self.photo_page,text=self.tr('Photos','اختيار بالصورة'));self.catalog_tabs.add(self.list_page,text=self.tr('Liste','لائحة'))
         self.catalog_tabs.pack(fill='both',expand=True)
         self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
         self.products.heading('#0',text='PRODUIT');self.products.column('#0',width=240,minwidth=160)
@@ -243,11 +243,11 @@ class SaleFrame(ttk.Frame):
 
     def add_misc(self):
         from services.misc import misc_line
-        name=simpledialog.askstring('Divers','Libellé / اسم المنتوج أو المبلغ:',parent=self)
+        name=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Libellé :','اسم المنتوج أو المبلغ:'),parent=self)
         if name is None:return
-        price=simpledialog.askstring('Divers','Prix unitaire (DH) / الثمن:',parent=self)
+        price=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Prix unitaire (DH) :','الثمن للوحدة (DH):'),parent=self)
         if price is None:return
-        quantity=simpledialog.askstring('Divers','Quantité / الكمية:',initialvalue='1',parent=self)
+        quantity=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Quantité :','الكمية:'),initialvalue='1',parent=self)
         if quantity is None:return
         try:
             self.cart.append(misc_line(name,price,quantity));self.refresh(len(self.cart)-1)
@@ -256,7 +256,7 @@ class SaleFrame(ttk.Frame):
 
     def cash_tools(self,action=None):
         from screens.cashdesk import CashFrame
-        window=tk.Toplevel(self);window.title('Caisse / الصندوق')
+        window=tk.Toplevel(self);window.title(self.tr('Caisse','الصندوق'))
         window.transient(self.app);window.grab_set()
         frame=CashFrame(window,self.app);frame.pack(fill='both',expand=True)
         ttk.Button(window,text='Retour à la vente',command=window.destroy).pack(pady=8)
@@ -402,11 +402,11 @@ class SaleFrame(ttk.Frame):
         from services.security import require_admin
         from screens.products import ProductEditor
         window=tk.Toplevel(self)
-        window.title('منتوج غير معروف — Produit inconnu')
+        window.title(self.tr('Produit inconnu','منتوج غير معروف'))
         window.configure(bg='#DC2626');window.geometry('640x340')
         window.transient(self.winfo_toplevel());window.grab_set()
         self.bell()
-        tk.Label(window,text='!  منتوج غير معروف',bg='#DC2626',fg='white',font=('Segoe UI',30,'bold')).pack(pady=(28,8))
+        tk.Label(window,text=self.tr('!  Produit inconnu','!  منتوج غير معروف'),bg='#DC2626',fg='white',font=('Segoe UI',30,'bold')).pack(pady=(28,8))
         tk.Label(window,text='Produit inconnu',bg='#DC2626',fg='white',font=('Segoe UI',18)).pack()
         tk.Label(window,text=code,bg='#DC2626',fg='white',font=('Segoe UI',20),wraplength=580).pack(pady=18)
         def close():
@@ -422,17 +422,17 @@ class SaleFrame(ttk.Frame):
             self.wait_window(editor)
             self.query.set('');self.render_products();self.focus_search()
         buttons=tk.Frame(window,bg='#DC2626');buttons.pack(pady=12)
-        ttk.Button(buttons,text='إضافة المنتوج / Ajouter',command=create).pack(side='left',padx=8,ipady=10)
-        back=ttk.Button(buttons,text='رجوع للبيع / Retour',command=close)
+        ttk.Button(buttons,text=self.tr('Ajouter le produit','إضافة المنتوج'),command=create).pack(side='left',padx=8,ipady=10)
+        back=ttk.Button(buttons,text=self.tr('Retour à la vente','رجوع للبيع'),command=close)
         back.pack(side='left',padx=8,ipady=10);back.focus_set()
         window.protocol('WM_DELETE_WINDOW',close)
         window.bind('<Escape>',lambda e:close())
         window.bind('<Return>',lambda e:close())
 
     def pick_barcode(self,rows):
-        w=tk.Toplevel(self);w.title('Même barcode — choisir le produit / اختار المنتوج');w.geometry('900x620');w.transient(self);w.grab_set()
+        w=tk.Toplevel(self);w.title(self.tr('Même code-barres — choisir le produit','نفس الباركود — اختر المنتوج'));w.geometry('900x620');w.transient(self);w.grab_set()
         ttk.Label(w,text=f'{len(rows)} produits utilisent ce même barcode',font=('Segoe UI',16,'bold')).pack(anchor='w',padx=16,pady=(14,2))
-        ttk.Label(w,text='اختار المنتوج الموجود قدامك حسب الاسم والصورة والثمن.').pack(anchor='w',padx=16,pady=(0,10))
+        ttk.Label(w,text=self.tr('Choisissez le produit selon le nom, la photo et le prix.','اختر المنتوج حسب الاسم والصورة والثمن.')).pack(anchor='w',padx=16,pady=(0,10))
         canvas=tk.Canvas(w,highlightthickness=0);scroll=ttk.Scrollbar(w,orient='vertical',command=canvas.yview);inner=ttk.Frame(canvas)
         inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')));canvas.create_window((0,0),window=inner,anchor='nw');canvas.configure(yscrollcommand=scroll.set);canvas.pack(side='left',fill='both',expand=True,padx=(16,0),pady=(0,16));scroll.pack(side='right',fill='y',padx=(0,16),pady=(0,16))
         with connect() as conn:
@@ -575,7 +575,7 @@ class SaleFrame(ttk.Frame):
 
     def choose_client(self):
         from services.clients import list_clients
-        window=tk.Toplevel(self);window.title('Choisir client / الزبون');window.geometry('580x460')
+        window=tk.Toplevel(self);window.title(self.tr('Choisir client','اختيار الزبون'));window.geometry('580x460')
         window.transient(self.app);window.grab_set()
         query=tk.StringVar();entry=ttk.Entry(window,textvariable=query);entry.pack(fill='x',padx=12,pady=12)
         buttons=ttk.Frame(window);buttons.pack(side='bottom',fill='x',padx=12,pady=12)
@@ -672,7 +672,7 @@ class SaleFrame(ttk.Frame):
         def save_pdf():
             path=filedialog.asksaveasfilename(parent=w,defaultextension='.pdf',filetypes=[('PDF','*.pdf')],initialfile=result['sale_no']+'.pdf')
             if path:export_receipt_pdf(result['id'],path)
-        ttk.Button(buttons,text='PDF / حفظ الفاتورة',command=save_pdf).pack(side='left',padx=8,pady=8)
+        ttk.Button(buttons,text=self.tr('Enregistrer PDF','حفظ PDF'),command=save_pdf).pack(side='left',padx=8,pady=8)
         text=tk.Text(w,font=('Consolas',11),padx=16,pady=16)
         text.pack(fill='both',expand=True);text.insert('1.0',build_receipt(result['id']));text.config(state='disabled')
         ttk.Button(buttons,text='Imprimer',command=lambda:print_receipt_windows(result['id'])).pack(side='left',padx=12,pady=12)
