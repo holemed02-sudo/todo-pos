@@ -347,6 +347,7 @@ class ProductsFrame(ttk.Frame):
         self.filter.trace_add("write",lambda *_:self.go_page(0))
         ttk.Button(top,text=self.tr('+ Nouveau','+ جديد'),command=self.new).pack(side="right",padx=3)
         ttk.Button(top,text=self.tr('Importer Excel','استيراد Excel'),command=self.import_excel).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('Exporter catalogue','تصدير الكتالوج'),command=self.export_catalogue).pack(side="right",padx=3)
         ttk.Button(top,text=self.tr('Étiquette PDF','ملصق PDF'),command=self.label_pdf).pack(side="right",padx=3)
         ttk.Button(top,text=self.tr('Modifier','تعديل'),command=self.edit).pack(side="right",padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
@@ -415,6 +416,29 @@ class ProductsFrame(ttk.Frame):
                 cv.setFont("Helvetica",7);cv.drawCentredString(x+(label_w-16)/2,y+5,barcode)
             cv.save();messagebox.showinfo("Étiquette",f"{copies} étiquette(s) créée(s).",parent=self)
         except Exception as e:messagebox.showerror("Étiquette",str(e),parent=self)
+
+    def export_catalogue(self):
+        path=filedialog.asksaveasfilename(parent=self,defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title=self.tr("Exporter le catalogue","تصدير الكتالوج"))
+        if not path:return
+        try:
+            from openpyxl import Workbook
+            wb=Workbook();ws=wb.active;ws.title="Catalogue"
+            ws.append(["barcode","article","famille","prix achat","prix vente","alerte"])
+            with connect() as c:
+                rows=c.execute("""SELECT p.id,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.alert_qty,
+                    GROUP_CONCAT(b.barcode, char(10)) barcodes
+                    FROM products p LEFT JOIN categories c ON c.id=p.category_id
+                    LEFT JOIN product_barcodes b ON b.product_id=p.id
+                    GROUP BY p.id ORDER BY p.name COLLATE NOCASE""").fetchall()
+            for r in rows:
+                codes=[x for x in (r["barcodes"] or "").split("\n") if x]
+                if not codes:codes=[""]
+                for code in codes:ws.append([code,r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"]])
+            ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
+            for col,width in {"A":20,"B":34,"C":22,"D":14,"E":14,"F":12}.items():ws.column_dimensions[col].width=width
+            wb.save(path)
+            messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s). Le stock, les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج. لم يتم تصدير المخزون أو المبيعات أو الزبائن."),parent=self)
+        except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
 
     def import_excel(self):
         path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title="Importer les articles")
