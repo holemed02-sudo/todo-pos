@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk,messagebox,simpledialog
-from database import connect
+from database import get_setting, connect
 from services.cash import get_open_session
 from services.sales import create_return
 from services.money import fmt
@@ -8,14 +8,15 @@ from services.money import fmt
 class ReturnsFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=10);self.app=app
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text="Retours / المرتجعات",font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(top,text=self.tr('Retours','المرتجعات'),font=("Segoe UI",22,"bold")).pack(side="left")
         self.no=tk.StringVar();e=ttk.Entry(top,textvariable=self.no,width=28);e.pack(side="left",padx=15);e.bind("<Return>",lambda x:self.load())
-        ttk.Button(top,text="Chercher ticket",command=self.load).pack(side="left")
+        ttk.Button(top,text=self.tr('Chercher ticket','بحث عن تذكرة'),command=self.load).pack(side="left")
         self.info=ttk.Label(self,text="");self.info.pack(anchor="w",pady=8)
         self.t=ttk.Treeview(self,columns=("id","name","sold","returned","available","price"),show="headings")
         for c,h,w in [("id","Line",55),("name","Article",260),("sold","Vendu",75),("returned","Retourné",80),("available","Disponible",85),("price","Prix",90)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
-        self.t.pack(fill="both",expand=True);ttk.Button(self,text="Retourner ligne sélectionnée",command=self.do_return).pack(fill="x",pady=8)
+        self.t.pack(fill="both",expand=True);ttk.Button(self,text=self.tr('Retourner ligne sélectionnée','إرجاع السطر المحدد'),command=self.do_return).pack(fill="x",pady=8)
         self.sale_id=None
     def load(self):
         no=self.no.get().strip()
