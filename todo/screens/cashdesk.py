@@ -2,28 +2,29 @@ import tkinter as tk
 from tkinter import ttk,messagebox,simpledialog
 from services.cash import get_open_session,open_session,close_session,session_totals,record_cash
 from services.money import to_cents,fmt
-from database import connect
+from database import connect, get_setting
 
 class CashFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=15);self.app=app
-        ttk.Label(self,text="Caisse / الصندوق",font=("Segoe UI",22,"bold")).pack(anchor="w",pady=(0,15))
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
+        ttk.Label(self,text=self.tr('Caisse','الصندوق'),font=("Segoe UI",22,"bold")).pack(anchor="w",pady=(0,15))
         self.info=ttk.Label(self,text="",font=("Segoe UI",12));self.info.pack(anchor="w",pady=8)
         self.kpis=ttk.Frame(self);self.kpis.pack(fill="x",pady=8);self.kpi_labels={}
-        for key,title in [("expected","Cash attendu"),("sales","Ventes cash"),("expenses","Dépenses"),("returns","Retours cash")]:
+        for key,title in [("expected",self.tr("Cash attendu","النقد المتوقع")),("sales",self.tr("Ventes cash","المبيعات النقدية")),("expenses",self.tr("Dépenses","المصاريف")),("returns",self.tr("Retours cash","المرتجعات النقدية"))]:
             card=ttk.LabelFrame(self.kpis,text=title,padding=8);card.pack(side="left",fill="x",expand=True,padx=3);lbl=ttk.Label(card,text="—",font=("Segoe UI",16,"bold"));lbl.pack();self.kpi_labels[key]=lbl
         b=ttk.Frame(self);b.pack(anchor="w",pady=8)
-        ttk.Button(b,text="Ouvrir caisse",command=self.open).pack(side="left",padx=4)
-        ttk.Button(b,text="Dépense",command=self.expense).pack(side="left",padx=4)
-        ttk.Button(b,text="Cash IN",command=lambda:self.cashmove("IN")).pack(side="left",padx=4)
-        ttk.Button(b,text="Cash OUT",command=lambda:self.cashmove("OUT")).pack(side="left",padx=4)
-        ttk.Button(b,text="Clôturer",command=self.close).pack(side="left",padx=4)
-        ttk.Button(b,text="Historique clôtures",command=self.history).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Ouvrir caisse','فتح الصندوق'),command=self.open).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Dépense','مصروف'),command=self.expense).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Cash IN','إدخال نقدي'),command=lambda:self.cashmove("IN")).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Cash OUT','إخراج نقدي'),command=lambda:self.cashmove("OUT")).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Clôturer','إغلاق الصندوق'),command=self.close).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Historique clôtures','سجل الإغلاقات'),command=self.history).pack(side="left",padx=4)
         self.details=tk.Text(self,height=16,font=("Consolas",11));self.details.pack(fill="x",pady=15);self.refresh()
     def refresh(self):
         s=get_open_session();self.details.config(state="normal");self.details.delete("1.0","end")
         if not s:
-            self.info.config(text="Aucune caisse ouverte")
+            self.info.config(text=self.tr('Aucune caisse ouverte','لا يوجد صندوق مفتوح'))
             for lbl in self.kpi_labels.values():lbl.config(text="—")
             self.details.config(state="disabled");return
         with connect() as c:t=session_totals(c,s["id"])
@@ -63,7 +64,7 @@ Cash OUT       : {fmt(t['cash_out'])}
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self);return
         self.refresh()
     def history(self):
-        w=tk.Toplevel(self);w.title("Historique des clôtures");w.geometry("1050x560");w.transient(self.winfo_toplevel())
+        w=tk.Toplevel(self);w.title(self.tr('Historique des clôtures','سجل إغلاقات الصندوق'));w.geometry("1050x560");w.transient(self.winfo_toplevel())
         cols=("id","user","opened","closed","opening","expected","actual","diff")
         tree=ttk.Treeview(w,columns=cols,show="headings")
         cfg=[("id","Caisse",65),("user","Caissier",130),("opened","Ouverture",145),("closed","Clôture",145),("opening","Fond",95),("expected","Attendu",95),("actual","Réel",95),("diff","Écart",95)]
