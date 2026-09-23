@@ -14,9 +14,10 @@ class JournalFrame(ttk.Frame):
         ttk.Label(top,text=self.tr('Journal','السجل'),font=("Segoe UI",22,"bold")).pack(side="left")
         ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
-        today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.all_label=self.tr('Tous','الكل');self.cashier=tk.StringVar(value=self.all_label);self.payment=tk.StringVar(value=self.all_label)
+        today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.all_label=self.tr('Tous','الكل');self.cashier=tk.StringVar(value=self.all_label);self.seller=tk.StringVar(value=self.all_label);self.payment=tk.StringVar(value=self.all_label)
         for label,var,width in [(self.tr('Du','من'),self.date_from,11),(self.tr('Au','إلى'),self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
         ttk.Label(filters,text=self.tr('Caissier','الكاشير')).pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
+        ttk.Label(filters,text=self.tr('Vendeur','البائع')).pack(side="left");self.seller_box=ttk.Combobox(filters,textvariable=self.seller,state="readonly",width=16);self.seller_box.pack(side="left",padx=(3,10))
         ttk.Label(filters,text=self.tr('Paiement','الدفع')).pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=[self.all_label,"CASH","CARD","MIXED","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
         ttk.Button(filters,text=self.tr('Aujourd’hui','اليوم'),command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('7 jours','7 أيام'),command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('30 jours','30 يوماً'),command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('Consulter','عرض'),command=self.refresh).pack(side="right")
         cols=("id","ticket","date","cashier","seller","pay","total","cost","margin")
@@ -24,8 +25,11 @@ class JournalFrame(ttk.Frame):
         for c,h,w in [("id","ID",45),("ticket",self.tr("Ticket","التذكرة"),190),("date",self.tr("Date","التاريخ"),160),("cashier",self.tr("Caissier","الكاشير"),110),("seller",self.tr("Vendeur","البائع"),110),("pay",self.tr("Paiement","الدفع"),90),("total",self.tr("Total","المجموع"),90),("cost",self.tr("Coût","التكلفة"),90),("margin",self.tr("Marge brute","الهامش الإجمالي"),100)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True)
         self.summary=ttk.Label(self,text="",font=("Segoe UI",11,"bold"));self.summary.pack(anchor="e",pady=6)
-        with connect() as c:names=[r[0] for r in c.execute("SELECT display_name FROM users WHERE active=1 ORDER BY display_name").fetchall()]
+        with connect() as c:
+            names=[r[0] for r in c.execute("SELECT display_name FROM users WHERE active=1 ORDER BY display_name").fetchall()]
+            sellers=[r[0] for r in c.execute("SELECT name FROM sellers ORDER BY name COLLATE NOCASE").fetchall()]
         self.cashier_box["values"]=[self.all_label,*names]
+        self.seller_box["values"]=[self.all_label,*sellers]
         self.refresh()
     def set_period(self,days):
         end=date.today();self.date_to.set(str(end));self.date_from.set(str(end-timedelta(days=days)));self.refresh()
@@ -36,6 +40,7 @@ class JournalFrame(ttk.Frame):
             messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return []
         where=["date(s.created_at)>=?","date(s.created_at)<=?"];params=[self.date_from.get(),self.date_to.get()]
         if self.cashier.get()!=self.all_label:where.append("u.display_name=?");params.append(self.cashier.get())
+        if self.seller.get()!=self.all_label:where.append("v.name=?");params.append(self.seller.get())
         if self.payment.get()!=self.all_label:
             if self.payment.get() in ("CASH","CARD"):
                 where.append("EXISTS (SELECT 1 FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=?)");params.append(self.payment.get())
