@@ -11,7 +11,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport jours",command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport jours",command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text="Paiements",command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text="Retours",command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -122,6 +122,36 @@ class JournalFrame(ttk.Frame):
         for r in rows:
             total+=r["sales"] or 0;tree.insert("","end",values=(r["day"],r["tickets"],fmt(r["sales"] or 0,"")))
         ttk.Label(w,text=f"Total ventes nettes {fmt(total)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+
+    def payment_report(self):
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+        sql="""SELECT sp.payment_method method,SUM(sp.amount_cents) paid,
+            COALESCE((SELECT SUM(rp.amount_cents) FROM return_payments rp JOIN returns r ON r.id=rp.return_id
+              WHERE rp.payment_method=sp.payment_method AND date(r.created_at)>=? AND date(r.created_at)<=?),0) refunded
+            FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
+            WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY sp.payment_method ORDER BY sp.payment_method"""
+        with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get(),self.date_from.get(),self.date_to.get())).fetchall()
+        self._simple_report("Paiements",("Mode","Encaissé","Remboursé","Net"),[(r["method"],fmt(r["paid"] or 0,""),fmt(r["refunded"] or 0,""),fmt((r["paid"] or 0)-(r["refunded"] or 0),"")) for r in rows])
+
+    def return_report(self):
+        try:
+            date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
+        except ValueError:
+            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+        sql="""SELECT r.return_no,r.created_at,s.sale_no,r.refund_method,r.total_cents
+            FROM returns r JOIN sales s ON s.id=r.sale_id WHERE date(r.created_at)>=? AND date(r.created_at)<=? ORDER BY r.id DESC"""
+        with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
+        self._simple_report("Retours",("Retour","Date","Ticket","Mode","Montant"),[(r["return_no"],r["created_at"],r["sale_no"],r["refund_method"],fmt(r["total_cents"],"")) for r in rows])
+
+    def _simple_report(self,title,headers,rows):
+        w=tk.Toplevel(self);w.title(title);w.geometry("820x540");w.transient(self.winfo_toplevel())
+        cols=tuple(f"c{i}" for i in range(len(headers)));tree=ttk.Treeview(w,columns=cols,show="headings")
+        for i,(c,h) in enumerate(zip(cols,headers)):tree.heading(c,text=h);tree.column(c,width=150 if i else 180,anchor="center")
+        tree.pack(fill="both",expand=True,padx=12,pady=12)
+        for row in rows:tree.insert("","end",values=row)
 
     def export_excel(self):
         p=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title="Exporter journal Excel")
