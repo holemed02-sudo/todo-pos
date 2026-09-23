@@ -182,7 +182,7 @@ class ToDoApp(tk.Tk):
     def show(self, key):
         if self.lock_window and self.lock_window.winfo_exists():
             self.lock_window.lift();return
-        if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics'):
+        if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics','inventory','sorties','supplier_payments','rendez_vous'):
             messagebox.showerror('ToDo','Action réservée à un administrateur.');return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
