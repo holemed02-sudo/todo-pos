@@ -76,6 +76,20 @@ CREATE TABLE IF NOT EXISTS quantity_prices (
 );
 CREATE INDEX IF NOT EXISTS idx_quantity_prices_product ON quantity_prices(product_id, min_qty);
 
+CREATE TABLE IF NOT EXISTS price_grids (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS product_grid_prices (
+    product_id INTEGER NOT NULL,
+    grid_id INTEGER NOT NULL,
+    unit_price_cents INTEGER NOT NULL,
+    PRIMARY KEY(product_id,grid_id),
+    FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY(grid_id) REFERENCES price_grids(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS cash_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
