@@ -107,6 +107,19 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with patch('tkinter.simpledialog.askstring',return_value='4.00'):
         button(menu,'Modifier prix').invoke()
     assert sale.totals()[1]==800
+    # End-to-end PRIX_1: grid price is selectable from the sale UI.
+    with connect() as c:
+        gid=c.execute("INSERT INTO price_grids(name,active) VALUES('TEST PRO',1)").lastrowid
+        c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(pid,gid,250))
+    sale.restore_price()
+    sale.cart[0].pop('manual_unit_price',None)
+    sale.functions();app.update()
+    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    button(menu,'Grille de prix').invoke();app.update()
+    grid_dialog=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    button(grid_dialog,'TEST PRO').invoke();app.update()
+    assert sale.price_grid_id==gid
+    assert sale.totals()[1]==500
     # Restore the base product price directly; the old "Prix normal" menu action was replaced by price grids.
     sale.restore_price()
     assert sale.totals()[1]==600
