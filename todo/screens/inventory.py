@@ -32,10 +32,10 @@ class InventaireFrame(ttk.Frame):
         self.tree = ttk.Treeview(self, columns=cols, show='headings')
         for col, lbl, w, anc in [
             ('id',      'ID',       55,  'center'),
-            ('name',    'Article',  350, 'w'),
-            ('theory',  'Théorique',95,  'e'),
-            ('counted', 'Compté ✏', 95,  'e'),
-            ('diff',    'Écart',    85,  'e'),
+            ('name',    self.tr('Article','المنتوج'),  350, 'w'),
+            ('theory',  self.tr('Théorique','النظري'),95,  'e'),
+            ('counted', self.tr('Compté ✏','المعدود ✏'), 95,  'e'),
+            ('diff',    self.tr('Écart','الفرق'),    85,  'e'),
         ]:
             self.tree.heading(col, text=lbl)
             self.tree.column(col, width=w, anchor=anc)
@@ -50,7 +50,7 @@ class InventaireFrame(ttk.Frame):
 
         self.counted = {}   # product_id → float
         self.products = []
-        self.pending_label=ttk.Label(toolbar,text='0 écart',foreground='#475569');self.pending_label.pack(side='right',padx=12)
+        self.pending_label=ttk.Label(toolbar,text=self.tr('0 écart','0 فرق'),foreground='#475569');self.pending_label.pack(side='right',padx=12)
         self.tree.bind('<Return>', self._edit_cell)
         self.refresh()
 
