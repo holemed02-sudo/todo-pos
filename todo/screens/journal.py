@@ -43,6 +43,8 @@ class JournalFrame(ttk.Frame):
         sql="""SELECT s.id,s.sale_no,s.created_at,u.display_name,s.payment_method,
           COALESCE((SELECT SUM(sp.amount_cents) FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=\'CASH\'),0) cash_paid,
           COALESCE((SELECT SUM(sp.amount_cents) FROM sale_payments sp WHERE sp.sale_id=s.id AND sp.payment_method=\'CARD\'),0) card_paid,
+          COALESCE((SELECT SUM(rp.amount_cents) FROM return_payments rp JOIN returns rr ON rr.id=rp.return_id WHERE rr.sale_id=s.id AND rp.payment_method=\'CASH\'),0) cash_refund,
+          COALESCE((SELECT SUM(rp.amount_cents) FROM return_payments rp JOIN returns rr ON rr.id=rp.return_id WHERE rr.sale_id=s.id AND rp.payment_method=\'CARD\'),0) card_refund,
           s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0) total_cents,
           COALESCE((SELECT SUM(si.cost_price_cents*si.qty) FROM sale_items si WHERE si.sale_id=s.id),0)
           -COALESCE((SELECT SUM(ri.qty*si.cost_price_cents) FROM return_items ri JOIN sale_items si ON si.id=ri.sale_item_id WHERE si.sale_id=s.id),0) cost
@@ -53,7 +55,7 @@ class JournalFrame(ttk.Frame):
         for r in rows:
             margin=int(r["total_cents"]-r["cost"]);total+=r["total_cents"];cost+=r["cost"]
             pay=r["payment_method"]
-            if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"],""),fmt(r["card_paid"],""))
+            if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
             self.t.insert("", "end",values=(r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,fmt(r["total_cents"],""),fmt(r["cost"],""),fmt(margin,"")))
         self.summary.config(text=f"{len(rows)} ticket(s) · Ventes nettes {fmt(total)} · Coût {fmt(cost)} · Marge brute {fmt(total-cost)}")
     def detail_report(self,mode):
