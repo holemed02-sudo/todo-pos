@@ -6,7 +6,7 @@ from tkinter import ttk, messagebox
 GROUPS = [
     [
         ("📥", "Réceptions",         "purchases",  "#0891B2", "#fff"),
-        ("📤", "Sorties",             None,         "#64748B", "#fff"),
+        ("📤", "Sorties",             "sorties",    "#D97706", "#fff"),
         ("📝", "Inventaire",          "inventory",  "#16A34A", "#fff"),
         ("🔄", "Mouvements de stock", "stock",      "#7C3AED", "#fff"),
     ],
