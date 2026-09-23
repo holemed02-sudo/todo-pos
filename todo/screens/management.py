@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+from database import get_setting
 
 
 # group definitions: (emoji, label, route, bg, fg)
@@ -50,6 +51,8 @@ class ManagementFrame(ttk.Frame):
     def __init__(self, master, app):
         super().__init__(master, padding=0)
         self.app = app
+        self.lang = get_setting("language","fr")
+        self.tr = lambda fr,ar: ar if self.lang=="ar" else fr
         self._build()
 
     def _build(self):
@@ -57,7 +60,7 @@ class ManagementFrame(ttk.Frame):
         header = tk.Frame(self, bg="#1E293B", height=58)
         header.pack(fill="x")
         header.pack_propagate(False)
-        tk.Label(header, text="🗂️  Gestion", bg="#1E293B", fg="white",
+        tk.Label(header, text=self.tr("🗂️  Gestion","🗂️  الإدارة"), bg="#1E293B", fg="white",
                  font=("Segoe UI", 18, "bold")).pack(side="left", padx=22, pady=10)
 
         # cards area
@@ -68,7 +71,7 @@ class ManagementFrame(ttk.Frame):
             row = tk.Frame(area, bg="#F8FAFC")
             row.pack(anchor="w", pady=6)
             for emoji, label, key, bg, fg in group:
-                self._card(row, emoji, label, key, bg, fg)
+                self._card(row, emoji, self.tr(label, dict({'Réceptions':'الاستلامات','Sorties':'الإخراجات','Inventaire':'الجرد','Mouvements de stock':'حركات المخزون','Fournisseurs':'الموردون','Règlements fournisseurs':'دفعات الموردين','État crédits fournisseurs':'ديون الموردين','Clients':'الزبائن','Règlements clients':'دفعات الزبائن','État crédits clients':'ديون الزبائن','Dépenses':'المصاريف','Rendez-vous':'المواعيد'}).get(label,label)), key, bg, fg)
 
     def _card(self, parent, emoji, label, key, bg, fg):
         is_placeholder = key is None
@@ -124,6 +127,6 @@ class ManagementFrame(ttk.Frame):
             SupplierCreditStateWindow(app); return
         if key:
             app.show(key)
-            if label == "Dépenses":
+            if key == "cash":
                 try: app.current.expense()
                 except Exception: pass
