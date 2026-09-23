@@ -11,7 +11,7 @@ class JournalFrame(ttk.Frame):
         super().__init__(master,padding=10)
         top=ttk.Frame(self);top.pack(fill="x")
         ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport jours",command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text="Paiements",command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text="Retours",command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport jours",command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text="Sans détails",command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text="Paiements",command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text="Retours",command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
         for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
@@ -122,6 +122,16 @@ class JournalFrame(ttk.Frame):
         for r in rows:
             total+=r["sales"] or 0;tree.insert("","end",values=(r["day"],r["tickets"],fmt(r["sales"] or 0,"")))
         ttk.Label(w,text=f"Total ventes nettes {fmt(total)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+
+    def summary_report(self):
+        rows=self.rows()
+        total=sum(r["total_cents"] for r in rows);cost=sum(r["cost"] for r in rows)
+        cash=sum((r["cash_paid"]-r["cash_refund"]) for r in rows)
+        card=sum((r["card_paid"]-r["card_refund"]) for r in rows)
+        self._simple_report("Journal sans détails",("Indicateur","Valeur"),[
+            ("Période",f"{self.date_from.get()} → {self.date_to.get()}"),
+            ("Tickets",str(len(rows))),("Ventes nettes",fmt(total,"")),("Coût",fmt(cost,"")),
+            ("Marge brute",fmt(total-cost,"")),("Cash net",fmt(cash,"")),("Carte nette",fmt(card,""))])
 
     def payment_report(self):
         try:
