@@ -69,6 +69,13 @@ def create_full_backup():
 def restore_full_backup(source):
     src=Path(source).resolve()
     if not src.is_file(): raise ValueError('Sauvegarde introuvable.')
+    # Validate the incoming archive before creating the safety copy.
+    with zipfile.ZipFile(src,'r') as probe:
+        names=probe.namelist()
+        if 'todo.db' not in names: raise ValueError('Sauvegarde ToDo complète invalide.')
+        for name in names:
+            p=Path(name)
+            if p.is_absolute() or '..' in p.parts: raise ValueError('Archive de sauvegarde invalide.')
     safety=create_full_backup()
     with tempfile.TemporaryDirectory() as td:
         temp=Path(td)
