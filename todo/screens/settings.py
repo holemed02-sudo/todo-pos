@@ -195,7 +195,7 @@ class SettingsFrame(ttk.Frame):
     def full_backup(self):
         try:
             p=create_full_backup()
-            messagebox.showinfo("ToDo",self.tr(f"Backup complet créé:\n{p}",f"تم إنشاء النسخة الكاملة:\n{p}"),parent=self)
+            messagebox.showinfo("ToDo",self.tr("Backup complet créé:","تم إنشاء النسخة الكاملة:")+"\n"+str(p),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def full_restore(self):
         p=filedialog.askopenfilename(parent=self,filetypes=[("ToDo Full Backup","*.todozip")])
