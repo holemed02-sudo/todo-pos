@@ -20,6 +20,9 @@ from screens.settings import SettingsFrame
 from screens.management import ManagementFrame
 from screens.statistics import StatisticsFrame
 from screens.suppliers import SuppliersFrame
+from screens.inventory import InventaireFrame, SortiesFrame
+from screens.supplier_payments import SupplierReglementFrame
+from screens.rendez_vous import RendezVousFrame
 from screens.clients import ClientsFrame
 
 class ToDoApp(tk.Tk):
