@@ -173,6 +173,8 @@ class StatisticsFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=16)
         self._period = 'month'
+        import datetime
+        self._year = datetime.date.today().year
 
         # ── Header ────────────────────────────────────────────────────────────
         header = ttk.Frame(self)
@@ -193,6 +195,12 @@ class StatisticsFrame(ttk.Frame):
             self._period_btns[key] = btn
         ttk.Button(header, text='↺ Actualiser',
                    command=self.refresh).pack(side='right', padx=8)
+        year_box = ttk.Frame(header)
+        year_box.pack(side='right', padx=6)
+        ttk.Button(year_box, text='‹', width=3, command=lambda: self._change_year(-1)).pack(side='left')
+        self.year_label = ttk.Label(year_box, text=str(self._year), width=6, anchor='center', font=('Segoe UI',10,'bold'))
+        self.year_label.pack(side='left')
+        ttk.Button(year_box, text='›', width=3, command=lambda: self._change_year(1)).pack(side='left')
 
         # ── KPI cards row ─────────────────────────────────────────────────────
         self.kpi_frame = ttk.Frame(self)
@@ -300,6 +308,14 @@ class StatisticsFrame(ttk.Frame):
             btn.state(['pressed'] if k == key else ['!pressed'])
         self.refresh()
 
+    def _change_year(self, delta):
+        self._year += delta
+        self.year_label.config(text=str(self._year))
+        self._period = 'year'
+        for k, btn in self._period_btns.items():
+            btn.state(['pressed'] if k == 'year' else ['!pressed'])
+        self.refresh()
+
     # ── Refresh ───────────────────────────────────────────────────────────────
     def refresh(self):
         try:
@@ -327,7 +343,7 @@ class StatisticsFrame(ttk.Frame):
             returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
         self._kpi_labels['stock_value'].config(text=fmt(stock))
         self._kpi_labels['returns'].config(text=fmt(returns))
-        best=top_month()
+        best=top_month(self._year)
         month_names=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc']
         label='—' if not best['month'] else f"{month_names[best['month']-1]} · {fmt(best['revenue'])}"
         self._kpi_labels['top_month'].config(text=label)
