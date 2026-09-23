@@ -3,24 +3,25 @@ import tkinter as tk
 from xml.sax.saxutils import escape
 from datetime import date, timedelta
 from tkinter import ttk,filedialog,messagebox
-from database import connect
+from database import connect, get_setting
 from services.money import fmt
 
 class JournalFrame(ttk.Frame):
     def __init__(self,master):
         super().__init__(master,padding=10)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text="Journal / التقارير",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text="Export CSV",command=self.export).pack(side="right");ttk.Button(top,text="Export Excel",command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text="Export PDF",command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text="Rapport articles",command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport familles",command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport clients",command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text="Rapport jours",command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text="Sans détails",command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text="Paiements",command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text="Retours",command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text="Actualiser",command=self.refresh).pack(side="right",padx=5)
+        ttk.Label(top,text=self.tr('Journal','السجل'),font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Button(top,text=self.tr('Export CSV','تصدير CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export Excel','تصدير Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export PDF','تصدير PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
         filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.cashier=tk.StringVar(value="Tous");self.payment=tk.StringVar(value="Tous")
-        for label,var,width in [("Du",self.date_from,11),("Au",self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
-        ttk.Label(filters,text="Caissier").pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
-        ttk.Label(filters,text="Paiement").pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=["Tous","CASH","CARD","MIXED","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
-        ttk.Button(filters,text="Aujourd’hui",command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text="7 jours",command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text="30 jours",command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text="Consulter",command=self.refresh).pack(side="right")
+        for label,var,width in [(self.tr('Du','من'),self.date_from,11),(self.tr('Au','إلى'),self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
+        ttk.Label(filters,text=self.tr('Caissier','الكاشير')).pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
+        ttk.Label(filters,text=self.tr('Paiement','الدفع')).pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=["Tous","CASH","CARD","MIXED","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
+        ttk.Button(filters,text=self.tr('Aujourd’hui','اليوم'),command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('7 jours','7 أيام'),command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('30 jours','30 يوماً'),command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('Consulter','عرض'),command=self.refresh).pack(side="right")
         cols=("id","ticket","date","cashier","pay","total","cost","margin")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
-        for c,h,w in [("id","ID",45),("ticket","Ticket",190),("date","Date",160),("cashier","Caissier",110),("pay","Paiement",90),("total","Total",90),("cost","Coût",90),("margin","Marge brute",100)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
+        for c,h,w in [("id","ID",45),("ticket",self.tr("Ticket","التذكرة"),190),("date",self.tr("Date","التاريخ"),160),("cashier",self.tr("Caissier","الكاشير"),110),("pay",self.tr("Paiement","الدفع"),90),("total",self.tr("Total","المجموع"),90),("cost",self.tr("Coût","التكلفة"),90),("margin",self.tr("Marge brute","الهامش الإجمالي"),100)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True)
         self.summary=ttk.Label(self,text="",font=("Segoe UI",11,"bold"));self.summary.pack(anchor="e",pady=6)
         with connect() as c:names=[r[0] for r in c.execute("SELECT display_name FROM users WHERE active=1 ORDER BY display_name").fetchall()]
