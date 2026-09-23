@@ -37,6 +37,7 @@ class PaymentDialog(tk.Toplevel):
         for label, value in choices:
             ttk.Radiobutton(modes, text=label, variable=self.method, value=value,
                             command=self.update_amount).pack(side='left', expand=True, padx=8)
+        self.method.trace_add('write', self.method_changed)
         ttk.Label(body, text='Montant reçu / المبلغ المدفوع').pack(anchor='w')
         self.entry = ttk.Entry(body, textvariable=self.amount, font=('Segoe UI', 24), justify='right')
         self.entry.pack(fill='x', pady=8)
@@ -70,6 +71,17 @@ class PaymentDialog(tk.Toplevel):
         self.grab_set()
         self.update_amount()
         self.after_idle(self.focus_amount)
+
+    def method_changed(self, *_):
+        if not hasattr(self, 'card_entry'):
+            return
+        if self.method.get() == 'MIXED':
+            try:
+                cash=to_cents(self.amount.get())
+            except Exception:
+                cash=0
+            self.card_amount.set(f'{max(0,self.total-cash)/100:.2f}')
+        self.update_amount()
 
     def focus_amount(self):
         self.entry.focus_set()
