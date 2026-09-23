@@ -47,7 +47,8 @@ class SaleFrame(ttk.Frame):
         self.client_button=ttk.Button(top,text='F6 Client : passage',command=self.choose_client)
         self.client_button.pack(side='left',padx=18)
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
-        self.seller_button.pack(side='left',padx=(0,12))
+        if get_setting('choose_seller_on_sale','0')=='1':
+            self.seller_button.pack(side='left',padx=(0,12))
         searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
         searchbar.pack(fill='x',pady=(0,12))
         ttk.Label(searchbar,text='⌕  Scanner ou rechercher',style='Card.TLabel').pack(side='left',padx=(0,12))
