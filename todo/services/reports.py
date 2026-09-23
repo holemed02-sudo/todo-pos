@@ -74,6 +74,17 @@ def sales_evolution(period='month'):
           [(datetime.date.fromisoformat(start)+datetime.timedelta(days=i)).isoformat() for i in range(len(labels))])
     return labels,[totals.get(k,0) for k in keys]
 
+def product_evolution(product_id, period='month'):
+    """Net revenue evolution for one article over the selected period."""
+    start,end,labels=_date_range(period)
+    key="strftime('%m',created_at,'localtime')" if period=='year' else "date(created_at,'localtime')"
+    with connect() as c:
+        rows=c.execute(EVENTS+f"SELECT {key} bucket,SUM(revenue) total FROM period_events WHERE product_id=? GROUP BY bucket",(start,end,product_id)).fetchall()
+    totals={r['bucket']:r['total'] for r in rows}
+    keys=([f'{m:02d}' for m in range(1,13)] if period=='year' else
+          [(datetime.date.fromisoformat(start)+datetime.timedelta(days=i)).isoformat() for i in range(len(labels))])
+    return labels,[totals.get(k,0) for k in keys]
+
 def top_products(limit=10,period='month'):
     start,end,_=_date_range(period)
     with connect() as c:
