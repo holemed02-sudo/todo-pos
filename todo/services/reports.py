@@ -64,8 +64,11 @@ def period_summary(period='month'):
         alerts=c.execute('SELECT COUNT(*) FROM products WHERE active=1 AND stock_qty<=alert_qty').fetchone()[0]
     return dict(net_sales=row[0],gross_margin=rounded(row[0]-row[1]),tickets=tickets,alerts=alerts)
 
-def sales_evolution(period='month'):
+def sales_evolution(period='month', year=None):
     start,end,labels=_date_range(period)
+    if period=='year' and year is not None:
+        year=int(year)
+        start,end=f'{year}-01-01',f'{year}-12-31'
     key="strftime('%m',created_at,'localtime')" if period=='year' else "date(created_at,'localtime')"
     with connect() as c:
         rows=c.execute(EVENTS+f'SELECT {key} bucket,SUM(revenue) total FROM period_events GROUP BY bucket',(start,end)).fetchall()
@@ -74,9 +77,12 @@ def sales_evolution(period='month'):
           [(datetime.date.fromisoformat(start)+datetime.timedelta(days=i)).isoformat() for i in range(len(labels))])
     return labels,[totals.get(k,0) for k in keys]
 
-def product_evolution(product_id, period='month'):
+def product_evolution(product_id, period='month', year=None):
     """Net revenue evolution for one article over the selected period."""
     start,end,labels=_date_range(period)
+    if period=='year' and year is not None:
+        year=int(year)
+        start,end=f'{year}-01-01',f'{year}-12-31'
     key="strftime('%m',created_at,'localtime')" if period=='year' else "date(created_at,'localtime')"
     with connect() as c:
         rows=c.execute(EVENTS+f"SELECT {key} bucket,SUM(revenue) total FROM period_events WHERE product_id=? GROUP BY bucket",(start,end,product_id)).fetchall()
