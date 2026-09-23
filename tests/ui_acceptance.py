@@ -120,7 +120,9 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     button(grid_dialog,'TEST PRO').invoke();app.update()
     assert sale.price_grid_id==gid
     assert sale.totals()[1]==500
-    # Restore the base product price directly; the old "Prix normal" menu action was replaced by price grids.
+    # Return to the normal grid so later acceptance scenarios are isolated.
+    sale.price_grid_id=None;sale.price_grid_name=sale.tr('Normal','عادي')
+    sale.cart[0].pop('manual_unit_price',None)
     sale.restore_price()
     assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askstring',return_value='Test held ticket'):
