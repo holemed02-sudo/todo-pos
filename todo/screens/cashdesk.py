@@ -30,26 +30,32 @@ class CashFrame(ttk.Frame):
         with connect() as c:t=session_totals(c,s["id"])
         expected=int(s["opening_cash_cents"])+t["cash_sales"]-t["cash_returns"]-t["expenses"]+t["cash_in"]-t["cash_out"]
         self.kpi_labels["expected"].config(text=fmt(expected));self.kpi_labels["sales"].config(text=fmt(t["cash_sales"]));self.kpi_labels["expenses"].config(text=fmt(t["expenses"]));self.kpi_labels["returns"].config(text=fmt(t["cash_returns"]))
-        self.info.config(text=f"Caisse #{s['id']} ouverte depuis {s['opened_at']}")
-        txt=f"""Fond de caisse : {fmt(s['opening_cash_cents'])}
+        self.info.config(text=self.tr(f"Caisse #{s['id']} ouverte depuis {s['opened_at']}",f"الصندوق #{s['id']} مفتوح منذ {s['opened_at']}"))
+        txt=self.tr(f"""Fond de caisse : {fmt(s['opening_cash_cents'])}
 Ventes cash    : {fmt(t['cash_sales'])}
 Retours cash   : {fmt(t['cash_returns'])}
 Dépenses       : {fmt(t['expenses'])}
 Cash IN        : {fmt(t['cash_in'])}
 Cash OUT       : {fmt(t['cash_out'])}
-"""
+""",f"""رصيد الافتتاح : {fmt(s['opening_cash_cents'])}
+المبيعات النقدية : {fmt(t['cash_sales'])}
+المرتجعات النقدية : {fmt(t['cash_returns'])}
+المصاريف : {fmt(t['expenses'])}
+إدخال نقدي : {fmt(t['cash_in'])}
+إخراج نقدي : {fmt(t['cash_out'])}
+""")
         self.details.insert("1.0",txt);self.details.config(state="disabled")
     def open(self):
-        v=simpledialog.askfloat("Ouverture","Fond de caisse (DH):",parent=self,minvalue=0)
+        v=simpledialog.askfloat(self.tr("Ouverture","فتح الصندوق"),self.tr("Fond de caisse (DH):","رصيد الافتتاح (DH):"),parent=self,minvalue=0)
         if v is None:return
         try:open_session(self.app.user["id"],to_cents(v));self.refresh()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def expense(self):
         s=get_open_session()
-        if not s:messagebox.showerror("ToDo","Ouvrez la caisse.",parent=self);return
-        label=simpledialog.askstring("Dépense","Libellé:",parent=self)
+        if not s:messagebox.showerror("ToDo",self.tr("Ouvrez la caisse.","افتح الصندوق أولاً."),parent=self);return
+        label=simpledialog.askstring(self.tr("Dépense","مصروف"),self.tr("Libellé:","البيان:"),parent=self)
         if not label:return
-        amount=simpledialog.askfloat("Dépense","Montant (DH):",parent=self,minvalue=0.01)
+        amount=simpledialog.askfloat(self.tr("Dépense","مصروف"),self.tr("Montant (DH):","المبلغ (DH):"),parent=self,minvalue=0.01)
         if amount is None:return
         try:record_cash(s['id'],self.app.user['id'],to_cents(amount),'EXPENSE',label)
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self);return
@@ -57,9 +63,9 @@ Cash OUT       : {fmt(t['cash_out'])}
     def cashmove(self,typ):
         s=get_open_session()
         if not s:return
-        amount=simpledialog.askfloat(typ,"Montant (DH):",parent=self,minvalue=0.01)
+        amount=simpledialog.askfloat(typ,self.tr("Montant (DH):","المبلغ (DH):"),parent=self,minvalue=0.01)
         if amount is None:return
-        note=simpledialog.askstring(typ,"Note:",parent=self) or ""
+        note=simpledialog.askstring(typ,self.tr("Note:","ملاحظة:"),parent=self) or ""
         try:record_cash(s['id'],self.app.user['id'],to_cents(amount),typ,note)
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self);return
         self.refresh()
@@ -67,7 +73,7 @@ Cash OUT       : {fmt(t['cash_out'])}
         w=tk.Toplevel(self);w.title(self.tr('Historique des clôtures','سجل إغلاقات الصندوق'));w.geometry("1050x560");w.transient(self.winfo_toplevel())
         cols=("id","user","opened","closed","opening","expected","actual","diff")
         tree=ttk.Treeview(w,columns=cols,show="headings")
-        cfg=[("id","Caisse",65),("user","Caissier",130),("opened","Ouverture",145),("closed","Clôture",145),("opening","Fond",95),("expected","Attendu",95),("actual","Réel",95),("diff","Écart",95)]
+        cfg=[("id",self.tr("Caisse","الصندوق"),65),("user",self.tr("Caissier","الكاشير"),130),("opened",self.tr("Ouverture","الفتح"),145),("closed",self.tr("Clôture","الإغلاق"),145),("opening",self.tr("Fond","الرصيد"),95),("expected",self.tr("Attendu","المتوقع"),95),("actual",self.tr("Réel","الفعلي"),95),("diff",self.tr("Écart","الفرق"),95)]
         for key,title,width in cfg:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
         tree.tag_configure("bad",foreground="#DC2626");tree.tag_configure("ok",foreground="#15803D")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
@@ -77,16 +83,16 @@ Cash OUT       : {fmt(t['cash_out'])}
         for r in rows:
             diff=int(r["difference_cents"] or 0);total_diff+=diff;tag="ok" if diff==0 else "bad"
             tree.insert("","end",values=(r["id"],r["username"],r["opened_at"],r["closed_at"],fmt(r["opening_cash_cents"],""),fmt(r["expected_cash_cents"],""),fmt(r["actual_cash_cents"] or 0,""),fmt(diff,"")),tags=(tag,))
-        ttk.Label(w,text=f"{len(rows)} clôture(s) · Écart cumulé {fmt(total_diff)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+        ttk.Label(w,text=self.tr(f"{len(rows)} clôture(s) · Écart cumulé {fmt(total_diff)}",f"{len(rows)} إغلاق · الفرق التراكمي {fmt(total_diff)}"),font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
 
     def close(self):
         s=get_open_session()
         if not s:return
         with connect() as c:t=session_totals(c,s["id"])
         expected=int(s["opening_cash_cents"])+t["cash_sales"]-t["cash_returns"]-t["expenses"]+t["cash_in"]-t["cash_out"]
-        actual=simpledialog.askfloat("Clôture",f"Cash attendu : {fmt(expected)}\n\nCash réel compté (DH):",parent=self,minvalue=0)
+        actual=simpledialog.askfloat(self.tr("Clôture","إغلاق الصندوق"),self.tr(f"Cash attendu : {fmt(expected)}\n\nCash réel compté (DH):",f"النقد المتوقع : {fmt(expected)}\n\nالنقد الفعلي المحسوب (DH):"),parent=self,minvalue=0)
         if actual is None:return
         try:
             expected,diff,t=close_session(s["id"],to_cents(actual))
-            messagebox.showinfo("Clôture",f"Attendu: {fmt(expected)}\nRéel: {actual:.2f} DH\nDifférence: {fmt(diff)}",parent=self);self.refresh()
+            messagebox.showinfo(self.tr("Clôture","إغلاق الصندوق"),self.tr(f"Attendu: {fmt(expected)}\nRéel: {actual:.2f} DH\nDifférence: {fmt(diff)}",f"المتوقع: {fmt(expected)}\nالفعلي: {actual:.2f} DH\nالفرق: {fmt(diff)}"),parent=self);self.refresh()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
