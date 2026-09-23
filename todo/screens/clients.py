@@ -56,7 +56,7 @@ class PaymentsWindow(tk.Toplevel):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.client   = client
         self.currency = 'DH'
-        self.title(f"Règlements — {client['name']}")
+        self.title(f"{self.tr('Règlements','التسديدات')} — {client['name']}")
         self.geometry('820x520')
         self.transient(master.winfo_toplevel())
         self._build()
@@ -66,7 +66,7 @@ class PaymentsWindow(tk.Toplevel):
         top.pack(fill='x')
         self.lbl_balance = ttk.Label(top, font=('Segoe UI', 14, 'bold'))
         self.lbl_balance.pack(side='left')
-        ttk.Button(top, text='+ Ajouter un règlement', style='Primary.TButton',
+        ttk.Button(top, text=self.tr('+ Ajouter un règlement','+ إضافة تسديد'), style='Primary.TButton',
                    command=self._add).pack(side='right')
 
         paned = ttk.Panedwindow(self, orient='horizontal')
@@ -97,7 +97,7 @@ class PaymentsWindow(tk.Toplevel):
         paned.add(rf, weight=2)
         self.pay_tree = ttk.Treeview(rf,
             columns=('date', 'amount', 'note'), show='headings', height=14)
-        for col, label, w in [('date','Date',120),('amount','Montant',90),('note','Note',180)]:
+        for col, label, w in [('date',self.tr('Date','التاريخ'),120),('amount',self.tr('Montant','المبلغ'),90),('note',self.tr('Note','ملاحظة'),180)]:
             self.pay_tree.heading(col, text=label)
             self.pay_tree.column(col, width=w, anchor='e' if col=='amount' else 'w')
         sb2 = ttk.Scrollbar(rf, orient='vertical', command=self.pay_tree.yview)
@@ -111,7 +111,7 @@ class PaymentsWindow(tk.Toplevel):
         c = get_client(self.client['id'])
         balance = c['billed_cents'] - c['paid_cents']
         self.lbl_balance.config(
-            text=f"Solde dû : {fmt(balance, self.currency)}",
+            text=f"{self.tr('Solde dû','الرصيد المستحق')} : {fmt(balance, self.currency)}",
             foreground='#dc2626' if balance > 0 else '#16a34a')
 
         self.sales_tree.delete(*self.sales_tree.get_children())
@@ -135,15 +135,15 @@ class PaymentsWindow(tk.Toplevel):
         if sel:
             sale_id = int(sel[0])
         amount_str = simpledialog.askstring(
-            'Règlement', 'Montant reçu en espèces (DH) / المبلغ المقبوض نقداً :', parent=self)
+            self.tr('Règlement','التسديد'), self.tr('Montant reçu en espèces (DH) :','المبلغ المقبوض نقداً (DH):'), parent=self)
         if amount_str is None: return
-        note = simpledialog.askstring('Règlement', 'Note (facultatif) :', parent=self) or ''
+        note = simpledialog.askstring(self.tr('Règlement','التسديد'), self.tr('Note (facultatif) :','ملاحظة (اختيارية):'), parent=self) or ''
         try:
             from services.money import to_cents
             add_payment(self.client['id'], to_cents(amount_str), note, sale_id)
             self._refresh()
         except (ValueError, PermissionError) as e:
-            messagebox.showerror('Règlement', str(e), parent=self)
+            messagebox.showerror(self.tr('Règlement','التسديد'), str(e), parent=self)
 
 
 # ── État des crédits ──────────────────────────────────────────────────────────
