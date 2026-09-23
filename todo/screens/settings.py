@@ -141,16 +141,9 @@ class SettingsFrame(ttk.Frame):
         ttk.Spinbox(d,from_=2,to=120,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
         ttk.Label(d,text=self.tr('Dossier : customer_media · PNG/JPG/WEBP · format conseillé 16:9','المجلد: customer_media · PNG/JPG/WEBP · القياس المقترح 16:9'),foreground="#475569").pack(side="left",padx=12)
         ttk.Button(d,text=self.tr('Tester écran client','اختبار شاشة الزبون'),command=self.test_customer).pack(side="right")
-        hw=ttk.LabelFrame(self,text=self.tr('Périphériques','الأجهزة'),padding=10);hw.pack(fill="x",pady=10)
-        self.customer_port=tk.StringVar(value=get_setting("customer_display_port",""))
-        self.scale_port=tk.StringVar(value=get_setting("scale_serial_port",""))
-        self.rfid_enabled=tk.BooleanVar(value=get_setting("rfid_enabled","0")=="1")
-        ttk.Label(hw,text=self.tr('Port écran client','منفذ شاشة الزبون')).grid(row=0,column=0,sticky="w");ttk.Entry(hw,textvariable=self.customer_port,width=18).grid(row=0,column=1,padx=8,sticky="w")
-        ttk.Label(hw,text=self.tr('Port balance','منفذ الميزان')).grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(hw,textvariable=self.scale_port,width=18).grid(row=1,column=1,padx=8,sticky="w")
-        ttk.Checkbutton(hw,text=self.tr('Activer RFID','تفعيل RFID'),variable=self.rfid_enabled).grid(row=2,column=0,columnspan=2,sticky="w")
+        hw=ttk.LabelFrame(self,text=self.tr('Poste de caisse','محطة البيع'),padding=10);hw.pack(fill="x",pady=10)
         self.station_id=tk.StringVar(value=get_setting("station_id","CAISSE-1"))
-        ttk.Label(hw,text=self.tr('Identifiant poste','معرف محطة البيع')).grid(row=3,column=0,sticky="w",pady=5);ttk.Entry(hw,textvariable=self.station_id,width=18).grid(row=3,column=1,padx=8,sticky="w")
-
+        ttk.Label(hw,text=self.tr('Identifiant poste','معرف محطة البيع')).grid(row=0,column=0,sticky="w");ttk.Entry(hw,textvariable=self.station_id,width=18).grid(row=0,column=1,padx=8,sticky="w")
         b=ttk.LabelFrame(self,text=self.tr('Données','البيانات'),padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text=self.tr('Backup maintenant','نسخ احتياطي الآن'),command=self.backup).pack(side="left",padx=4)
         self.auto_backup=tk.StringVar(value=get_setting("auto_backup_minutes","15"))
@@ -218,9 +211,6 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 120 secondes.","مدة شاشة الزبون بين 2 و120 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
-        set_setting("customer_display_port",self.customer_port.get().strip())
-        set_setting("scale_serial_port",self.scale_port.get().strip())
-        set_setting("rfid_enabled","1" if self.rfid_enabled.get() else "0")
         set_setting("station_id",self.station_id.get().strip() or "CAISSE-1")
         set_setting("auto_backup_minutes",self.auto_backup.get())
         self.app.schedule_auto_backup()
