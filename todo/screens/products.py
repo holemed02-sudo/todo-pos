@@ -490,7 +490,7 @@ class ProductsFrame(ttk.Frame):
                                      WHERE b.barcode<>'' ORDER BY p.name"""):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[]
-            for line,barcode,name,cat,buy,sell,stock,alert in preview:
+            for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
                 if not barcode:continue
                 if barcode in existing:
                     names=", ".join(x["name"] for x in existing[barcode][:3])
@@ -520,7 +520,7 @@ class ProductsFrame(ttk.Frame):
                 if bulk is False:bulk_action="skip"
                 elif bulk is None:bulk_action="shared"
             for item in preview:
-                line,barcode,name,cat,buy,sell,stock,alert=item
+                line,barcode,name,cat,buy,sell,stock,alert,*meta=item
                 matches=existing.get(barcode,[]) if barcode else []
                 if not matches:
                     resolved.append(("new",item,None));continue
@@ -535,17 +535,20 @@ class ProductsFrame(ttk.Frame):
                 c.execute("BEGIN IMMEDIATE");require_admin(c)
                 imported=updated=skipped=0
                 for action,item,target in resolved:
-                    _,barcode,name,cat,buy,sell,stock,alert=item
+                    _,barcode,name,cat,buy,sell,stock,alert,*meta=item
                     if action=="skip":skipped+=1;continue
                     c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
                     if action=="replace":
                         pid=target["id"]
-                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=? WHERE id=?",(name,catid,buy,sell,alert,pid))
+                        bar_label,mult,pack_price,sku,fraction=meta
+                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
+                        if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,[catid]);audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
                         continue
-                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty) VALUES(?,?,?,?,0,?)",(name,catid,buy,sell,alert));pid=cur.lastrowid
+                    bar_label,mult,pack_price,sku,fraction=meta
+                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,allow_fraction) VALUES(?,?,?,?,0,?,?,?)",(name,catid,buy,sell,alert,sku,fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,[catid])
-                    if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(pid,barcode))
+                    if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                     if abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
