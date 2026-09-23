@@ -6,7 +6,7 @@ from services.reports import (
     top_cashiers, top_clients, top_month, category_breakdown, payment_breakdown, product_evolution,
 )
 from services.money import fmt
-from database import connect
+from database import connect, get_setting
 
 # ── Palette ───────────────────────────────────────────────────────────────────
 CHART_COLORS = [
@@ -172,6 +172,7 @@ class HBarChart(tk.Canvas):
 class StatisticsFrame(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=16)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self._period = 'month'
         import datetime
         self._year = datetime.date.today().year
@@ -179,21 +180,21 @@ class StatisticsFrame(ttk.Frame):
         # ── Header ────────────────────────────────────────────────────────────
         header = ttk.Frame(self)
         header.pack(fill='x', pady=(0, 14))
-        ttk.Label(header, text='Statistiques',
+        ttk.Label(header, text=self.tr('Statistiques','الإحصائيات'),
                   font=('Segoe UI', 20, 'bold')).pack(side='left')
-        ttk.Label(header, text='Évolution ventes · Top articles · Top caissiers · Familles',
+        ttk.Label(header, text=self.tr('Évolution ventes · Top articles · Top caissiers · Familles','تطور المبيعات · أفضل المنتجات · أفضل الكاشيرات · الفئات'),
                   foreground='#475569').pack(side='left', padx=16)
 
         # period selector
         period_bar = ttk.Frame(header)
         period_bar.pack(side='right')
         self._period_btns = {}
-        for label, key in PERIOD_OPTIONS:
+        for label, key in [(self.tr('Semaine','أسبوع'),'week'),(self.tr('Mois','شهر'),'month'),(self.tr('Année','سنة'),'year')]:
             btn = ttk.Button(period_bar, text=label,
                              command=lambda k=key: self._set_period(k))
             btn.pack(side='left', padx=2)
             self._period_btns[key] = btn
-        ttk.Button(header, text='↺ Actualiser',
+        ttk.Button(header, text=self.tr('↺ Actualiser','↺ تحديث'),
                    command=self.refresh).pack(side='right', padx=8)
         year_box = ttk.Frame(header)
         year_box.pack(side='right', padx=6)
@@ -205,26 +206,26 @@ class StatisticsFrame(ttk.Frame):
         custom=ttk.Frame(self);custom.pack(fill='x',pady=(0,10))
         self._date_from=tk.StringVar(value=str(datetime.date.today().replace(day=1)))
         self._date_to=tk.StringVar(value=str(datetime.date.today()))
-        ttk.Label(custom,text='Période personnalisée').pack(side='left')
+        ttk.Label(custom,text=self.tr('Période personnalisée','فترة مخصصة')).pack(side='left')
         ttk.Entry(custom,textvariable=self._date_from,width=11).pack(side='left',padx=(8,3))
         ttk.Label(custom,text='→').pack(side='left')
         ttk.Entry(custom,textvariable=self._date_to,width=11).pack(side='left',padx=3)
-        ttk.Button(custom,text='Résumé',command=self._custom_summary).pack(side='left',padx=6)
+        ttk.Button(custom,text=self.tr('Résumé','ملخص'),command=self._custom_summary).pack(side='left',padx=6)
 
         # ── KPI cards row ─────────────────────────────────────────────────────
         self.kpi_frame = ttk.Frame(self)
         self.kpi_frame.pack(fill='x', pady=(0, 14))
         self._kpi_labels = {}
         kpi_defs = [
-            ('net_sales',    'Total ventes',   '#2563EB'),
-            ('gross_margin', 'Marge brute',    '#16A34A'),
-            ('tickets',      'Tickets',        '#D97706'),
-            ('alerts',       'Stock faible',   '#DC2626'),
-            ('stock_value',   'Valeur stock',    '#7C3AED'),
-            ('returns',       'Retours',         '#0891B2'),
-            ('return_cash',   'Retours remboursés','#DC2626'),
-            ('return_credit', 'Retours crédit',    '#2563EB'),
-            ('top_month',     'Top mois',        '#6B7280'),
+            ('net_sales',    self.tr('Total ventes','إجمالي المبيعات'),   '#2563EB'),
+            ('gross_margin', self.tr('Marge brute','الهامش الإجمالي'),    '#16A34A'),
+            ('tickets',      self.tr('Tickets','التذاكر'),        '#D97706'),
+            ('alerts',       self.tr('Stock faible','مخزون منخفض'),   '#DC2626'),
+            ('stock_value',   self.tr('Valeur stock','قيمة المخزون'),    '#7C3AED'),
+            ('returns',       self.tr('Retours','المرتجعات'),         '#0891B2'),
+            ('return_cash',   self.tr('Retours remboursés','مرتجعات مسترجعة نقداً'),'#DC2626'),
+            ('return_credit', self.tr('Retours crédit','مرتجعات على الرصيد'),    '#2563EB'),
+            ('top_month',     self.tr('Top mois','أفضل شهر'),        '#6B7280'),
         ]
         for i, (key, title, color) in enumerate(kpi_defs):
             card = tk.Frame(self.kpi_frame, bg=color, height=76)
