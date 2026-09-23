@@ -30,6 +30,7 @@ class ProductEditor(tk.Toplevel):
         self.bar=tk.StringVar();self.name=tk.StringVar();self.cat=tk.StringVar()
         self.barcode_rows=[]
         self.buy=tk.StringVar(value="0");self.sell=tk.StringVar(value="0");self.stock=tk.StringVar(value="0");self.alert=tk.StringVar(value="0")
+        self.grid_price_vars={}
         root=ttk.Frame(self,padding=15);root.pack(fill="both",expand=True)
         self._keyboard_target = None
         self.bind_all('<FocusIn>', self._remember_keyboard_target, add='+')
@@ -277,6 +278,7 @@ class ProductEditor(tk.Toplevel):
             b=c.execute("SELECT barcode FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(self.pid,)).fetchone()
             bars=c.execute("SELECT barcode,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",(self.pid,)).fetchall()
             rs=c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=? ORDER BY min_qty",(self.pid,)).fetchall()
+            gps=c.execute("SELECT grid_id,unit_price_cents FROM product_grid_prices WHERE product_id=?",(self.pid,)).fetchall()
         self.sku.set(p["sku"]);self.alias.set(p["alias"]);self.supplier_code.set(p["supplier_code"]);self.fraction.set(bool(p["allow_fraction"]))
         self.bar.set(b["barcode"] if b else "");self.name.set(p["name"]);self.cat.set(p["category"])
         for child in self.barcodes_frame.winfo_children():child.destroy()
@@ -285,6 +287,8 @@ class ProductEditor(tk.Toplevel):
             price="" if extra["price_override_cents"] is None else f"{extra['price_override_cents']/100:.2f}"
             self.add_barcode_row(extra["barcode"],f"{extra['qty_multiplier']:g}",price)
         self.buy.set(f"{p['purchase_price_cents']/100:.2f}");self.sell.set(f"{p['sale_price_cents']/100:.2f}")
+        for gp in gps:
+            if gp["grid_id"] in self.grid_price_vars:self.grid_price_vars[gp["grid_id"]].set(f"{gp['unit_price_cents']/100:.2f}")
         self.stock.set(f"{p['stock_qty']:g}");self.alert.set(f"{p['alert_qty']:g}");self.img_rel=p["image_path"] or ""
         self.loaded_stock=float(p['stock_qty'])
         for child in self.offers_frame.winfo_children():child.destroy()
@@ -326,6 +330,13 @@ class ProductEditor(tk.Toplevel):
                 audit(c,'PRODUCT_SAVE',pid)
                 c.execute("DELETE FROM product_barcodes WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,?,?,?)",[(pid,code,mult,price) for code,mult,price in barcodes])
+                c.execute("DELETE FROM product_grid_prices WHERE product_id=?",(pid,))
+                for gid,var in self.grid_price_vars.items():
+                    value=var.get().strip()
+                    if value:
+                        cents=to_cents(value)
+                        if cents<0:raise ValueError("Prix grille invalide")
+                        c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(pid,gid,cents))
                 c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in rules])
                 c.commit()
