@@ -3,10 +3,10 @@ from database import connect
 from services.money import rounded
 import math
 
-def resolve_unit_price(product_id, qty, barcode_id=None, conn=None):
+def resolve_unit_price(product_id, qty, barcode_id=None, conn=None, grid_id=None):
     if conn is None:
         with connect() as db:
-            return resolve_unit_price(product_id,qty,barcode_id,db)
+            return resolve_unit_price(product_id,qty,barcode_id,db,grid_id)
     p=conn.execute('SELECT sale_price_cents FROM products WHERE id=? AND active=1',(product_id,)).fetchone()
     if not p:
         raise ValueError('Article introuvable')
@@ -21,23 +21,27 @@ def resolve_unit_price(product_id, qty, barcode_id=None, conn=None):
             if not math.isfinite(packs) or abs(packs-round(packs))>1e-9:
                 raise ValueError('La quantité doit respecter le pack/carton.')
             return Decimal(b['price_override_cents'])/Decimal(str(b['qty_multiplier']))
+    grid_price=None
+    if grid_id is not None:
+        g=conn.execute('SELECT pg.unit_price_cents FROM product_grid_prices pg JOIN price_grids g ON g.id=pg.grid_id WHERE pg.product_id=? AND pg.grid_id=? AND g.active=1',(product_id,grid_id)).fetchone()
+        grid_price=g[0] if g else None
     rule=conn.execute('SELECT unit_price_cents,min_qty,pricing_mode FROM quantity_prices WHERE product_id=? AND active=1 AND min_qty<=? ORDER BY min_qty DESC,id DESC LIMIT 1',(product_id,float(qty))).fetchone()
     if rule and rule['pricing_mode']=='BUNDLE':
         count=Decimal(str(qty));size=Decimal(str(rule['min_qty']))
         if size<=0:raise ValueError('Quantité offre invalide')
         groups=count//size;remainder=count-groups*size
         # Complete groups use the advertised total; leftover units keep the normal price.
-        return (groups*rule['unit_price_cents']+remainder*p[0])/count
-    return Decimal(rule[0] if rule else p[0])
+        return (groups*rule['unit_price_cents']+remainder*(grid_price if grid_price is not None else p[0]))/count
+    return Decimal(rule[0] if rule else (grid_price if grid_price is not None else p[0]))
 
 def line_total(unit,qty):
     return rounded(Decimal(str(unit))*Decimal(str(qty)))
 
 
-def resolve_line_price(product_id,qty,barcode_id=None,conn=None):
+def resolve_line_price(product_id,qty,barcode_id=None,conn=None,grid_id=None):
     if conn is None:
-        with connect() as db:return resolve_line_price(product_id,qty,barcode_id,db)
-    unit=resolve_unit_price(product_id,qty,barcode_id,conn)
+        with connect() as db:return resolve_line_price(product_id,qty,barcode_id,db,grid_id)
+    unit=resolve_unit_price(product_id,qty,barcode_id,conn,grid_id)
     b=conn.execute('SELECT * FROM product_barcodes WHERE id=? AND product_id=?',(barcode_id,product_id)).fetchone() if barcode_id else None
     pack=bool(b and b['price_override_cents'] is not None)
     return dict(unit_price_cents=int(b['price_override_cents']) if pack else rounded(unit),
