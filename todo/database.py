@@ -375,7 +375,7 @@ def migrate(conn):
         'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0', 'client_id': 'INTEGER REFERENCES clients(id)'},
         'returns': {'refund_paid_cents': 'INTEGER'},
         'client_payments': {'session_id': 'INTEGER REFERENCES cash_sessions(id)', 'user_id': 'INTEGER REFERENCES users(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CASH'"},
-        'sales': {'client_id': 'INTEGER REFERENCES clients(id)'},
+        'sales': {'client_id': 'INTEGER REFERENCES clients(id)', 'seller_id': 'INTEGER REFERENCES sellers(id)'},
         'categories': {'color': "TEXT NOT NULL DEFAULT '#2563EB'", 'icon': "TEXT NOT NULL DEFAULT ''"},
     }
     for table, fields in additions.items():
