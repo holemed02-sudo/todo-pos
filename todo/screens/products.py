@@ -512,11 +512,21 @@ class ProductsFrame(ttk.Frame):
             self.wait_window(w)
             if not decision["ok"]:return
             resolved=[]
+            conflict_items=[item for item in preview if item[1] and item[1] in existing]
+            bulk_action=None
+            if len(conflict_items)>1:
+                bulk=messagebox.askyesnocancel(self.tr("Conflits barcode","تعارضات الباركود"),
+                    self.tr(f"{len(conflict_items)} lignes ont un barcode déjà présent.\n\nOui = traiter chaque conflit\nNon = ignorer tous les conflits\nAnnuler = conserver tous comme barcodes partagés",
+                            f"{len(conflict_items)} سطر فيها باركود موجود مسبقاً.\n\nنعم = معالجة كل تعارض على حدة\nلا = تجاهل جميع التعارضات\nإلغاء = إضافة الجميع كمنتوجات بباركود مشترك"),parent=self)
+                if bulk is False:bulk_action="skip"
+                elif bulk is None:bulk_action="shared"
             for item in preview:
                 line,barcode,name,cat,buy,sell,stock,alert=item
                 matches=existing.get(barcode,[]) if barcode else []
                 if not matches:
                     resolved.append(("new",item,None));continue
+                if bulk_action:
+                    resolved.append((bulk_action,item,matches[0]));continue
                 current="; ".join(f'{x["name"]} ({x["sale_price_cents"]/100:.2f})' for x in matches[:4])
                 answer=messagebox.askyesnocancel(self.tr("Conflit barcode","تعارض الباركود"),
                     self.tr(f"Barcode {barcode}\n\nExistant: {current}\nImporté: {name} ({sell/100:.2f})\n\nOui = mettre à jour le premier article existant\nNon = ajouter comme barcode partagé\nAnnuler = ignorer cette ligne",
