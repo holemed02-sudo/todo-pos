@@ -197,7 +197,7 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Remise ticket','تخفيض التذكرة'),self.discount),
                   ('Remise ligne',self.line_discount),
                   (self.tr('Supprimer ligne','حذف السطر'),self.remove),
-                  (self.tr('Prix normal','الثمن العادي'),self.restore_price),
+                  (self.tr('Grille de prix','لائحة الأثمان'),self.choose_price_grid),
                   (self.tr('Compter la caisse','حساب الصندوق'),self.cash_tools),
                   (self.tr('Clôture','إغلاق الصندوق'),lambda:self.cash_tools('close')),
                   (self.tr('Dépenses','المصاريف'),lambda:self.cash_tools('expense')),
@@ -214,6 +214,23 @@ class SaleFrame(ttk.Frame):
             ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//3,column=index%3,padx=6,pady=6,ipadx=4,ipady=10,sticky='ew')
         ttk.Button(window,text=self.tr('Fermer','رجوع'),command=lambda:run(self.focus_search)).grid(row=(len(commands)+2)//3,column=0,columnspan=3,pady=12)
         window.bind('<Escape>',lambda e:run(self.focus_search))
+
+    def choose_price_grid(self):
+        with connect() as conn:
+            grids=conn.execute("SELECT id,name FROM price_grids WHERE active=1 ORDER BY name COLLATE NOCASE").fetchall()
+        choices=[(None,self.tr('Normal','عادي'))]+[(r['id'],r['name']) for r in grids]
+        w=tk.Toplevel(self);w.title(self.tr('Grille de prix','لائحة الأثمان'));w.transient(self.winfo_toplevel());w.grab_set()
+        ttk.Label(w,text=self.tr('Choisir la grille appliquée à cette vente','اختر لائحة الأثمان المطبقة على هذا البيع'),style='Subtitle.TLabel').pack(padx=20,pady=(18,10))
+        def select(grid_id,name):
+            self.price_grid_id=grid_id;self.price_grid_name=name
+            with connect() as conn:
+                for line in self.cart:
+                    if line.get('is_misc') or line.get('manual_unit_price'):continue
+                    line['unit_price_cents']=str(resolve_unit_price(line['product_id'],line['qty'],line.get('barcode_id'),conn,grid_id))
+            w.destroy();self.refresh();self.status.config(text=self.tr(f'Grille active : {name}',f'لائحة الأثمان الحالية: {name}'));self.focus_search()
+        for grid_id,name in choices:
+            ttk.Button(w,text=('✓ ' if grid_id==self.price_grid_id else '')+name,command=lambda g=grid_id,n=name:select(g,n)).pack(fill='x',padx=20,pady=4,ipady=6)
+        w.bind('<Escape>',lambda e:(w.destroy(),self.focus_search()))
 
     def restore_price(self):
         index=self.selected()
@@ -462,7 +479,7 @@ class SaleFrame(ttk.Frame):
                 if not p['allow_fraction'] and not float(qty).is_integer():raise ValueError('Quantité entière requise')
                 index=next((i for i,x in enumerate(self.cart) if x['product_id']==pid and x.get('barcode_id')==barcode_id),None)
                 new_qty=float(qty)+(self.cart[index]['qty'] if index is not None else 0)
-                unit=resolve_unit_price(pid,new_qty,barcode_id,conn)
+                unit=resolve_unit_price(pid,new_qty,barcode_id,conn,self.price_grid_id)
                 if index is not None and self.cart[index].get('manual_unit_price'):
                     unit=Decimal(self.cart[index]['unit_price_cents'])
                 barcode_row=conn.execute('SELECT qty_multiplier,price_override_cents FROM product_barcodes WHERE id=?',(barcode_id,)).fetchone() if barcode_id else None
