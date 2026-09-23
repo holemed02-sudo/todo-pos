@@ -365,8 +365,8 @@ class StatisticsFrame(ttk.Frame):
         with connect() as conn:
             stock=conn.execute('SELECT COALESCE(SUM(stock_qty*purchase_price_cents),0) FROM products WHERE active=1').fetchone()[0]
             returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
-            return_cash=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE refund_method!='CREDIT' AND date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
-            return_credit=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE refund_method='CREDIT' AND date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
+            return_cash=conn.execute("SELECT COALESCE(SUM(refund_paid_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
+            return_credit=conn.execute("SELECT COALESCE(SUM(total_cents-COALESCE(refund_paid_cents,total_cents)),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
         self._kpi_labels['stock_value'].config(text=fmt(stock))
         self._kpi_labels['returns'].config(text=fmt(returns))
         self._kpi_labels['return_cash'].config(text=fmt(return_cash))
