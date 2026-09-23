@@ -126,9 +126,17 @@ class PaymentDialog(tk.Toplevel):
     def amount_changed(self, *_):
         if not hasattr(self, 'card_entry') or not hasattr(self, 'confirm_button'):
             return
-        if self.method.get() == 'CASH':
+        if self.method.get() in ('CASH','MIXED'):
             try:
                 self.cash_tendered_cents = to_cents(self.amount.get())
+            except Exception:
+                pass
+        if self.method.get() == 'MIXED':
+            try:
+                cash=to_cents(self.amount.get())
+                card=to_cents(self.card_amount.get())
+                if cash + card != self.total:
+                    self.card_amount.set(f'{max(0,self.total-cash)/100:.2f}')
             except Exception:
                 pass
         self.update_amount()
