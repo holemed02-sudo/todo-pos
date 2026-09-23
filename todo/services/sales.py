@@ -52,6 +52,9 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
                 if not p['name'] or len(p['name'])>150:raise ValueError('Libellé Divers invalide')
             if not p['allow_fraction'] and not qty.is_integer():
                 raise ValueError('Cet article se vend en unités entières.')
+            block_stock=conn.execute("SELECT value FROM settings WHERE key='block_insufficient_stock'").fetchone()
+            if block_stock and block_stock[0]=='1' and not p['is_misc'] and qty>float(p['stock_qty']):
+                raise ValueError(f"Stock insuffisant pour {p['name']} (disponible: {p['stock_qty']:g}).")
             unit=line.get('unit_price_cents')
             pricing=None
             if line.get('barcode_id'):
