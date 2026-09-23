@@ -33,7 +33,7 @@ class JournalFrame(ttk.Frame):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return []
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return []
         where=["date(s.created_at)>=?","date(s.created_at)<=?"];params=[self.date_from.get(),self.date_to.get()]
         if self.cashier.get()!="Tous":where.append("u.display_name=?");params.append(self.cashier.get())
         if self.payment.get()!="Tous":
@@ -63,7 +63,7 @@ class JournalFrame(ttk.Frame):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
         if mode=="article":
             group="p.id,p.name";label="Article";select="p.name"
         else:
@@ -76,7 +76,7 @@ class JournalFrame(ttk.Frame):
             LEFT JOIN categories cat ON cat.id=p.category_id
             WHERE date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY {group} ORDER BY gross DESC"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
-        w=tk.Toplevel(self);w.title(f"Rapport par {label}");w.geometry("850x560");w.transient(self.winfo_toplevel())
+        w=tk.Toplevel(self);w.title(self.tr(f"Rapport par {label}",f"تقرير حسب {label}"));w.geometry("850x560");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("label","qty","sales","cost","margin"),show="headings")
         for key,title,width in [("label",label,280),("qty","Qté",90),("sales","Ventes",120),("cost","Coût",120),("margin","Marge brute",120)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="label" else "w")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
@@ -90,14 +90,14 @@ class JournalFrame(ttk.Frame):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
         sql="""SELECT COALESCE(cl.name,'Client comptoir') label,COUNT(DISTINCT s.id) tickets,
             SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)) sales
             FROM sales s LEFT JOIN clients cl ON cl.id=s.client_id
             WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?
             GROUP BY s.client_id ORDER BY sales DESC"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
-        w=tk.Toplevel(self);w.title("Rapport clients");w.geometry("700x540");w.transient(self.winfo_toplevel())
+        w=tk.Toplevel(self);w.title(self.tr("Rapport clients","تقرير الزبائن"));w.geometry("700x540");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("client","tickets","sales"),show="headings")
         for key,title,width in [("client","Client",330),("tickets","Tickets",100),("sales","Ventes nettes",150)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="client" else "w")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
@@ -109,13 +109,13 @@ class JournalFrame(ttk.Frame):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
         sql="""SELECT date(s.created_at,'localtime') day,COUNT(*) tickets,
             SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)) sales
             FROM sales s WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?
             GROUP BY day ORDER BY day"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
-        w=tk.Toplevel(self);w.title("Rapport par jours");w.geometry("650x540");w.transient(self.winfo_toplevel())
+        w=tk.Toplevel(self);w.title(self.tr("Rapport par jours","تقرير حسب الأيام"));w.geometry("650x540");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("day","tickets","sales"),show="headings")
         for key,title,width in [("day","Jour",180),("tickets","Tickets",100),("sales","Ventes nettes",180)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center" if key!="sales" else "e")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
@@ -129,7 +129,7 @@ class JournalFrame(ttk.Frame):
         total=sum(r["total_cents"] for r in rows);cost=sum(r["cost"] for r in rows)
         cash=sum((r["cash_paid"]-r["cash_refund"]) for r in rows)
         card=sum((r["card_paid"]-r["card_refund"]) for r in rows)
-        self._simple_report("Journal sans détails",("Indicateur","Valeur"),[
+        self._simple_report(self.tr("Journal sans détails","السجل بدون تفاصيل"),(self.tr("Indicateur","المؤشر"),self.tr("Valeur","القيمة")),[
             ("Période",f"{self.date_from.get()} → {self.date_to.get()}"),
             ("Tickets",str(len(rows))),("Ventes nettes",fmt(total,"")),("Coût",fmt(cost,"")),
             ("Marge brute",fmt(total-cost,"")),("Cash net",fmt(cash,"")),("Carte nette",fmt(card,""))])
@@ -138,24 +138,24 @@ class JournalFrame(ttk.Frame):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
         sql="""SELECT sp.payment_method method,SUM(sp.amount_cents) paid,
             COALESCE((SELECT SUM(rp.amount_cents) FROM return_payments rp JOIN returns r ON r.id=rp.return_id
               WHERE rp.payment_method=sp.payment_method AND date(r.created_at)>=? AND date(r.created_at)<=?),0) refunded
             FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
             WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY sp.payment_method ORDER BY sp.payment_method"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get(),self.date_from.get(),self.date_to.get())).fetchall()
-        self._simple_report("Paiements",("Mode","Encaissé","Remboursé","Net"),[(r["method"],fmt(r["paid"] or 0,""),fmt(r["refunded"] or 0,""),fmt((r["paid"] or 0)-(r["refunded"] or 0),"")) for r in rows])
+        self._simple_report(self.tr("Paiements","الدفعات"),(self.tr("Mode","الطريقة"),self.tr("Encaissé","المقبوض"),self.tr("Remboursé","المسترجع"),self.tr("Net","الصافي")),[(r["method"],fmt(r["paid"] or 0,""),fmt(r["refunded"] or 0,""),fmt((r["paid"] or 0)-(r["refunded"] or 0),"")) for r in rows])
 
     def return_report(self):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
         except ValueError:
-            messagebox.showerror("Journal","Dates au format YYYY-MM-DD.",parent=self);return
+            messagebox.showerror(self.tr("Journal","السجل"),self.tr("Dates au format YYYY-MM-DD.","التواريخ يجب أن تكون بصيغة YYYY-MM-DD."),parent=self);return
         sql="""SELECT r.return_no,r.created_at,s.sale_no,r.refund_method,r.total_cents
             FROM returns r JOIN sales s ON s.id=r.sale_id WHERE date(r.created_at)>=? AND date(r.created_at)<=? ORDER BY r.id DESC"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
-        self._simple_report("Retours",("Retour","Date","Ticket","Mode","Montant"),[(r["return_no"],r["created_at"],r["sale_no"],r["refund_method"],fmt(r["total_cents"],"")) for r in rows])
+        self._simple_report(self.tr("Retours","المرتجعات"),(self.tr("Retour","المرتجع"),self.tr("Date","التاريخ"),self.tr("Ticket","التذكرة"),self.tr("Mode","الطريقة"),self.tr("Montant","المبلغ")),[(r["return_no"],r["created_at"],r["sale_no"],r["refund_method"],fmt(r["total_cents"],"")) for r in rows])
 
     def _simple_report(self,title,headers,rows):
         w=tk.Toplevel(self);w.title(title);w.geometry("820x540");w.transient(self.winfo_toplevel())
@@ -183,7 +183,7 @@ class JournalFrame(ttk.Frame):
             for col,width in {"A":8,"B":22,"C":20,"D":18,"E":14,"F":14,"G":14,"H":16}.items():ws.column_dimensions[col].width=width
             for row in ws.iter_rows(min_row=2,min_col=6,max_col=8):
                 for cell in row:cell.number_format='#,##0.00'
-            ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions;wb.save(p);messagebox.showinfo("ToDo","Excel exporté.",parent=self)
+            ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions;wb.save(p);messagebox.showinfo("ToDo",self.tr("Excel exporté.","تم تصدير Excel."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export_pdf(self):
         p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Exporter journal PDF")
@@ -203,7 +203,7 @@ class JournalFrame(ttk.Frame):
             table=Table(data,repeatRows=1,colWidths=[120,120,95,70,75,75,75]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8),("ALIGN",(4,1),(-1,-1),"RIGHT"),("VALIGN",(0,0),(-1,-1),"MIDDLE")]))
             title=Paragraph(f"Journal des ventes — {escape(self.date_from.get())} au {escape(self.date_to.get())}",styles["Title"])
             summary=Paragraph(f"{len(rows)} ticket(s) — Ventes nettes {fmt(total)} — Coût {fmt(cost)} — Marge brute {fmt(total-cost)}",styles["Heading3"])
-            doc.build([title,Spacer(1,10),summary,Spacer(1,10),table]);messagebox.showinfo("ToDo","PDF exporté.",parent=self)
+            doc.build([title,Spacer(1,10),summary,Spacer(1,10),table]);messagebox.showinfo("ToDo",self.tr("PDF exporté.","تم تصدير PDF."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export(self):
         p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title="Exporter journal")
@@ -215,4 +215,4 @@ class JournalFrame(ttk.Frame):
                 pay=r["payment_method"]
                 if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
                 wr.writerow([r["id"],r["sale_no"],r["created_at"],r["display_name"],pay,r["total_cents"],r["cost"],r["total_cents"]-r["cost"]])
-        messagebox.showinfo("ToDo","Export terminé.",parent=self)
+        messagebox.showinfo("ToDo",self.tr("Export terminé.","تم التصدير."),parent=self)
