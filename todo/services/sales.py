@@ -22,7 +22,7 @@ def validate_session(conn,session_id,user_id):
     if current_user.get() is not None and current_user.get()!=user_id:
         raise PermissionError('Utilisateur incompatible')
 
-def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cents=0,held_id=None,client_id=None,payments=None):
+def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cents=0,held_id=None,client_id=None,payments=None,seller_id=None):
     if not cart:
         raise ValueError('Ticket vide')
     if payments is None and payment_method not in ('CASH','CARD','CREDIT'):
@@ -36,6 +36,8 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
             raise ValueError('Ce ticket en attente a déjà été encaissé ou supprimé.')
         if client_id is not None and not conn.execute('SELECT id FROM clients WHERE id=? AND active=1',(client_id,)).fetchone():
             raise ValueError('Client introuvable.')
+        if seller_id is not None and not conn.execute('SELECT id FROM sellers WHERE id=? AND active=1',(seller_id,)).fetchone():
+            raise ValueError('Vendeur introuvable.')
         if payment_method=='CREDIT' and client_id is None:
             raise ValueError('Choisissez un client pour une vente à crédit.')
         require_client=conn.execute("SELECT value FROM settings WHERE key='require_client_on_sale'").fetchone()
