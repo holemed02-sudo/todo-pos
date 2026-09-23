@@ -103,7 +103,7 @@ class SaleFrame(ttk.Frame):
         self.card_canvas.pack(side='left',fill='both',expand=True);self.card_scroll.pack(side='right',fill='y')
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
-        ttk.Button(left,text='Ajouter le produit sélectionné  ↵',command=self.add_selected_product).pack(fill='x',pady=(8,0))
+        ttk.Button(left,text=self.tr('Ajouter le produit sélectionné  ↵','إضافة المنتوج المحدد  ↵'),command=self.add_selected_product).pack(fill='x',pady=(8,0))
         keypad=ttk.LabelFrame(left,text=self.tr('Pavé numérique','الأرقام'),padding=5);keypad.pack(fill='x',pady=(8,0))
         for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
             ttk.Button(keypad,text=key,command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=5)
@@ -118,9 +118,9 @@ class SaleFrame(ttk.Frame):
         total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
         tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
         self.total_label=tk.Label(total_box,text='',bg='#2563EB',fg='white',font=('Segoe UI',25,'bold'));self.total_label.pack(side='right')
-        ttk.Button(checkout_area,text='SOLDER avec ticket  F5',style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
+        ttk.Button(checkout_area,text=self.tr('SOLDER avec ticket  F5','الأداء مع التذكرة  F5'),style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
         ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
-        ttk.Label(right,text='Ticket en cours',style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
+        ttk.Label(right,text=self.tr('Ticket en cours','التذكرة الحالية'),style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
         self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
         self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=170,minwidth=100)
         for key,label,width in [('qty','QTÉ',55),('price','P.U.',70),('discount','REMISE',75),('total','NET',85)]:
@@ -133,7 +133,7 @@ class SaleFrame(ttk.Frame):
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
         for label,command in [('F2 Espèces',lambda:self.set_payment('CASH')),('F3 Carte',lambda:self.set_payment('CARD')),('F4 Attente',self.hold),('Liste attente',self.show_held),('F7 Remise',self.discount),('ESC Annuler',self.cancel)]:
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
-        self.status=ttk.Label(self,text='Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter')
+        self.status=ttk.Label(self,text=self.tr('Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter','الماسح جاهز · Ctrl+F بحث · Enter إضافة'))
         self.status.pack(anchor='w',pady=(8,0))
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F6>':self.choose_client,'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         for sequence,command in commands.items():
@@ -282,7 +282,7 @@ class SaleFrame(ttk.Frame):
         window=tk.Toplevel(self);window.title(self.tr('Caisse','الصندوق'))
         window.transient(self.app);window.grab_set()
         frame=CashFrame(window,self.app);frame.pack(fill='both',expand=True)
-        ttk.Button(window,text='Retour à la vente',command=window.destroy).pack(pady=8)
+        ttk.Button(window,text=self.tr('Retour à la vente','العودة للبيع'),command=window.destroy).pack(pady=8)
         window.bind('<Escape>',lambda e:window.destroy())
         if action in ('close','expense'):
             window.after_idle(getattr(frame,action))
@@ -304,7 +304,7 @@ class SaleFrame(ttk.Frame):
             if not tree.selection():return
             sid=int(tree.selection()[0]);row=next(r for r in rows if r['id']==sid)
             window.destroy();self.show_receipt(row)
-        ttk.Button(window,text='Voir / Imprimer',command=choose).pack(pady=10)
+        ttk.Button(window,text=self.tr('Voir / Imprimer','عرض / طباعة'),command=choose).pack(pady=10)
         tree.bind('<Return>',choose);tree.bind('<Double-1>',choose)
         window.bind('<Escape>',lambda e:window.destroy())
         if rows:tree.selection_set(str(rows[0]['id']));tree.focus_set()
@@ -623,7 +623,7 @@ class SaleFrame(ttk.Frame):
         query=tk.StringVar();entry=ttk.Entry(window,textvariable=query);entry.pack(fill='x',padx=12,pady=12)
         buttons=ttk.Frame(window);buttons.pack(side='bottom',fill='x',padx=12,pady=12)
         tree=ttk.Treeview(window,columns=('name','phone'),show='headings')
-        tree.heading('name',text='Client');tree.heading('phone',text='Téléphone');tree.pack(fill='both',expand=True,padx=12)
+        tree.heading('name',text=self.tr('Client','الزبون'));tree.heading('phone',text=self.tr('Téléphone','الهاتف'));tree.pack(fill='both',expand=True,padx=12)
         def refresh(*args):
             tree.delete(*tree.get_children())
             for row in list_clients(query.get()):tree.insert('','end',iid=str(row['id']),values=(row['name'],row['phone']))
@@ -677,7 +677,7 @@ class SaleFrame(ttk.Frame):
             self.client_id=state.get('client_id');self.update_client_label()
             self.refresh();w.destroy();self.focus_search()
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
-        ttk.Button(w,text='Reprendre',command=resume).pack(pady=8)
+        ttk.Button(w,text=self.tr('Reprendre','استئناف'),command=resume).pack(pady=8)
 
     def checkout(self, print_ticket=True):
         if not self.cart or self.busy:return
