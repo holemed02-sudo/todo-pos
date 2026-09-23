@@ -41,7 +41,7 @@ def _date_range(period):
 # so a product assigned to several families is never counted twice.
 EVENTS = """WITH events AS (
  SELECT si.product_id, si.name_snapshot name, p.category_id,
-        s.cashier_user_id, s.created_at, si.qty,
+        s.cashier_user_id, s.client_id, s.created_at, si.qty,
         COALESCE(si.net_total_cents,si.line_total_cents) revenue,
         si.cost_price_cents*si.qty cost
  FROM sale_items si JOIN sales s ON s.id=si.sale_id
@@ -88,6 +88,15 @@ def top_cashiers(period='month'):
             AND date(s.created_at,'localtime') BETWEEN ? AND ?) tickets
            FROM period_events e JOIN users u ON u.id=e.cashier_user_id
            GROUP BY u.id ORDER BY revenue DESC LIMIT 10""",(start,end,start,end)).fetchall()
+    return [dict(r) for r in rows]
+
+def top_clients(period='month'):
+    start,end,_=_date_range(period)
+    with connect() as c:
+        rows=c.execute(EVENTS+"""SELECT COALESCE(cl.name,'Client comptoir') name,SUM(e.revenue) revenue
+            FROM period_events e LEFT JOIN clients cl ON cl.id=e.client_id
+            WHERE e.client_id IS NOT NULL
+            GROUP BY e.client_id ORDER BY revenue DESC LIMIT 10""",(start,end)).fetchall()
     return [dict(r) for r in rows]
 
 def category_breakdown(period='month'):
