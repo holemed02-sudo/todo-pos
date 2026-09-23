@@ -102,14 +102,14 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
     menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
-    for label in ['Duplicata','Modifier quantité','Modifier prix','Supprimer','PRIX 1','Clôture','Dépenses','Rapport','Raccourcis']:
+    for label in ['Duplicata','Modifier quantité','Modifier prix','Supprimer','Prix normal','Clôture','Dépenses','Rapport','Raccourcis']:
         visible(button(menu,label))
     with patch('tkinter.simpledialog.askstring',return_value='4.00'):
         button(menu,'Modifier prix').invoke()
     assert sale.totals()[1]==800
     sale.functions();app.update()
     menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
-    button(menu,'PRIX 1').invoke()
+    button(menu,'Prix normal').invoke()
     assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askstring',return_value='Test held ticket'):
         sale.hold()
