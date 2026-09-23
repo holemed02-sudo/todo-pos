@@ -197,7 +197,7 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Remise ticket','تخفيض التذكرة'),self.discount),
                   ('Remise ligne',self.line_discount),
                   (self.tr('Supprimer ligne','حذف السطر'),self.remove),
-                  (self.tr('PRIX 1','الثمن العادي'),self.restore_price),
+                  (self.tr('Prix normal','الثمن العادي'),self.restore_price),
                   (self.tr('Compter la caisse','حساب الصندوق'),self.cash_tools),
                   (self.tr('Clôture','إغلاق الصندوق'),lambda:self.cash_tools('close')),
                   (self.tr('Dépenses','المصاريف'),lambda:self.cash_tools('expense')),
