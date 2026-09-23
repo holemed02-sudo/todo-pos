@@ -96,8 +96,8 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
             raise ValueError('Acompte invalide.')
         change=max(0,paid-total)
         no=sale_number()
-        sid=conn.execute('INSERT INTO sales(sale_no,session_id,cashier_user_id,subtotal_cents,discount_cents,total_cents,payment_method,paid_cents,change_cents,client_id) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                         (no,session_id,user_id,subtotal,discount,total,payment_method,paid,change,client_id)).lastrowid
+        sid=conn.execute('INSERT INTO sales(sale_no,session_id,cashier_user_id,subtotal_cents,discount_cents,total_cents,payment_method,paid_cents,change_cents,client_id,seller_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                         (no,session_id,user_id,subtotal,discount,total,payment_method,paid,change,client_id,seller_id)).lastrowid
         if split is None:
             settled=paid-change if payment_method=='CASH' else paid
             conn.execute('INSERT INTO sale_payments(sale_id,payment_method,amount_cents) VALUES(?,?,?)',(sid,payment_method,settled))
