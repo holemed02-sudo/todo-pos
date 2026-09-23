@@ -56,7 +56,7 @@ class BarChart(tk.Canvas):
                              font=('Segoe UI', 9, 'bold'), fill='#1e293b')
 
         if not self._values or not any(self._values):
-            self.create_text(W//2, H//2, text='Aucune donnée',
+            self.create_text(W//2, H//2, text=getattr(self.master, 'tr', lambda fr,ar: fr)('Aucune donnée','لا توجد بيانات'),
                              fill='#94a3b8', font=('Segoe UI', 10))
             return
 
@@ -130,7 +130,7 @@ class HBarChart(tk.Canvas):
             if not self._items:
                 self.create_text(W//2 if W>10 else 50,
                                  H//2 if H>10 else 50,
-                                 text='Aucune donnée', fill='#94a3b8')
+                                 text=getattr(self.master, 'tr', lambda fr,ar: fr)('Aucune donnée','لا توجد بيانات'), fill='#94a3b8')
             return
 
         if self._title:
@@ -297,9 +297,9 @@ class StatisticsFrame(ttk.Frame):
             columns=('doc', 'amount', 'kind', 'time'), show='headings', height=5)
         for col, lbl, w, anchor in [
             ('doc',    'N°',       110, 'w'),
-            ('amount', 'Montant',   90, 'e'),
-            ('kind',   'Type',      65, 'w'),
-            ('time',   'Heure',    110, 'w'),
+            ('amount', self.tr('Montant','المبلغ'),   90, 'e'),
+            ('kind',   self.tr('Type','النوع'),      65, 'w'),
+            ('time',   self.tr('Heure','الوقت'),    110, 'w'),
         ]:
             self.recent_tree.heading(col, text=lbl)
             self.recent_tree.column(col, width=w, anchor=anchor)
@@ -359,7 +359,7 @@ class StatisticsFrame(ttk.Frame):
             self._load_payments()
         except Exception as e:
             from tkinter import messagebox
-            messagebox.showerror('Statistiques',str(e),parent=self)
+            messagebox.showerror(self.tr('Statistiques','الإحصائيات'),str(e),parent=self)
 
     def _load_kpis(self):
         data = period_summary(self._period, self._year if self._period=='year' else None)
@@ -385,14 +385,14 @@ class StatisticsFrame(ttk.Frame):
         self._kpi_labels['return_cash'].config(text=fmt(return_cash))
         self._kpi_labels['return_credit'].config(text=fmt(return_credit))
         best=top_month(self._year)
-        month_names=['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc']
+        month_names=(['يناير','فبراير','مارس','أبريل','ماي','يونيو','يوليوز','غشت','شتنبر','أكتوبر','نونبر','دجنبر'] if self.lang=='ar' else ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'])
         label='—' if not best['month'] else f"{month_names[best['month']-1]} · {fmt(best['revenue'])}"
         self._kpi_labels['top_month'].config(text=label)
 
     def _load_payments(self):
         data=payment_breakdown(self._period, self._year if self._period=='year' else None)
         parts=[]
-        for method,label in [('CASH','Espèces'),('CARD','Carte'),('CREDIT','Crédit')]:
+        for method,label in [('CASH',self.tr('Espèces','نقداً')),('CARD',self.tr('Carte','بطاقة')),('CREDIT',self.tr('Crédit','دين'))]:
             amount=data.get(method,0)
             if amount or method in ('CASH','CARD'):
                 parts.append(f'{label}: {fmt(amount)}')
