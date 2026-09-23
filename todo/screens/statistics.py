@@ -202,6 +202,15 @@ class StatisticsFrame(ttk.Frame):
         self.year_label.pack(side='left')
         ttk.Button(year_box, text='›', width=3, command=lambda: self._change_year(1)).pack(side='left')
 
+        custom=ttk.Frame(self);custom.pack(fill='x',pady=(0,10))
+        self._date_from=tk.StringVar(value=str(datetime.date.today().replace(day=1)))
+        self._date_to=tk.StringVar(value=str(datetime.date.today()))
+        ttk.Label(custom,text='Période personnalisée').pack(side='left')
+        ttk.Entry(custom,textvariable=self._date_from,width=11).pack(side='left',padx=(8,3))
+        ttk.Label(custom,text='→').pack(side='left')
+        ttk.Entry(custom,textvariable=self._date_to,width=11).pack(side='left',padx=3)
+        ttk.Button(custom,text='Résumé',command=self._custom_summary).pack(side='left',padx=6)
+
         # ── KPI cards row ─────────────────────────────────────────────────────
         self.kpi_frame = ttk.Frame(self)
         self.kpi_frame.pack(fill='x', pady=(0, 14))
@@ -319,6 +328,18 @@ class StatisticsFrame(ttk.Frame):
         self.refresh()
 
     # ── Refresh ───────────────────────────────────────────────────────────────
+    def _custom_summary(self):
+        import datetime
+        from tkinter import messagebox
+        try:
+            start=datetime.date.fromisoformat(self._date_from.get());end=datetime.date.fromisoformat(self._date_to.get())
+            if start>end: raise ValueError
+        except ValueError:
+            messagebox.showerror('Statistiques','Période invalide. Format YYYY-MM-DD.',parent=self);return
+        with connect() as conn:
+            row=conn.execute("""SELECT COUNT(*) tickets,COALESCE(SUM(s.total_cents-COALESCE((SELECT SUM(r.total_cents) FROM returns r WHERE r.sale_id=s.id),0)),0) sales FROM sales s WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=?""",(str(start),str(end))).fetchone()
+        messagebox.showinfo('Statistiques',f"Période {start} → {end}\\nTickets: {row['tickets']}\\nVentes nettes: {fmt(row['sales'])}",parent=self)
+
     def refresh(self):
         try:
             self._load_kpis()
