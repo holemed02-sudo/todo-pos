@@ -267,6 +267,11 @@ class StatisticsFrame(ttk.Frame):
         self.recent_tree.tag_configure('return', foreground='#DC2626')
         self.recent_tree.pack(fill='x')
 
+        pay_card = ttk.LabelFrame(self, text='Paiements nets', padding=6)
+        pay_card.pack(fill='x', pady=(8, 0))
+        self.payment_summary = ttk.Label(pay_card, text='—', font=('Segoe UI', 11, 'bold'))
+        self.payment_summary.pack(anchor='w')
+
         self._set_period('month')
 
     # ── Period ────────────────────────────────────────────────────────────────
@@ -285,6 +290,7 @@ class StatisticsFrame(ttk.Frame):
             self._load_cashiers()
             self._load_categories()
             self._load_recent()
+            self._load_payments()
         except Exception as e:
             from tkinter import messagebox
             messagebox.showerror('Statistiques',str(e),parent=self)
@@ -300,6 +306,15 @@ class StatisticsFrame(ttk.Frame):
             returns=conn.execute("SELECT COALESCE(SUM(total_cents),0) FROM returns WHERE date(created_at)>=date('now',CASE ? WHEN 'week' THEN '-6 days' WHEN 'month' THEN 'start of month' ELSE 'start of year' END)",(self._period,)).fetchone()[0]
         self._kpi_labels['stock_value'].config(text=fmt(stock))
         self._kpi_labels['returns'].config(text=fmt(returns))
+
+    def _load_payments(self):
+        data=payment_breakdown(self._period)
+        parts=[]
+        for method,label in [('CASH','Espèces'),('CARD','Carte'),('CREDIT','Crédit')]:
+            amount=data.get(method,0)
+            if amount or method in ('CASH','CARD'):
+                parts.append(f'{label}: {fmt(amount)}')
+        self.payment_summary.config(text='   ·   '.join(parts) if parts else 'Aucun paiement')
 
     def _load_evolution(self):
         labels, values = sales_evolution(self._period)
