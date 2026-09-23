@@ -208,6 +208,10 @@ class ToDoApp(tk.Tk):
             "settings": lambda: SettingsFrame(self.content, self),
             "management": lambda: ManagementFrame(self.content, self),
             "statistics": lambda: StatisticsFrame(self.content),
+            "inventory": lambda: InventaireFrame(self.content, self),
+            "sorties": lambda: SortiesFrame(self.content, self),
+            "supplier_payments": lambda: SupplierReglementFrame(self.content, self),
+            "rendez_vous": lambda: RendezVousFrame(self.content, self),
         }
 
         self.current = makers[key]()
