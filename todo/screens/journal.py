@@ -281,13 +281,13 @@ class JournalFrame(ttk.Frame):
         for row in rows:tree.insert("","end",values=row)
 
     def export_excel(self):
-        p=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title="Exporter journal Excel")
+        p=filedialog.asksaveasfilename(defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title=self.tr("Exporter journal Excel","تصدير سجل المبيعات Excel"))
         if not p:return
         rows=self.rows()
         try:
             from openpyxl import Workbook
             from openpyxl.styles import Font,PatternFill,Alignment
-            wb=Workbook();ws=wb.active;ws.title="Journal ventes"
+            wb=Workbook();ws=wb.active;ws.title=self.tr("Journal ventes","سجل المبيعات")
             headers=["ID","Ticket","Date","Caissier","Vendeur","Paiement","Total","Coût","Marge brute"];ws.append(headers)
             for cell in ws[1]:cell.font=Font(bold=True,color="FFFFFF");cell.fill=PatternFill("solid",fgColor="2563EB");cell.alignment=Alignment(horizontal="center")
             total=cost=0
@@ -302,7 +302,7 @@ class JournalFrame(ttk.Frame):
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions;wb.save(p);messagebox.showinfo("ToDo",self.tr("Excel exporté.","تم تصدير Excel."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export_pdf(self):
-        p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Exporter journal PDF")
+        p=filedialog.asksaveasfilename(defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Exporter journal PDF","تصدير سجل المبيعات PDF"))
         if not p:return
         rows=self.rows()
         try:
