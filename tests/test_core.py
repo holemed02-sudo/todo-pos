@@ -43,6 +43,14 @@ class CoreTests(unittest.TestCase):
    gid=c.execute("INSERT INTO price_grids(name,active) VALUES('Promo',0)").lastrowid
    c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(self.pid,gid,700))
    self.assertEqual(resolve_unit_price(self.pid,1,conn=c,grid_id=gid),1000)
+ def test_sale_persists_valid_seller_and_rejects_inactive_seller(self):
+  with db.connect() as c:seller=c.execute("INSERT INTO sellers(name) VALUES('Vendeur Test')").lastrowid
+  sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'CASH',1000,seller_id=seller)
+  with db.connect() as c:self.assertEqual(c.execute('SELECT seller_id FROM sales WHERE id=?',(sale['id'],)).fetchone()[0],seller)
+  with db.connect() as c:c.execute('UPDATE sellers SET active=0 WHERE id=?',(seller,))
+  with self.assertRaises(ValueError):
+   complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'CASH',1000,seller_id=seller)
+
  def test_mixed_cash_card_payment_tracks_only_cash_in_drawer(self):
   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=10000)],'CASH',10000,payments=[('CASH',3000),('CARD',7000)])
   with db.connect() as c:
