@@ -423,19 +423,18 @@ class ProductsFrame(ttk.Frame):
         try:
             from openpyxl import Workbook
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["barcode","article","famille","prix achat","prix vente","alerte"])
+            ws.append(["barcode","article","famille","prix achat","prix vente","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
             with connect() as c:
-                rows=c.execute("""SELECT p.id,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.alert_qty,
-                    GROUP_CONCAT(b.barcode, char(10)) barcodes
+                rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
-                    LEFT JOIN product_barcodes b ON b.product_id=p.id
-                    GROUP BY p.id ORDER BY p.name COLLATE NOCASE""").fetchall()
+                    ORDER BY p.name COLLATE NOCASE""").fetchall()
             for r in rows:
-                codes=[x for x in (r["barcodes"] or "").split("\n") if x]
-                if not codes:codes=[""]
-                for code in codes:ws.append([code,r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"]])
+                with connect() as c:
+                    codes=c.execute("SELECT barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",(r["id"],)).fetchall()
+                if not codes:codes=[{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
+                for code in codes:ws.append([code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":20,"B":34,"C":22,"D":14,"E":14,"F":12}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":20,"B":34,"C":22,"D":14,"E":14,"F":12,"G":18,"H":14,"I":14,"J":18,"K":10}.items():ws.column_dimensions[col].width=width
             wb.save(path)
             messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s). Le stock, les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج. لم يتم تصدير المخزون أو المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
@@ -447,7 +446,7 @@ class ProductsFrame(ttk.Frame):
             from openpyxl import load_workbook
             wb=load_workbook(path,read_only=True,data_only=True);ws=wb.active
             headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
-            aliases={'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert']}
+            aliases={'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
