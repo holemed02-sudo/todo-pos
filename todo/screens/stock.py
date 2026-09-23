@@ -1,21 +1,22 @@
 import tkinter as tk
 from tkinter import ttk,messagebox,simpledialog
-from database import connect
+from database import connect, get_setting
 from services.inventory import apply_stock_movement
 
 class StockFrame(ttk.Frame):
     def __init__(self,master,app=None):
         super().__init__(master,padding=10)
+        self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
-        ttk.Label(top,text="Stock / المخزون",font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Label(self,text="الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في Articles.",foreground="#475569").pack(anchor="w",pady=(0,8))
-        ttk.Button(top,text="Ajustement",command=self.adjust).pack(side="right")
-        self.q=tk.StringVar();self.filter=tk.StringVar(value="Tous")
+        ttk.Label(top,text=self.tr('Stock','المخزون'),font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(self,text=self.tr('Quantités, mouvements et inventaire — nom, prix et photo restent dans Articles.','الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في المنتجات.'),foreground="#475569").pack(anchor="w",pady=(0,8))
+        ttk.Button(top,text=self.tr('Ajustement','تسوية المخزون'),command=self.adjust).pack(side="right")
+        self.q=tk.StringVar();self.filter=tk.StringVar(value=self.tr('Tous','الكل'))
         search=ttk.Entry(top,textvariable=self.q,width=24);search.pack(side="left",padx=(20,6));search.bind("<KeyRelease>",lambda e:self.refresh())
-        box=ttk.Combobox(top,textvariable=self.filter,values=["Tous","Alertes stock","Stock négatif"],state="readonly",width=15);box.pack(side="left");box.bind("<<ComboboxSelected>>",lambda e:self.refresh())
-        ttk.Button(top,text="Historique",command=self.ledger).pack(side="right",padx=8)
+        box=ttk.Combobox(top,textvariable=self.filter,values=[self.tr('Tous','الكل'),self.tr('Alertes stock','تنبيهات المخزون'),self.tr('Stock négatif','مخزون سالب')],state="readonly",width=15);box.pack(side="left");box.bind("<<ComboboxSelected>>",lambda e:self.refresh())
+        ttk.Button(top,text=self.tr('Historique','السجل'),command=self.ledger).pack(side="right",padx=8)
         if app is not None:
-            ttk.Button(top,text="Articles / المنتجات",command=lambda: app.show("products")).pack(side="right",padx=8)
+            ttk.Button(top,text=self.tr('Articles','المنتجات'),command=lambda: app.show("products")).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
         for c,h,w in [("id","ID",50),("name","Article",320),("stock","Stock",100),("alert","Alerte",90),("last","Dernier mouvement",220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
@@ -28,8 +29,8 @@ class StockFrame(ttk.Frame):
         self.refresh()
     def refresh(self):
         q=f"%{self.q.get().strip()}%";extra=""
-        if self.filter.get()=="Alertes stock":extra=" AND p.stock_qty<=p.alert_qty"
-        elif self.filter.get()=="Stock négatif":extra=" AND p.stock_qty<0"
+        if self.filter.get()==self.tr("Alertes stock","تنبيهات المخزون"):extra=" AND p.stock_qty<=p.alert_qty"
+        elif self.filter.get()==self.tr("Stock négatif","مخزون سالب"):extra=" AND p.stock_qty<0"
         with connect() as c:
             r=c.execute("""SELECT p.id,p.name,p.stock_qty,p.alert_qty,
                 COALESCE((SELECT movement_type||' '||qty_delta||' @ '||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
