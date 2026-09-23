@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk
 from services.reports import (
     today_summary, period_summary, sales_evolution, top_products,
-    top_cashiers, top_clients, top_month, category_breakdown, payment_breakdown,
+    top_cashiers, top_clients, top_month, category_breakdown, payment_breakdown, product_evolution,
 )
 from services.money import fmt
 from database import connect
@@ -253,9 +253,20 @@ class StatisticsFrame(ttk.Frame):
         self.cashier_chart = HBarChart(cash_card, [], height=160)
         self.cashier_chart.pack(fill='both', expand=True)
 
+        # Article evolution selector
+        article_card = ttk.LabelFrame(charts, text='Évolution article', padding=6)
+        article_card.grid(row=2, column=0, sticky='nsew', padx=(0, 6), pady=(6, 0))
+        article_head = ttk.Frame(article_card)
+        article_head.pack(fill='x')
+        self.article_choice = ttk.Combobox(article_head, state='readonly', width=34)
+        self.article_choice.pack(side='left', padx=(0, 6))
+        self.article_choice.bind('<<ComboboxSelected>>', lambda e: self._load_article_evolution())
+        self.article_chart = BarChart(article_card, [], [], color='#7C3AED', height=140)
+        self.article_chart.pack(fill='both', expand=True, pady=(4, 0))
+
         # Top clients (third row, full width)
         client_card = ttk.LabelFrame(charts, text='Top 10 clients', padding=4)
-        client_card.grid(row=2, column=0, columnspan=2, sticky='nsew', pady=(6, 0))
+        client_card.grid(row=2, column=1, sticky='nsew', pady=(6, 0))
         self.client_chart = HBarChart(client_card, [], height=150)
         self.client_chart.pack(fill='both', expand=True)
 
@@ -297,6 +308,7 @@ class StatisticsFrame(ttk.Frame):
             self._load_top_products()
             self._load_cashiers()
             self._load_clients()
+            self._load_article_evolution()
             self._load_categories()
             self._load_recent()
             self._load_payments()
@@ -342,6 +354,25 @@ class StatisticsFrame(ttk.Frame):
         rows = top_cashiers(self._period)
         items = [(r['name'], r['revenue']) for r in rows]
         self.cashier_chart.update_data(items)
+
+    def _load_article_evolution(self):
+        with connect() as conn:
+            rows=conn.execute("SELECT id,name FROM products WHERE active=1 ORDER BY name COLLATE NOCASE").fetchall()
+        labels=[f"{r['name']}  ·  #{r['id']}" for r in rows]
+        current=self.article_choice.get()
+        self.article_choice['values']=labels
+        if not labels:
+            self.article_choice.set('')
+            self.article_chart.update_data([], [])
+            return
+        if current not in labels:
+            self.article_choice.current(0)
+        try:
+            product_id=int(self.article_choice.get().rsplit('#',1)[1])
+        except (ValueError, IndexError):
+            return
+        x,y=product_evolution(product_id,self._period)
+        self.article_chart.update_data(x,y)
 
     def _load_clients(self):
         rows = top_clients(self._period)
