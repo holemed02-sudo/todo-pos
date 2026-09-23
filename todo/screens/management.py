@@ -7,7 +7,7 @@ GROUPS = [
     [
         ("📥", "Réceptions",         "purchases",  "#0891B2", "#fff"),
         ("📤", "Sorties",             None,         "#64748B", "#fff"),
-        ("📝", "Inventaire",          None,         "#64748B", "#fff"),
+        ("📝", "Inventaire",          "inventory",  "#16A34A", "#fff"),
         ("🔄", "Mouvements de stock", "stock",      "#7C3AED", "#fff"),
     ],
     [
