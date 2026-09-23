@@ -2,7 +2,7 @@ from database import connect
 import tkinter as tk
 from tkinter import ttk,messagebox,filedialog,simpledialog
 from database import get_setting,set_setting,connect
-from services.backup import create_backup,restore_backup,create_full_backup,restore_full_backup
+from services.backup import create_backup,restore_backup
 from services.security import hash_pin, require_admin, audit
 
 
@@ -143,8 +143,6 @@ class SettingsFrame(ttk.Frame):
         ttk.Combobox(b,textvariable=self.auto_backup,values=["0","5","10","15","30","60"],state="readonly",width=5).pack(side="left")
         ttk.Label(b,text=self.tr('min (0 = désactivé)','دقيقة (0 = معطل)')).pack(side="left",padx=4)
         ttk.Button(b,text=self.tr('Restaurer backup','استرجاع نسخة احتياطية'),command=self.restore).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Backup complet portable','نسخة كاملة للنقل'),command=self.full_backup).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Restaurer backup complet','استرجاع النسخة الكاملة'),command=self.full_restore).pack(side="left",padx=4)
         u=ttk.LabelFrame(self,text=self.tr('Utilisateurs','المستخدمون'),padding=10);u.pack(fill="x")
         ttk.Button(u,text=self.tr('Nouvel utilisateur','مستخدم جديد'),command=self.new_user).pack(side="left");ttk.Button(u,text=self.tr('Gérer utilisateurs','إدارة المستخدمين'),command=self.manage_users).pack(side="left",padx=8)
         ttk.Button(u,text=self.tr('Changer mon PIN','تغيير PIN'),command=self.change_pin).pack(side="left",padx=8)
@@ -190,20 +188,6 @@ class SettingsFrame(ttk.Frame):
         try:
             s=restore_backup(p)
             messagebox.showinfo('ToDo',f'Restauré. Copie sécurité: {s}\nLe programme va se fermer. Relancez ToDo.',parent=self)
-            self.app.destroy()
-        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
-    def full_backup(self):
-        try:
-            p=create_full_backup()
-            messagebox.showinfo("ToDo",self.tr("Backup complet créé:","تم إنشاء النسخة الكاملة:")+"\n"+str(p),parent=self)
-        except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
-    def full_restore(self):
-        p=filedialog.askopenfilename(parent=self,filetypes=[("ToDo Full Backup","*.todozip")])
-        if not p:return
-        if not messagebox.askyesno("ToDo",self.tr("Restaurer toutes les données et médias ? Une copie complète de sécurité sera créée.","استرجاع جميع البيانات والوسائط؟ سيتم إنشاء نسخة أمان كاملة أولاً."),parent=self):return
-        try:
-            safety=restore_full_backup(p)
-            messagebox.showinfo("ToDo",self.tr(f"Restauration complète terminée.\nCopie sécurité: {safety}\nToDo va se fermer.","تم الاسترجاع الكامل.\nنسخة الأمان: {safety}\nسيتم إغلاق ToDo."),parent=self)
             self.app.destroy()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def new_user(self):
