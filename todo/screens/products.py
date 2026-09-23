@@ -469,9 +469,9 @@ class ProductsFrame(ttk.Frame):
                     buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
                     pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
-                    sku=str(get('sku') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
+                    sku=str(get('sku') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or not math.isfinite(stock) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError("valeurs invalides")
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction))
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
@@ -537,20 +537,27 @@ class ProductsFrame(ttk.Frame):
             with connect() as c:
                 c.execute("BEGIN IMMEDIATE");require_admin(c)
                 imported=updated=skipped=0
+                imported_groups={}
                 for action,item,target in resolved:
                     _,barcode,name,cat,buy,sell,stock,alert,*meta=item
+                    bar_label,mult,pack_price,sku,fraction,product_key=meta
                     if action=="skip":skipped+=1;continue
                     c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
                     if action=="replace":
                         pid=target["id"]
-                        bar_label,mult,pack_price,sku,fraction=meta
                         c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,[catid]);audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
                         continue
-                    bar_label,mult,pack_price,sku,fraction=meta
+                    group_key=product_key or None
+                    if action=="new" and group_key and group_key in imported_groups:
+                        pid=imported_groups[group_key]
+                        if barcode and not c.execute("SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?",(pid,barcode)).fetchone():
+                            c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
+                        continue
                     cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,allow_fraction) VALUES(?,?,?,?,0,?,?,?)",(name,catid,buy,sell,alert,sku,fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,[catid])
+                    if group_key:imported_groups[group_key]=pid
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                     if abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
