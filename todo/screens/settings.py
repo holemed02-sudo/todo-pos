@@ -142,7 +142,7 @@ class SettingsFrame(ttk.Frame):
         d=ttk.LabelFrame(self,text=self.tr('Écran client','شاشة الزبون'),padding=10);d.pack(fill="x",pady=10)
         self.customer_seconds=tk.StringVar(value=get_setting("customer_slide_seconds","6"))
         ttk.Label(d,text=self.tr('Durée de chaque image (secondes)','مدة كل صورة (ثوانٍ)')).pack(side="left")
-        ttk.Spinbox(d,from_=2,to=120,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
+        ttk.Spinbox(d,from_=2,to=300,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
         ttk.Label(d,text=self.tr('Dossier : customer_media · images + vidéos · format conseillé 16:9','المجلد: customer_media · صور + فيديوهات · القياس المقترح 16:9'),foreground="#475569").pack(side="left",padx=12)
         ttk.Button(d,text=self.tr('Tester écran client','اختبار شاشة الزبون'),command=self.test_customer).pack(side="right")
         b=ttk.LabelFrame(self,text=self.tr('Données','البيانات'),padding=10);b.pack(fill="x",pady=10)
@@ -214,9 +214,9 @@ class SettingsFrame(ttk.Frame):
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');new_language=self.language.get();language_changed=new_language!=get_setting('language','fr');set_setting('language',new_language)
         try:
             seconds=int(self.customer_seconds.get())
-            if seconds<2 or seconds>120:raise ValueError()
+            if seconds<2 or seconds>300:raise ValueError()
         except ValueError:
-            messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 120 secondes.","مدة شاشة الزبون بين 2 و120 ثانية."),parent=self);return
+            messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 300 secondes.","مدة شاشة الزبون بين 2 و300 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
         backup_minutes=self.auto_backup.get()
         if backup_minutes not in ('0','5','10','15','30','60'):backup_minutes='15'
