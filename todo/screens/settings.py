@@ -224,6 +224,8 @@ class SettingsFrame(ttk.Frame):
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
     def test_customer(self):
+        if self.app.customer_window and self.app.customer_window.winfo_exists():
+            self.app.toggle_customer_display()
         self.app.toggle_customer_display()
 
     def refresh_printers(self):
