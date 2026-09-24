@@ -119,6 +119,7 @@ def add_product_barcode(product_id, barcode, qty_multiplier=1, price_override_ce
     if price is not None and price < 0:
         raise ValueError('Prix pack invalide')
     with connect() as conn:
+        require_admin(conn)
         if not conn.execute('SELECT 1 FROM products WHERE id=? AND active=1', (product_id,)).fetchone():
             raise ValueError('Article introuvable')
         if conn.execute('SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?', (product_id, code)).fetchone():
@@ -126,5 +127,6 @@ def add_product_barcode(product_id, barcode, qty_multiplier=1, price_override_ce
         cur = conn.execute(
             'INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)',
             (product_id, code, str(label or '').strip(), multiplier, price))
+        audit(conn, 'PRODUCT_BARCODE_ADD', product_id, code)
         conn.commit()
         return cur.lastrowid
