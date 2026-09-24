@@ -1,6 +1,6 @@
 import math
 from database import connect
-from services.security import require_admin
+from services.security import require_admin, audit
 from services.inventory import apply_stock_movement
 
 def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=0):
@@ -44,9 +44,11 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
             conn.execute("UPDATE products SET purchase_price_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(cost,pid))
             apply_stock_movement(conn,pid,qty,"PURCHASE",cost,"purchase",pid_purchase,supplier_invoice or "")
         if paid_cents:
-            conn.execute(
+            payment_id=conn.execute(
                 "INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)",
                 (supplier_id,pid_purchase,paid_cents,"Règlement à la réception")
-            )
+            ).lastrowid
+            audit(conn,"SUPPLIER_PAYMENT",payment_id,str(paid_cents))
+        audit(conn,"PURCHASE_RECEIVE",pid_purchase,str(total))
         conn.commit()
         return pid_purchase, total
