@@ -364,12 +364,12 @@ class ToDoApp(tk.Tk):
                 hold_sale(self.user['id'],self.sale_frame.cart,'Reprise après fermeture',self.sale_frame.ticket_discount_cents,self.sale_frame.held_id,client_id=self.sale_frame.client_id)
                 self.sale_frame.cart=[]
             except Exception as e:
-                messagebox.showerror('ToDo',f'Ticket non sauvegardé : {e}');return
+                lang=get_setting('language','fr');messagebox.showerror('ToDo',(f'لم يتم حفظ التذكرة: {e}' if lang=='ar' else f'Ticket non sauvegardé : {e}'));return
         try:
             if get_setting("backup_on_close", "1") == "1":
                 create_backup()
         except Exception as e:
-            messagebox.showerror("Backup",f"Sauvegarde échouée : {e}\nLe programme reste ouvert pour réessayer.");return
+            lang=get_setting('language','fr');messagebox.showerror(('النسخ الاحتياطي' if lang=='ar' else 'Sauvegarde'),(f'فشل النسخ الاحتياطي: {e}\nسيبقى البرنامج مفتوحاً لإعادة المحاولة.' if lang=='ar' else f'Sauvegarde échouée : {e}\nLe programme reste ouvert pour réessayer.'));return
         self.destroy()
 
 if __name__ == "__main__":
