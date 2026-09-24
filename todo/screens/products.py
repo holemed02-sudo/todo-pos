@@ -191,8 +191,8 @@ class ProductEditor(tk.Toplevel):
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
         minimum_var=tk.StringVar(value=str(minimum));price_var=tk.StringVar(value=str(price))
-        mode_var=tk.StringVar(value=self.tr('Lot','حزمة') if mode=='BUNDLE' else self.tr('Prix/unité','ثمن/الوحدة'))
-        ttk.Combobox(row,textvariable=mode_var,values=[self.tr('Prix/unité','ثمن/الوحدة'),self.tr('Lot','حزمة')],state='readonly',width=10).pack(side='left')
+        mode_var=tk.StringVar(value=self.tr('À partir de Qté','ابتداءً من الكمية') if mode=='BUNDLE' else self.tr('Prix/unité','ثمن/الوحدة'))
+        ttk.Combobox(row,textvariable=mode_var,values=[self.tr('Prix/unité','ثمن/الوحدة'),self.tr('À partir de Qté','ابتداءً من الكمية')],state='readonly',width=18).pack(side='left')
         ttk.Label(row,text=self.tr("Qté","الكمية")).pack(side="left")
         ttk.Entry(row,textvariable=minimum_var,width=9).pack(side="left",padx=4)
         ttk.Label(row,text=self.tr("Prix DH","الثمن DH")).pack(side="left")
@@ -209,7 +209,7 @@ class ProductEditor(tk.Toplevel):
             q=float(minimum_var.get().replace(',','.'));price=to_cents(price_var.get())
             if not math.isfinite(q) or q<=0 or price<0:raise ValueError(self.tr("Offre invalide","عرض غير صالح"))
             if any(v[0]==q for v in values):raise ValueError(self.tr('Une seule offre par quantité.','يسمح بعرض واحد فقط لكل كمية.'))
-            values.append((q,price,'BUNDLE' if mode_var.get()==self.tr('Lot','حزمة') else 'UNIT'))
+            values.append((q,price,'BUNDLE' if mode_var.get()==self.tr('À partir de Qté','ابتداءً من الكمية') else 'UNIT'))
         return values
 
     def choose_image(self):
