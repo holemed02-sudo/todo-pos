@@ -480,11 +480,11 @@ class ProductsFrame(ttk.Frame):
                         barcode=str(int(raw_barcode))
                     else:barcode=str(raw_barcode).strip()
                     if not name:raise ValueError(self.tr("nom vide","الاسم فارغ"))
-                    buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
+                    buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock_raw=get('stock');stock=None if stock_raw in (None,'') else float(stock_raw);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
                     pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
                     sku=str(get('sku') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
-                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
+                    if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
                     preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
@@ -534,7 +534,7 @@ class ProductsFrame(ttk.Frame):
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
             for key,title,width in [("line",self.tr("Ligne","السطر"),55),("barcode",self.tr("Barcode","الباركود"),145),("name",self.tr("Article","المنتوج"),220),("cat",self.tr("Famille","العائلة"),120),("buy",self.tr("Achat","الشراء"),75),("sell",self.tr("Vente","البيع"),75),("stock",self.tr("Stock","المخزون"),70),("alert",self.tr("Alerte","التنبيه"),70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
             tree.pack(fill="both",expand=True,padx=10,pady=10)
-            for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",f"{row[6]:g}",f"{row[7]:g}"))
+            for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",("" if row[6] is None else f"{row[6]:g}"),f"{row[7]:g}"))
             warning=ttk.Label(w,text=(self.tr(f"⚠ {len(conflicts)} barcode(s) partagé(s) détecté(s). Ils seront conservés et demanderont un choix à la vente.",f"⚠ تم اكتشاف {len(conflicts)} باركود مشترك. سيتم الاحتفاظ بها وسيطلب الاختيار عند البيع.") if conflicts else self.tr("✓ Aucun barcode partagé détecté.","✓ لم يتم اكتشاف أي باركود مشترك.")),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
             warning.pack(anchor="w",padx=12)
             if conflicts:ttk.Label(w,text="\n".join(conflicts[:6]),wraplength=930).pack(anchor="w",padx=12,pady=4)
@@ -579,7 +579,7 @@ class ProductsFrame(ttk.Frame):
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,[catid])
                         current_stock=float(c.execute("SELECT stock_qty FROM products WHERE id=?",(pid,)).fetchone()[0])
-                        if abs(stock-current_stock)>1e-9:
+                        if stock is not None and abs(stock-current_stock)>1e-9:
                             apply_stock_movement(c,pid,stock-current_stock,'ADJUSTMENT',buy,'import',pid,'Import Excel — stock compté')
                         audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
                         continue
@@ -593,7 +593,7 @@ class ProductsFrame(ttk.Frame):
                     set_product_categories(c,pid,[catid])
                     if group_key:imported_groups[group_key]=pid
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
-                    if abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
+                    if stock is not None and abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
             messagebox.showinfo(self.tr("Import Excel","استيراد Excel"),self.tr(f"{imported} ajouté(s), {updated} mis à jour, {skipped} ignoré(s).",f"تمت إضافة {imported}، تحديث {updated}، وتجاهل {skipped}."),parent=self);self.refresh()
