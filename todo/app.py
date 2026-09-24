@@ -112,7 +112,7 @@ class ToDoApp(tk.Tk):
         outer=ttk.Frame(self,padding=32)
         outer.pack(fill='both',expand=True)
         ttk.Label(outer,text='ToDo',font=('Segoe UI',34,'bold'),foreground='#2563EB').pack(pady=(8,0))
-        ttk.Label(outer,text='Votre commerce. En toute simplicité.').pack(pady=(0,18))
+        ttk.Label(outer,text=('تجارتك بكل بساطة.' if get_setting('language','fr')=='ar' else 'Votre commerce. En toute simplicité.')).pack(pady=(0,18))
         with connect() as conn:
             self.login_users=[dict(r) for r in conn.execute('SELECT * FROM users WHERE active=1 ORDER BY id')]
         self.avatar=ttk.Label(outer,text='●',font=('Segoe UI',28),foreground='#2563EB')
@@ -122,16 +122,16 @@ class ToDoApp(tk.Tk):
         self.user_choice.pack(fill='x',pady=8)
         if names:self.user_choice.current(0)
         self.login_pin=tk.StringVar()
-        ttk.Label(outer,text='PIN / الرمز السري').pack(anchor='w',pady=(8,4))
+        ttk.Label(outer,text=('الرمز السري' if get_setting('language','fr')=='ar' else 'PIN')).pack(anchor='w',pady=(8,4))
         pin=ttk.Entry(outer,textvariable=self.login_pin,show='●',font=('Segoe UI',20),justify='center')
         pin.pack(fill='x',ipady=5);pin.bind('<Return>',lambda e:self.login())
-        ttk.Button(outer,text='Entrer / الدخول',style='Primary.TButton',command=self.login).pack(fill='x',pady=16)
+        ttk.Button(outer,text=('الدخول' if get_setting('language','fr')=='ar' else 'Entrer'),style='Primary.TButton',command=self.login).pack(fill='x',pady=16)
         self.after(100,lambda: pin.focus_set() if pin.winfo_exists() else None)
 
     def login(self):
         import time
         if time.monotonic()<self.login_blocked_until:
-            messagebox.showerror('ToDo','Patientez 30 secondes avant de réessayer.');return
+            messagebox.showerror('ToDo',('انتظر 30 ثانية قبل إعادة المحاولة.' if get_setting('language','fr')=='ar' else 'Patientez 30 secondes avant de réessayer.'));return
         index=self.user_choice.current()
         if index<0:return
         selected=self.login_users[index]
@@ -143,7 +143,7 @@ class ToDoApp(tk.Tk):
             if self.failed_logins>=5:
                 self.login_blocked_until=time.monotonic()+30;self.failed_logins=0
             self.login_pin.set('')
-            messagebox.showerror('ToDo','PIN incorrect.');return
+            messagebox.showerror('ToDo',('الرمز السري غير صحيح.' if get_setting('language','fr')=='ar' else 'PIN incorrect.'));return
         self.user=dict(row);current_user.set(row['id'])
         with connect() as conn:
             if not row['pin_hash'].startswith('pbkdf2$'):
@@ -194,7 +194,7 @@ class ToDoApp(tk.Tk):
         if self.lock_window and self.lock_window.winfo_exists():
             self.lock_window.lift();return
         if self.user['role']!='admin' and key in ('products','purchases','suppliers','clients','settings','journal','management','statistics','inventory','sorties','supplier_payments','rendez_vous'):
-            messagebox.showerror('ToDo','Action réservée à un administrateur.');return
+            messagebox.showerror('ToDo',('هذه العملية مخصصة للمدير.' if get_setting('language','fr')=='ar' else 'Action réservée à un administrateur.'));return
         if self.current:
             if self.current is self.sale_frame:self.current.pack_forget()
             else:self.current.destroy()
