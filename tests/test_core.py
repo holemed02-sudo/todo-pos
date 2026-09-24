@@ -224,6 +224,14 @@ class CoreTests(unittest.TestCase):
    with db.connect() as c:apply_stock_movement(c,self.pid,1,'ADJUSTMENT',note='Test')
  def test_purchase(self):
   receive_purchase(None,'INV-1',[dict(product_id=self.pid,qty=3,unit_cost_cents=400)]);self.assertEqual(self.stock(),23)
+ def test_purchase_validates_products_and_fractional_quantity_before_writes(self):
+  with self.assertRaises(ValueError):receive_purchase(None,'BAD-FRAC',[dict(product_id=self.pid,qty=1.5,unit_cost_cents=400)])
+  with self.assertRaises(ValueError):receive_purchase(None,'BAD-PRODUCT',[dict(product_id=999999,qty=1,unit_cost_cents=400)])
+  fraction_pid=self.product('Vrac',stock=5,fraction=1)
+  receive_purchase(None,'VRAC-1',[dict(product_id=fraction_pid,qty=1.5,unit_cost_cents=400)])
+  with db.connect() as c:
+   self.assertEqual(c.execute("SELECT COUNT(*) FROM purchases WHERE supplier_invoice IN ('BAD-FRAC','BAD-PRODUCT')").fetchone()[0],0)
+   self.assertAlmostEqual(c.execute("SELECT stock_qty FROM products WHERE id=?",(fraction_pid,)).fetchone()[0],6.5)
  def test_inventory_requires_admin_and_records_standard_type(self):
   with db.connect() as c:
    apply_stock_movement(c,self.pid,-2,'INVENTORY',note='Comptage physique')
