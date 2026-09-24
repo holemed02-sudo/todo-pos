@@ -67,7 +67,7 @@ class ProductEditor(tk.Toplevel):
         self.offers_frame=ttk.Frame(left);self.offers_frame.grid(row=12,column=0,columnspan=2,sticky="ew")
         self.add_offer_row()
         ttk.Button(left,text=self.tr("+ Ajouter une offre","+ إضافة عرض"),command=self.add_offer_row).grid(row=13,column=0,columnspan=2,sticky="w",pady=4)
-        ttk.Label(left,text="Prix/unité : dès la quantité indiquée.\nLot : groupes complets, reste au prix normal.\nSi plusieurs offres : le plus grand seuil atteint s'applique.",wraplength=440).grid(row=14,column=0,columnspan=2,sticky="w",pady=6)
+        ttk.Label(left,text=self.tr("Prix/unité : dès la quantité indiquée.\nLot : groupes complets, reste au prix normal.\nSi plusieurs offres : le plus grand seuil atteint s'applique.","ثمن الوحدة: ابتداءً من الكمية المحددة.\nالحزمة: مجموعات كاملة والباقي بالثمن العادي.\nعند تعدد العروض يطبق أكبر حد تم بلوغه."),wraplength=440).grid(row=14,column=0,columnspan=2,sticky="w",pady=6)
         b=ttk.Frame(left);b.grid(row=15,column=0,columnspan=2,sticky="e",pady=16)
         ttk.Button(b,text=self.tr("Enregistrer","حفظ"),command=self.save).pack(side="left",padx=4)
         ttk.Button(b,text=self.tr("Annuler","إلغاء"),command=self.destroy).pack(side="left")
@@ -304,7 +304,7 @@ class ProductEditor(tk.Toplevel):
             if not name:raise ValueError("اسم المنتوج إجباري.")
             buy=to_cents(self.buy.get());sell=to_cents(self.sell.get());stock=float(self.stock.get() or 0);alert=float(self.alert.get() or 0)
             if not all(math.isfinite(x) for x in (stock,alert)) or min(buy,sell,alert)<0:
-                raise ValueError('Valeurs invalides')
+                raise ValueError(self.tr('Valeurs invalides','قيم غير صالحة'))
             selected_cats=[cid for cid,(var,_) in self.cat_vars.items() if var.get()]
             cat=next((name for cid,(_,name) in self.cat_vars.items() if cid in selected_cats),'Général') if selected_cats else 'Général'
             rules=self.read_offers()
@@ -335,7 +335,7 @@ class ProductEditor(tk.Toplevel):
                     value=var.get().strip()
                     if value:
                         cents=to_cents(value)
-                        if cents<0:raise ValueError("Prix grille invalide")
+                        if cents<0:raise ValueError(self.tr("Prix grille invalide","ثمن شبكة غير صالح"))
                         c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(pid,gid,cents))
                 c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in rules])
@@ -402,7 +402,7 @@ class ProductsFrame(ttk.Frame):
         pid=self.sel()
         if not pid:
             messagebox.showinfo(self.tr("Étiquette","الملصق"),self.tr("Sélectionnez un article.","اختر منتوجاً."),parent=self);return
-        copies=simpledialog.askinteger("Étiquette","Nombre d'étiquettes :",initialvalue=1,minvalue=1,maxvalue=200,parent=self)
+        copies=simpledialog.askinteger(self.tr("Étiquette","الملصق"),self.tr("Nombre d'étiquettes :","عدد الملصقات:"),initialvalue=1,minvalue=1,maxvalue=200,parent=self)
         if copies is None:return
         path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Enregistrer les étiquettes","حفظ الملصقات"))
         if not path:return
@@ -414,7 +414,7 @@ class ProductsFrame(ttk.Frame):
                 row=c.execute("""SELECT p.name,p.sale_price_cents,(SELECT barcode FROM product_barcodes b WHERE b.product_id=p.id ORDER BY id LIMIT 1) barcode FROM products p WHERE p.id=?""",(pid,)).fetchone()
             if not row:raise ValueError(self.tr("Article introuvable.","المنتوج غير موجود."))
             barcode=(row["barcode"] or "").strip()
-            if not barcode:raise ValueError("Cet article n'a pas de code-barres.")
+            if not barcode:raise ValueError(self.tr("Cet article n'a pas de code-barres.","هذا المنتوج لا يتوفر على باركود."))
             cv=canvas.Canvas(path,pagesize=A4);page_w,page_h=A4;label_w=page_w/3;label_h=95
             for n in range(copies):
                 slot=n%24;col=slot%3;line=slot//3
@@ -473,22 +473,22 @@ class ProductsFrame(ttk.Frame):
                     name=str(get('name') or '').strip()
                     raw_barcode=get('barcode')
                     if raw_barcode in (None,''):barcode=''
-                    elif isinstance(raw_barcode,bool):raise ValueError("barcode invalide")
+                    elif isinstance(raw_barcode,bool):raise ValueError(self.tr("barcode invalide","باركود غير صالح"))
                     elif isinstance(raw_barcode,int):barcode=str(raw_barcode)
                     elif isinstance(raw_barcode,float):
-                        if not math.isfinite(raw_barcode) or not raw_barcode.is_integer():raise ValueError("barcode numérique invalide")
+                        if not math.isfinite(raw_barcode) or not raw_barcode.is_integer():raise ValueError(self.tr("barcode numérique invalide","باركود رقمي غير صالح"))
                         barcode=str(int(raw_barcode))
                     else:barcode=str(raw_barcode).strip()
-                    if not name:raise ValueError("nom vide")
+                    if not name:raise ValueError(self.tr("nom vide","الاسم فارغ"))
                     buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock=float(get('stock') or 0);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
                     pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
                     sku=str(get('sku') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
-                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError("valeurs invalides")
+                    if buy<0 or sell<0 or alert<0 or not math.isfinite(stock) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
                     preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
-                messagebox.showerror("Import Excel","Import annulé. Corrigez d'abord:\n"+"\n".join(errors[:15]),parent=self);return
+                messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé. Corrigez d'abord:\n","تم إلغاء الاستيراد. صحح أولاً:\n")+"\n".join(errors[:15]),parent=self);return
             # Excel permanently drops leading zeroes when a barcode cell is stored as a number.
             # Refuse to guess: warn the operator to format barcode cells as Text before importing.
             numeric_barcode_lines=[]
