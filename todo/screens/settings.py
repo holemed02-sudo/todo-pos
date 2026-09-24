@@ -145,7 +145,6 @@ class SettingsFrame(ttk.Frame):
         ttk.Spinbox(d,from_=2,to=120,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
         ttk.Label(d,text=self.tr('Dossier : customer_media · PNG/JPG/WEBP · format conseillé 16:9','المجلد: customer_media · PNG/JPG/WEBP · القياس المقترح 16:9'),foreground="#475569").pack(side="left",padx=12)
         ttk.Button(d,text=self.tr('Tester écran client','اختبار شاشة الزبون'),command=self.test_customer).pack(side="right")
-        hw=ttk.LabelFrame(self,text=self.tr('Poste de caisse','محطة البيع'),padding=10);hw.pack(fill="x",pady=10)
         b=ttk.LabelFrame(self,text=self.tr('Données','البيانات'),padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text=self.tr('Backup maintenant','نسخ احتياطي الآن'),command=self.backup).pack(side="left",padx=4)
         self.auto_backup=tk.StringVar(value=get_setting("auto_backup_minutes","15"))
