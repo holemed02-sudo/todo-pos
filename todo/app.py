@@ -292,7 +292,7 @@ class ToDoApp(tk.Tk):
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
             self.customer_window.destroy();self.customer_window=None;self.customer_label=None;return
-        w=tk.Toplevel(self);self.customer_window=w;w.title("ToDo — Écran client");w.configure(bg="#0F172A")
+        w=tk.Toplevel(self);self.customer_window=w;lang=get_setting('language','fr');w.title('ToDo — '+('شاشة الزبون' if lang=='ar' else 'Écran client'));w.configure(bg="#0F172A")
         screens=[]
         try:
             from screeninfo import get_monitors
@@ -305,8 +305,8 @@ class ToDoApp(tk.Tk):
             w.geometry("1280x720")
         w.bind("<Escape>",lambda e:self.toggle_customer_display())
         tk.Label(w,text=get_setting("shop_name","ToDo"),bg="#0F172A",fg="white",font=("Segoe UI",34,"bold")).pack(pady=(35,8))
-        tk.Label(w,text="مرحبا بكم · Bienvenue",bg="#0F172A",fg="#FACC15",font=("Segoe UI",22,"bold")).pack()
-        self.customer_label=tk.Label(w,text="العروض والإعلانات\nOffres & promotions",bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center")
+        tk.Label(w,text=('مرحبا بكم' if lang=='ar' else 'Bienvenue'),bg="#0F172A",fg="#FACC15",font=("Segoe UI",22,"bold")).pack()
+        self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center")
         self.customer_label.pack(fill="both",expand=True)
         self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide())
         w.lift();self._load_customer_slides()
@@ -332,7 +332,7 @@ class ToDoApp(tk.Tk):
     def _render_customer_slide(self):
         if not (self.customer_label and self.customer_label.winfo_exists()):return
         if not self.customer_slides:
-            self.customer_label.config(image="",text="ضع صور العروض داخل مجلد customer_media\nAjoutez les offres dans customer_media");return
+            lang=get_setting('language','fr');self.customer_label.config(image="",text=('ضع صور العروض داخل مجلد customer_media' if lang=='ar' else 'Ajoutez les offres dans customer_media'));return
         try:
             from PIL import Image,ImageTk
             path=self.customer_slides[self.customer_slide_index]
@@ -341,13 +341,14 @@ class ToDoApp(tk.Tk):
             scale=max(w/im.width,h/im.height);nw=max(1,round(im.width*scale));nh=max(1,round(im.height*scale));im=im.resize((nw,nh),Image.Resampling.LANCZOS)
             left=max(0,(nw-w)//2);top=max(0,(nh-h)//2);im=im.crop((left,top,left+w,top+h))
             self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
-        except Exception as e:self.customer_label.config(image="",text=f"Image invalide: {e}")
+        except Exception as e:
+            lang=get_setting('language','fr');self.customer_label.config(image="",text=(f'صورة غير صالحة: {e}' if lang=='ar' else f'Image invalide : {e}'))
 
     def update_customer_display(self, cart, total):
         # Customer screen is intentionally advertising-first: cashier prices,
         # ticket lines and totals are never mirrored to the public display.
         if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_label):return
-        self.customer_label.config(text="العروض والإعلانات\nOffres & promotions")
+        lang=get_setting('language','fr');self.customer_label.config(text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'))
 
     def lock_cashier(self):
         from screens.cashier_tools import CashierLock
