@@ -10,6 +10,11 @@ def get_open_session():
 def open_session(user_id, opening_cash_cents):
     with connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
+        active_user=current_user.get()
+        if active_user is not None and int(active_user)!=int(user_id):
+            raise PermissionError("Utilisateur incompatible avec cette caisse.")
+        if not conn.execute("SELECT id FROM users WHERE id=? AND active=1",(user_id,)).fetchone():
+            raise ValueError("Utilisateur invalide.")
         if int(opening_cash_cents)<0: raise ValueError("Montant invalide")
         if conn.execute("SELECT id FROM cash_sessions WHERE status='OPEN'").fetchone():
             raise ValueError("كاينة كيس مفتوحة دابا.")
