@@ -510,7 +510,7 @@ class ProductsFrame(ttk.Frame):
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
                 product_key=meta[-1] if meta else ''
                 if product_key:
-                    fingerprint=(name,cat,buy,sell,alert,meta[-3],meta[-2])
+                    fingerprint=(name,cat,buy,sell,stock,alert,meta[-3],meta[-2])
                     if product_key in group_fingerprints and group_fingerprints[product_key]!=fingerprint:
                         errors.append(f"Ligne {line}: product key {product_key} contient des données produit incohérentes")
                     else:group_fingerprints[product_key]=fingerprint
