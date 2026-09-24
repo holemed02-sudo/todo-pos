@@ -1,6 +1,6 @@
 """services/supplier_payments.py — Règlements fournisseurs + état crédits."""
 from database import connect
-from services.security import audit
+from services.security import audit, require_admin
 
 
 def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
@@ -15,6 +15,7 @@ def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
         raise ValueError('Montant invalide.')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
+        require_admin(conn)
         if not conn.execute('SELECT id FROM suppliers WHERE id=? AND active=1', (supplier_id,)).fetchone():
             raise ValueError('Fournisseur introuvable.')
 
