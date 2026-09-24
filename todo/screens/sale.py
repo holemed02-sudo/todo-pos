@@ -632,7 +632,7 @@ class SaleFrame(ttk.Frame):
             self.client_id=None if clear else int(tree.selection()[0])
             self.update_client_label();window.destroy();self.focus_search()
         ttk.Button(buttons,text=self.tr('Choisir','اختيار'),command=select).pack(side='left')
-        ttk.Button(buttons,text='Client de passage',command=lambda:select(True)).pack(side='left',padx=10)
+        ttk.Button(buttons,text=self.tr('Client de passage','زبون عابر'),command=lambda:select(True)).pack(side='left',padx=10)
         tree.bind('<Double-1>',lambda e:select());entry.bind('<KeyRelease>',refresh);refresh();entry.focus_set()
 
     def update_client_label(self):
@@ -641,7 +641,7 @@ class SaleFrame(ttk.Frame):
         self.client_button.configure(text='F6 Client : '+name[:30])
 
     def set_payment(self,method):
-        self.payment=method;self.payment_label.config(text='Paiement : '+method);self.focus_search()
+        self.payment=method;labels={'CASH':self.tr('Espèces','نقداً'),'CARD':self.tr('Carte','بطاقة'),'CREDIT':self.tr('Crédit','دين'),'MIXED':self.tr('Mixte','مختلط')};self.payment_label.config(text=self.tr('Paiement : ','الأداء: ')+labels.get(method,method));self.focus_search()
 
     def clear(self):
         self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : CASH','الأداء: نقداً'));self.update_client_label();self.update_seller_label();self.refresh();self.focus_search()
@@ -695,7 +695,7 @@ class SaleFrame(ttk.Frame):
             self.wait_window(dialog)
             if dialog.result is None:return
             self.payment,paid,dialog_print,payments=dialog.result
-            self.payment_label.config(text='Paiement : '+self.payment)
+            self.set_payment(self.payment)
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
