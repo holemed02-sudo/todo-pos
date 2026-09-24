@@ -69,7 +69,7 @@ class PurchasesFrame(ttk.Frame):
         for x in self.lines:
             line_total=round(x["qty"]*x["unit_cost_cents"]);total+=line_total
             self.lines_t.insert("", "end",values=(x["name"],f"{x['qty']:g}",fmt(x["unit_cost_cents"],""),fmt(line_total,"")))
-        self.total_label.configure(text=f"Total : {fmt(total)}")
+        self.total_label.configure(text=f"{self.tr('Total','المجموع')} : {fmt(total)}")
     def _selected_line_index(self):
         sel=self.lines_t.selection()
         if not sel:return None
@@ -96,7 +96,7 @@ class PurchasesFrame(ttk.Frame):
                 with connect() as c:
                     rows=c.execute("SELECT id FROM suppliers WHERE name=? AND active=1",(sname,)).fetchall()
                 if len(rows)>1:
-                    raise ValueError('Plusieurs fournisseurs portent ce nom. Choisissez dans la liste.')
+                    raise ValueError(self.tr('Plusieurs fournisseurs portent ce nom. Choisissez dans la liste.','يوجد أكثر من مورد بهذا الاسم. اختر من اللائحة.'))
                 supplier_id=rows[0]['id'] if rows else save_supplier(sname)
                 self.refresh_suppliers(supplier_id)
             pid,total=receive_purchase(supplier_id,self.invoice.get().strip(),self.lines)
