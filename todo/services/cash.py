@@ -58,6 +58,10 @@ def close_session(session_id, actual_cash_cents):
         s = conn.execute("SELECT * FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone()
         if not s:
             raise ValueError("لا توجد كيس مفتوحة.")
+        from services.security import current_user
+        active_user=current_user.get()
+        if active_user is not None and int(s["user_id"])!=int(active_user):
+            raise PermissionError("هذه الكيس تخص مستخدما آخر.")
         t = session_totals(conn, session_id)
         expected = int(s["opening_cash_cents"]) + t["cash_sales"] - t["cash_returns"] - t["expenses"] + t["cash_in"] - t["cash_out"]
         diff = int(actual_cash_cents) - expected
