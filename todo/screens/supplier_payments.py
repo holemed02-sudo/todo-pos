@@ -35,8 +35,8 @@ class SupplierPaymentsWindow(tk.Toplevel):
         paned.add(lf, weight=3)
         self.pur_tree = ttk.Treeview(lf,
             columns=('inv','date','total','paid','balance'), show='headings', height=14)
-        for col,lbl,w,anc in [('inv','Facture',120,'w'),('date','Date',120,'w'),
-                               ('total','Montant',90,'e'),('paid','Payé',90,'e'),('balance','Reste',90,'e')]:
+        for col,lbl,w,anc in [('inv',self.tr('Facture','الفاتورة'),120,'w'),('date',self.tr('Date','التاريخ'),120,'w'),
+                               ('total',self.tr('Montant','المبلغ'),90,'e'),('paid',self.tr('Payé','المؤدى'),90,'e'),('balance',self.tr('Reste','الباقي'),90,'e')]:
             self.pur_tree.heading(col, text=lbl); self.pur_tree.column(col, width=w, anchor=anc)
         self.pur_tree.tag_configure('settled', foreground='#16a34a')
         self.pur_tree.tag_configure('partial', foreground='#d97706')
@@ -113,11 +113,11 @@ class SupplierCreditStateWindow(tk.Toplevel):
         self.tree = ttk.Treeview(self,
             columns=('name','phone','billed','paid','balance'), show='headings')
         for col,lbl,w,anc in [
-            ('name',   'Fournisseur',   200, 'w'),
-            ('phone',  'Téléphone',     130, 'w'),
-            ('billed', 'Total achats',  110, 'e'),
-            ('paid',   'Total payé',    110, 'e'),
-            ('balance','Solde dû',      110, 'e'),
+            ('name',self.tr('Fournisseur','المورد'),200,'w'),
+            ('phone',self.tr('Téléphone','الهاتف'),130,'w'),
+            ('billed',self.tr('Total achats','إجمالي المشتريات'),110,'e'),
+            ('paid',self.tr('Total payé','إجمالي المؤدى'),110,'e'),
+            ('balance',self.tr('Solde dû','الرصيد المستحق'),110,'e'),
         ]:
             self.tree.heading(col, text=lbl); self.tree.column(col, width=w, anchor=anc)
         self.tree.tag_configure('high',   foreground='#dc2626')
@@ -162,11 +162,11 @@ class SupplierReglementFrame(ttk.Frame):
         self.tree = ttk.Treeview(self,
             columns=('name','phone','billed','paid','balance'), show='headings')
         for col,lbl,w,anc in [
-            ('name',    'Fournisseur',  230, 'w'),
-            ('phone',   'Téléphone',   140, 'w'),
-            ('billed',  'Achats',        95, 'e'),
-            ('paid',    'Payé',          95, 'e'),
-            ('balance', 'Solde',         95, 'e'),
+            ('name',self.tr('Fournisseur','المورد'),230,'w'),
+            ('phone',self.tr('Téléphone','الهاتف'),140,'w'),
+            ('billed',self.tr('Achats','المشتريات'),95,'e'),
+            ('paid',self.tr('Payé','المؤدى'),95,'e'),
+            ('balance',self.tr('Solde','الرصيد'),95,'e'),
         ]:
             self.tree.heading(col, text=lbl); self.tree.column(col, width=w, anchor=anc)
         self.tree.tag_configure('debt',    foreground='#dc2626')
