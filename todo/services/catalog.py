@@ -131,3 +131,25 @@ def add_product_barcode(product_id, barcode, qty_multiplier=1, price_override_ce
         audit(conn, 'PRODUCT_BARCODE_ADD', product_id, code)
         conn.commit()
         return cur.lastrowid
+
+
+def product_label_data(product_id, barcode_id=None):
+    """Return product + chosen unit/pack barcode data for label printing."""
+    with connect() as conn:
+        product=conn.execute("SELECT id,name,sale_price_cents FROM products WHERE id=? AND active=1",(product_id,)).fetchone()
+        if not product:raise ValueError('Article introuvable.')
+        if barcode_id is None:
+            code=conn.execute("SELECT id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id LIMIT 1",(product_id,)).fetchone()
+        else:
+            code=conn.execute("SELECT id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE id=? AND product_id=?",(barcode_id,product_id)).fetchone()
+        if not code:raise ValueError("Cet article n'a pas de code-barres.")
+        price=product['sale_price_cents'] if code['price_override_cents'] is None else code['price_override_cents']
+        return dict(product_id=product['id'],name=product['name'],barcode_id=code['id'],barcode=code['barcode'],
+                    barcode_label=code['label'] or '',qty_multiplier=code['qty_multiplier'],price_cents=price)
+
+
+def list_product_label_barcodes(product_id):
+    with connect() as conn:
+        return [dict(row) for row in conn.execute(
+            "SELECT id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE product_id=? ORDER BY id",
+            (product_id,)).fetchall()]
