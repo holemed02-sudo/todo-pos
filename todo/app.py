@@ -326,7 +326,10 @@ class ToDoApp(tk.Tk):
     def _load_customer_slides(self):
         folder=Path.cwd()/"customer_media";folder.mkdir(exist_ok=True)
         self.customer_slides=sorted([p for p in folder.iterdir() if p.suffix.lower() in (".png",".jpg",".jpeg",".webp",".mp4",".avi",".mov",".mkv")])
-        self.customer_slide_index=0;self._show_customer_slide()
+        self.customer_slide_index=0
+        if not self.customer_slides:
+            self._render_customer_slide();return
+        self._show_customer_slide()
 
     def _show_customer_slide(self):
         if not (self.customer_window and self.customer_window.winfo_exists()):return
