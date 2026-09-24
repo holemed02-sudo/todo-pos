@@ -577,7 +577,11 @@ class ProductsFrame(ttk.Frame):
                         pid=target["id"]
                         c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
-                        set_product_categories(c,pid,[catid]);audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
+                        set_product_categories(c,pid,[catid])
+                        current_stock=float(c.execute("SELECT stock_qty FROM products WHERE id=?",(pid,)).fetchone()[0])
+                        if abs(stock-current_stock)>1e-9:
+                            apply_stock_movement(c,pid,stock-current_stock,'ADJUSTMENT',buy,'import',pid,'Import Excel — stock compté')
+                        audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
                         continue
                     group_key=product_key or None
                     if action=="new" and group_key and group_key in imported_groups:
