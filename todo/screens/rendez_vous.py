@@ -49,12 +49,12 @@ class RendezVousFrame(ttk.Frame):
         cols = ('date', 'time', 'title', 'contact', 'notes', 'done')
         self.tree = ttk.Treeview(self, columns=cols, show='headings')
         for col, lbl, w, anc in [
-            ('date',    'Date',      110, 'w'),
-            ('time',    'Heure',      75, 'w'),
-            ('title',   'Objet',     250, 'w'),
-            ('contact', 'Contact',   160, 'w'),
-            ('notes',   'Notes',     280, 'w'),
-            ('done',    'Statut',     80, 'center'),
+            ('date',self.tr('Date','التاريخ'),110,'w'),
+            ('time',self.tr('Heure','الوقت'),75,'w'),
+            ('title',self.tr('Objet','الموضوع'),250,'w'),
+            ('contact',self.tr('Contact','جهة الاتصال'),160,'w'),
+            ('notes',self.tr('Notes','ملاحظات'),280,'w'),
+            ('done',self.tr('Statut','الحالة'),80,'center'),
         ]:
             self.tree.heading(col, text=lbl)
             self.tree.column(col, width=w, anchor=anc)
