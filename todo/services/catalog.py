@@ -1,4 +1,5 @@
 from database import connect, get_setting
+from services.security import require_admin, audit
 
 
 def search_products(query='', category=None, limit=None, images_only=False, offset=0):
