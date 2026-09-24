@@ -454,7 +454,7 @@ class ProductsFrame(ttk.Frame):
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
 
     def import_excel(self):
-        path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title="Importer les articles")
+        path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title=self.tr("Importer les articles","استيراد المنتجات"))
         if not path:return
         try:
             from openpyxl import load_workbook
@@ -464,7 +464,7 @@ class ProductsFrame(ttk.Frame):
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
-            if idx['name'] is None:raise ValueError("Colonne Article/Nom obligatoire.")
+            if idx['name'] is None:raise ValueError(self.tr("Colonne Article/Nom obligatoire.","عمود المنتوج/الاسم إجباري."))
             preview=[];errors=[]
             for line,row in enumerate(ws.iter_rows(values_only=True),start=2):
                 if not any(v not in (None,'') for v in row):continue
@@ -497,8 +497,8 @@ class ProductsFrame(ttk.Frame):
                     if idx['barcode']<len(row) and isinstance(row[idx['barcode']],(int,float)) and not isinstance(row[idx['barcode']],bool):numeric_barcode_lines.append(line)
             if numeric_barcode_lines:
                 sample=", ".join(map(str,numeric_barcode_lines[:10]))
-                if not messagebox.askyesno("Import Excel",f"Barcode numérique détecté (lignes {sample}).\n\nExcel peut supprimer les zéros au début. Vérifiez le fichier et mettez la colonne Barcode au format Texte si nécessaire.\n\nContinuer quand même ?",parent=self):return
-            if not preview:raise ValueError("Aucun article valide.")
+                if not messagebox.askyesno(self.tr("Import Excel","استيراد Excel"),self.tr(f"Barcode numérique détecté (lignes {sample}).\n\nExcel peut supprimer les zéros au début. Vérifiez le fichier et mettez la colonne Barcode au format Texte si nécessaire.\n\nContinuer quand même ?",f"تم اكتشاف باركود رقمي (الأسطر {sample}).\n\nقد يحذف Excel الأصفار في البداية. تحقق من الملف واجعل عمود Barcode بتنسيق نص عند الحاجة.\n\nهل تريد المتابعة؟"),parent=self):return
+            if not preview:raise ValueError(self.tr("Aucun article valide.","لا يوجد أي منتوج صالح."))
             # Existing barcode conflicts are resolved explicitly during catalogue exchange.
             with connect() as c:
                 existing={}
@@ -530,17 +530,17 @@ class ProductsFrame(ttk.Frame):
                 else:seen[barcode]=(line,product_key)
             if errors:
                 messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé: le fichier contient des groupes produit incohérents ou des barcodes dupliqués dans le même produit.\n","تم إلغاء الاستيراد: الملف يحتوي مجموعات منتوج غير متناسقة أو باركود مكرر داخل نفس المنتوج.\n")+"\n".join(errors[:15]),parent=self);return
-            w=tk.Toplevel(self);w.title("Aperçu import Excel");w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
+            w=tk.Toplevel(self);w.title(self.tr("Aperçu import Excel","معاينة استيراد Excel"));w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
-            for key,title,width in [("line","Ligne",55),("barcode","Barcode",145),("name","Article",220),("cat","Famille",120),("buy","Achat",75),("sell","Vente",75),("stock","Stock",70),("alert","Alerte",70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
+            for key,title,width in [("line",self.tr("Ligne","السطر"),55),("barcode",self.tr("Barcode","الباركود"),145),("name",self.tr("Article","المنتوج"),220),("cat",self.tr("Famille","العائلة"),120),("buy",self.tr("Achat","الشراء"),75),("sell",self.tr("Vente","البيع"),75),("stock",self.tr("Stock","المخزون"),70),("alert",self.tr("Alerte","التنبيه"),70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
             tree.pack(fill="both",expand=True,padx=10,pady=10)
             for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",f"{row[6]:g}",f"{row[7]:g}"))
-            warning=ttk.Label(w,text=(f"⚠ {len(conflicts)} barcode(s) partagé(s) détecté(s). Ils seront conservés et demanderont un choix à la vente." if conflicts else "✓ Aucun barcode partagé détecté."),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
+            warning=ttk.Label(w,text=(self.tr(f"⚠ {len(conflicts)} barcode(s) partagé(s) détecté(s). Ils seront conservés et demanderont un choix à la vente.",f"⚠ تم اكتشاف {len(conflicts)} باركود مشترك. سيتم الاحتفاظ بها وسيطلب الاختيار عند البيع.") if conflicts else self.tr("✓ Aucun barcode partagé détecté.","✓ لم يتم اكتشاف أي باركود مشترك.")),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
             warning.pack(anchor="w",padx=12)
             if conflicts:ttk.Label(w,text="\n".join(conflicts[:6]),wraplength=930).pack(anchor="w",padx=12,pady=4)
             decision={"ok":False}
             def accept():decision["ok"]=True;w.destroy()
-            buttons=ttk.Frame(w);buttons.pack(fill="x",padx=10,pady=10);ttk.Button(buttons,text="Annuler",command=w.destroy).pack(side="right");ttk.Button(buttons,text=f"Importer {len(preview)} article(s)",style="Primary.TButton",command=accept).pack(side="right",padx=8)
+            buttons=ttk.Frame(w);buttons.pack(fill="x",padx=10,pady=10);ttk.Button(buttons,text=self.tr("Annuler","إلغاء"),command=w.destroy).pack(side="right");ttk.Button(buttons,text=self.tr(f"Importer {len(preview)} article(s)",f"استيراد {len(preview)} منتوج"),style="Primary.TButton",command=accept).pack(side="right",padx=8)
             self.wait_window(w)
             if not decision["ok"]:return
             resolved=[]
@@ -593,7 +593,7 @@ class ProductsFrame(ttk.Frame):
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
             messagebox.showinfo(self.tr("Import Excel","استيراد Excel"),self.tr(f"{imported} ajouté(s), {updated} mis à jour, {skipped} ignoré(s).",f"تمت إضافة {imported}، تحديث {updated}، وتجاهل {skipped}."),parent=self);self.refresh()
-        except Exception as e:messagebox.showerror("Import Excel",str(e),parent=self)
+        except Exception as e:messagebox.showerror(self.tr("Import Excel","استيراد Excel"),str(e),parent=self)
 
     def sel(self):
         s=self.t.selection();return int(self.t.item(s[0],"values")[0]) if s else None
@@ -603,21 +603,21 @@ class ProductsFrame(ttk.Frame):
     def add_barcode(self):
         pid=self.sel()
         if not pid:return
-        w=tk.Toplevel(self);w.title("Barcode / Pack");w.geometry("460x310");w.transient(self);w.grab_set()
+        w=tk.Toplevel(self);w.title(self.tr("Barcode / Pack","باركود / حزمة"));w.geometry("460x310");w.transient(self);w.grab_set()
         b=tk.StringVar();mult=tk.StringVar(value="1");price=tk.StringVar()
         f=ttk.Frame(w,padding=18);f.pack(fill="both",expand=True)
-        eb=labeled_entry(f,"Barcode",b,0,bold=True);labeled_entry(f,"Qté multiplier",mult,1);labeled_entry(f,"Prix pack (optionnel)",price,2)
-        ttk.Label(f,text="مثال: باركود كرتونة 6 قطع → multiplier = 6").grid(row=3,column=0,columnspan=2,sticky="w",pady=8)
+        eb=labeled_entry(f,self.tr("Barcode","الباركود"),b,0,bold=True);labeled_entry(f,self.tr("Qté multiplier","مضاعف الكمية"),mult,1);labeled_entry(f,self.tr("Prix pack (optionnel)","ثمن الحزمة (اختياري)"),price,2)
+        ttk.Label(f,text=self.tr("Exemple : barcode carton de 6 unités → multiplicateur = 6","مثال: باركود كرتونة 6 قطع → المضاعف = 6")).grid(row=3,column=0,columnspan=2,sticky="w",pady=8)
         def save():
             try:
                 code=b.get().strip()
-                if not code:raise ValueError("Barcode obligatoire")
+                if not code:raise ValueError(self.tr("Barcode obligatoire","الباركود إجباري"))
                 m=float(mult.get() or 1);pr=to_cents(price.get()) if price.get().strip() else None
-                if not math.isfinite(m) or m<=0 or (pr is not None and pr<0):raise ValueError("Pack invalide")
+                if not math.isfinite(m) or m<=0 or (pr is not None and pr<0):raise ValueError(self.tr("Pack invalide","الحزمة غير صالحة"))
                 with connect() as c:
                     require_admin(c)
                     c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,?,?,?)",(pid,code,m,pr));c.commit()
                 w.destroy();self.refresh()
             except Exception as e:messagebox.showerror("ToDo",str(e),parent=w)
-        ttk.Button(f,text="Enregistrer",command=save).grid(row=4,column=0,columnspan=2,pady=15)
+        ttk.Button(f,text=self.tr("Enregistrer","حفظ"),command=save).grid(row=4,column=0,columnspan=2,pady=15)
         eb.bind("<Return>",lambda e:save());w.after(100,eb.focus_force)
