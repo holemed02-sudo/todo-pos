@@ -119,8 +119,8 @@ class RendezVousFrame(ttk.Frame):
     def delete_rdv(self):
         r = self._selected()
         if not r: return
-        msg = 'Supprimer ce rendez-vous ?'
-        if messagebox.askyesno('Supprimer', msg, parent=self):
+        msg = self.tr('Supprimer ce rendez-vous ?','حذف هذا الموعد؟')
+        if messagebox.askyesno(self.tr('Supprimer','حذف'), msg, parent=self):
             with connect() as conn:
                 conn.execute('DELETE FROM rendez_vous WHERE id=?', (r['id'],))
             self.refresh()
@@ -139,12 +139,12 @@ class RdvEditor(tk.Toplevel):
 
         f = ttk.Frame(self, padding=20); f.pack(fill='both', expand=True)
         fields = [
-            ('Objet *',  'title',   rdv['title']    if rdv else ''),
-            ('Date *',   'date',    rdv['rdv_date']  if rdv else
+            (self.tr('Objet *','الموضوع *'),  'title',   rdv['title']    if rdv else ''),
+            (self.tr('Date *','التاريخ *'),   'date',    rdv['rdv_date']  if rdv else
              datetime.date.today().isoformat()),
-            ('Heure',    'time',    rdv['rdv_time']  if rdv else '09:00'),
-            ('Contact',  'contact', rdv['contact']   if rdv else ''),
-            ('Notes',    'notes',   rdv['notes']     if rdv else ''),
+            (self.tr('Heure','الوقت'),    'time',    rdv['rdv_time']  if rdv else '09:00'),
+            (self.tr('Contact','الاتصال'),  'contact', rdv['contact']   if rdv else ''),
+            (self.tr('Notes','ملاحظات'),    'notes',   rdv['notes']     if rdv else ''),
         ]
         self.vars = {}
         for row, (label, key, val) in enumerate(fields):
@@ -166,8 +166,8 @@ class RdvEditor(tk.Toplevel):
         contact = self.vars['contact'].get().strip()
         notes   = self.vars['notes'].get().strip()
         if not title or not date:
-            messagebox.showerror('Rendez-vous',
-                                 'Objet et date obligatoires.', parent=self)
+            messagebox.showerror(self.tr('Rendez-vous','المواعيد'),
+                                 self.tr('Objet et date obligatoires.','الموضوع والتاريخ إجباريان.'), parent=self)
             return
         with connect() as conn:
             if self.rdv_id:
