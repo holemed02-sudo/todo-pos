@@ -100,9 +100,14 @@ class InventaireFrame(ttk.Frame):
         with connect() as conn:
             conn.execute('BEGIN IMMEDIATE')
             for p in self.products:
-                pid = p['id']; theory = float(p['stock_qty'])
+                pid = p['id']
                 counted = diffs.get(pid)
                 if counted is None: continue
+                row = conn.execute('SELECT stock_qty FROM products WHERE id=? AND active=1', (pid,)).fetchone()
+                if row is None: continue
+                # The inventory screen may stay open while sales/purchases change stock.
+                # Re-read inside the write transaction so the final stock equals the physical count.
+                theory = float(row['stock_qty'])
                 delta = counted - theory
                 if abs(delta) < 0.001: continue
                 apply_stock_movement(conn, pid, delta, 'INVENTORY',
