@@ -1,5 +1,5 @@
 from database import connect
-from services.security import audit
+from services.security import audit, current_user
 
 def get_open_session():
     with connect() as conn:
@@ -58,7 +58,6 @@ def close_session(session_id, actual_cash_cents):
         s = conn.execute("SELECT * FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone()
         if not s:
             raise ValueError("لا توجد كيس مفتوحة.")
-        from services.security import current_user
         active_user=current_user.get()
         if active_user is not None and int(s["user_id"])!=int(active_user):
             raise PermissionError("هذه الكيس تخص مستخدما آخر.")
@@ -89,6 +88,9 @@ def record_cash(session_id,user_id,amount_cents,kind,note):
             raise ValueError('La caisse est fermée.')
         if int(session['user_id'])!=int(user_id):
             raise PermissionError('Cette caisse appartient à un autre utilisateur.')
+        active_user=current_user.get()
+        if active_user is not None and int(active_user)!=int(user_id):
+            raise PermissionError('Utilisateur incompatible avec cette caisse.')
         if kind=='EXPENSE':
             conn.execute('INSERT INTO expenses(session_id,user_id,label,amount_cents) VALUES(?,?,?,?)',(session_id,user_id,note,amount))
         else:
