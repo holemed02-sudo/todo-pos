@@ -23,6 +23,7 @@ class PaymentDialog(tk.Toplevel):
         self.card_amount = tk.StringVar(value='0.00')
         self.print_ticket = tk.BooleanVar(value=False)
         self.cash_parts = {}
+        self.cash_count_started = False
         self.cash_tendered_cents = total
         tk.Label(self, text=self.tr('TOTAL À PAYER','المجموع'), bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
@@ -98,20 +99,18 @@ class PaymentDialog(tk.Toplevel):
 
     def set_amount(self, amount):
         self.method.set('CASH')
+        self.cash_parts.clear();self.cash_count_started=False;self._render_cash_parts()
         self.cash_tendered_cents = to_cents(str(amount))
         self.amount.set(f'{amount:.2f}')
         self.focus_amount()
 
     def add_cash(self, amount):
-        self.method.set('CASH')
-        try:
-            current = to_cents(self.amount.get())
-        except Exception:
-            current = 0
-        # If the cashier selected the initial exact amount, the first denomination
-        # starts a fresh cash count; after that every tap accumulates.
-        if self.cash_tendered_cents == self.total and current == self.total:
-            current = 0
+        # Denomination buttons are a cashier cash counter. The first tap starts
+        # from zero; following taps always accumulate, even when the running
+        # count happens to equal the ticket total.
+        if self.method.get() not in ('CASH','CREDIT','MIXED'):self.method.set('CASH')
+        current=self.cash_tendered_cents if self.cash_count_started else 0
+        self.cash_count_started=True
         self.cash_parts[amount]=self.cash_parts.get(amount,0)+1
         self.cash_tendered_cents = current + to_cents(str(amount))
         self._render_cash_parts()
@@ -121,14 +120,14 @@ class PaymentDialog(tk.Toplevel):
     def clear_cash(self):
         self.method.set('CASH')
         self.cash_tendered_cents = 0
-        self.cash_parts.clear();self._render_cash_parts()
+        self.cash_parts.clear();self.cash_count_started=True;self._render_cash_parts()
         self.amount.set('0.00')
         self.focus_amount()
 
     def exact(self):
         self.method.set('CASH')
         self.cash_tendered_cents = self.total
-        self.cash_parts.clear();self._render_cash_parts()
+        self.cash_parts.clear();self.cash_count_started=False;self._render_cash_parts()
         self.amount.set(f'{self.total / 100:.2f}')
         self.focus_amount()
 
