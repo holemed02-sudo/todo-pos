@@ -9,7 +9,18 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
     with connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
         require_admin(conn)
-        total = sum(int(round(float(x["qty"]) * int(x["unit_cost_cents"]))) for x in lines)
+        normalized=[]
+        for x in lines:
+            pid=int(x["product_id"]);qty=float(x["qty"]);cost=int(x["unit_cost_cents"])
+            if not math.isfinite(qty) or qty <= 0 or cost < 0:
+                raise ValueError("Quantité réception invalide")
+            product=conn.execute("SELECT allow_fraction FROM products WHERE id=? AND active=1",(pid,)).fetchone()
+            if not product:
+                raise ValueError("Article introuvable")
+            if not product["allow_fraction"] and not qty.is_integer():
+                raise ValueError("Quantité fractionnée interdite pour cet article")
+            normalized.append((pid,qty,cost))
+        total = sum(int(round(qty * cost)) for pid,qty,cost in normalized)
         paid_cents = int(paid_cents or 0)
         if paid_cents < 0 or paid_cents > total:
             raise ValueError("Règlement fournisseur invalide")
@@ -20,10 +31,7 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
             (supplier_id or None, supplier_invoice or "", total, notes or "")
         )
         pid_purchase = cur.lastrowid
-        for x in lines:
-            pid = int(x["product_id"]); qty=float(x["qty"]); cost=int(x["unit_cost_cents"])
-            if not math.isfinite(qty) or qty <= 0 or cost < 0:
-                raise ValueError("Quantité réception invalide")
+        for pid,qty,cost in normalized:
             lt=int(round(qty*cost))
             conn.execute(
                 "INSERT INTO purchase_items(purchase_id,product_id,qty,unit_cost_cents,line_total_cents) VALUES(?,?,?,?,?)",
