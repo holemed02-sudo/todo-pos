@@ -22,6 +22,7 @@ assert app.customer_video is None and app.customer_video_delay==33
 # Customer display must be safe to open/close before any media has played.
 app.toggle_customer_display();app.update_idletasks()
 assert app.customer_window is not None and app.customer_window.winfo_exists()
+assert app.customer_slides==[] and app.customer_after_id is None
 app.toggle_customer_display();app.update_idletasks()
 assert app.customer_window is None and app.customer_video is None
 app.login_pin.set('1234');app.login();app.withdraw();app.update_idletasks()
