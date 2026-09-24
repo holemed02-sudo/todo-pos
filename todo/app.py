@@ -317,6 +317,7 @@ class ToDoApp(tk.Tk):
         self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center",bd=0,highlightthickness=0)
         self.customer_label.pack(fill="both",expand=True)
         self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide())
+        w.protocol("WM_DELETE_WINDOW",self.toggle_customer_display)
         w.lift();self._load_customer_slides()
 
     def _load_customer_slides(self):
