@@ -206,7 +206,7 @@ class SettingsFrame(ttk.Frame):
             messagebox.showerror("ToDo",self.tr("Limite de recherche entre 1 et 1000.","حد البحث بين 1 و1000."),parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode_labels.get(self.print_mode_box.get(),'ask'))
-        set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');set_setting('language',self.language.get());self.app.after_idle(lambda:self.app.change_language(self.language.get()))
+        set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');set_setting('language',self.language.get());self.app.change_language(self.language.get())
         try:
             seconds=int(self.customer_seconds.get())
             if seconds<2 or seconds>120:raise ValueError()
