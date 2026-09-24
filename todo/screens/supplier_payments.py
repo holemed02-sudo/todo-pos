@@ -48,7 +48,7 @@ class SupplierPaymentsWindow(tk.Toplevel):
         rf = ttk.LabelFrame(paned, text=self.tr('Paiements effectués','التسديدات المنجزة'), padding=6)
         paned.add(rf, weight=2)
         self.pay_tree = ttk.Treeview(rf, columns=('date','amount','note'), show='headings', height=14)
-        for col,lbl,w in [('date','Date',120),('amount','Montant',90),('note','Note',180)]:
+        for col,lbl,w in [('date',self.tr('Date','التاريخ'),120),('amount',self.tr('Montant','المبلغ'),90),('note',self.tr('Note','ملاحظة'),180)]:
             self.pay_tree.heading(col, text=lbl); self.pay_tree.column(col, width=w, anchor='e' if col=='amount' else 'w')
         sb2 = ttk.Scrollbar(rf, orient='vertical', command=self.pay_tree.yview)
         sb2.pack(side='right', fill='y')
@@ -64,7 +64,7 @@ class SupplierPaymentsWindow(tk.Toplevel):
                                    (self.supplier['id'],)).fetchone()[0]
         balance = billed - paid
         self.lbl_balance.config(
-            text=f"Solde dû : {fmt(balance)}",
+            text=self.tr(f"Solde dû : {fmt(balance)}",f"الرصيد المستحق: {fmt(balance)}"),
             foreground='#dc2626' if balance > 0 else '#16a34a')
 
         self.pur_tree.delete(*self.pur_tree.get_children())
@@ -84,14 +84,14 @@ class SupplierPaymentsWindow(tk.Toplevel):
         purchase_id = None
         sel = self.pur_tree.selection()
         if sel: purchase_id = int(sel[0])
-        amount_str = simpledialog.askstring('Règlement', 'Montant payé (DH) :', parent=self)
+        amount_str = simpledialog.askstring(self.tr('Règlement','تسديد'), self.tr('Montant payé (DH) :','المبلغ المؤدى (DH):'), parent=self)
         if amount_str is None: return
-        note = simpledialog.askstring('Règlement', 'Note (facultatif) :', parent=self) or ''
+        note = simpledialog.askstring(self.tr('Règlement','تسديد'), self.tr('Note (facultatif) :','ملاحظة (اختيارية):'), parent=self) or ''
         try:
             add_supplier_payment(self.supplier['id'], to_cents(amount_str), note, purchase_id)
             self._refresh()
         except (ValueError, PermissionError) as e:
-            messagebox.showerror('Règlement', str(e), parent=self)
+            messagebox.showerror(self.tr('Règlement','تسديد'), str(e), parent=self)
 
 
 class SupplierCreditStateWindow(tk.Toplevel):
@@ -140,7 +140,7 @@ class SupplierCreditStateWindow(tk.Toplevel):
                 values=(r['name'], r['phone'],
                         fmt(r['billed_cents']), fmt(r['paid_cents']), fmt(bal)),
                 tags=(tag,))
-        self.lbl_total.config(text=f"Total dû : {fmt(grand)}")
+        self.lbl_total.config(text=self.tr(f"Total dû : {fmt(grand)}",f"إجمالي المستحق: {fmt(grand)}"))
 
 
 class SupplierReglementFrame(ttk.Frame):
@@ -206,7 +206,7 @@ class SupplierReglementFrame(ttk.Frame):
 
     def payments(self):
         s = self._selected()
-        if not s: messagebox.showinfo('Règlements', 'Sélectionnez un fournisseur.', parent=self); return
+        if not s: messagebox.showinfo(self.tr('Règlements','التسديدات'), self.tr('Sélectionnez un fournisseur.','اختر مورداً.'), parent=self); return
         SupplierPaymentsWindow(self, s)
 
     def credit_state(self):
