@@ -228,7 +228,9 @@ class SettingsFrame(ttk.Frame):
         except Exception as error:messagebox.showerror(self.tr('Imprimantes','الطابعات'),str(error),parent=self)
 
     def backup(self):
-        try:messagebox.showinfo("ToDo",self.tr(f"Backup:\n{create_backup()}",f"نسخة احتياطية:\n{create_backup()}"),parent=self)
+        try:
+            p=create_backup()
+            messagebox.showinfo("ToDo",self.tr(f"Backup:\n{p}",f"نسخة احتياطية:\n{p}"),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def restore(self):
         p=filedialog.askopenfilename(parent=self,filetypes=[("SQLite DB","*.db"),(self.tr("Tous les fichiers","كل الملفات"),"*.*")])
