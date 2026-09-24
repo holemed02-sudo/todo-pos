@@ -291,6 +291,11 @@ class ToDoApp(tk.Tk):
 
     def toggle_customer_display(self):
         if self.customer_window and self.customer_window.winfo_exists():
+            if self.customer_after_id:
+                try:self.after_cancel(self.customer_after_id)
+                except Exception:pass
+            self.customer_after_id=None
+            if self.customer_video is not None:self.customer_video.release();self.customer_video=None
             self.customer_window.destroy();self.customer_window=None;self.customer_label=None;return
         w=tk.Toplevel(self);self.customer_window=w;lang=get_setting('language','fr');w.title('ToDo — '+('شاشة الزبون' if lang=='ar' else 'Écran client'));w.configure(bg="#0F172A")
         screens=[]
@@ -313,7 +318,7 @@ class ToDoApp(tk.Tk):
 
     def _load_customer_slides(self):
         folder=Path.cwd()/"customer_media";folder.mkdir(exist_ok=True)
-        self.customer_slides=sorted([p for p in folder.iterdir() if p.suffix.lower() in (".png",".jpg",".jpeg",".webp")])
+        self.customer_slides=sorted([p for p in folder.iterdir() if p.suffix.lower() in (".png",".jpg",".jpeg",".webp",".mp4",".avi",".mov",".mkv")])
         self.customer_slide_index=0;self._show_customer_slide()
 
     def _show_customer_slide(self):
@@ -321,6 +326,10 @@ class ToDoApp(tk.Tk):
         if self.customer_after_id:
             try:self.after_cancel(self.customer_after_id)
             except Exception:pass
+        self.customer_after_id=None
+        if self.customer_video is not None:self.customer_video.release();self.customer_video=None
+        if self.customer_slides and self.customer_slides[self.customer_slide_index].suffix.lower() in (".mp4",".avi",".mov",".mkv"):
+            self._start_customer_video();return
         self._render_customer_slide()
         seconds=max(2,int(get_setting("customer_slide_seconds","6") or 6))
         self.customer_after_id=self.after(seconds*1000,self._next_customer_slide)
@@ -329,20 +338,48 @@ class ToDoApp(tk.Tk):
         if self.customer_slides:self.customer_slide_index=(self.customer_slide_index+1)%len(self.customer_slides)
         self._show_customer_slide()
 
+    def _cover_customer_image(self,im):
+        w=max(16,self.customer_label.winfo_width());h=max(9,self.customer_label.winfo_height())
+        scale=max(w/im.width,h/im.height);nw=max(1,round(im.width*scale));nh=max(1,round(im.height*scale));im=im.resize((nw,nh),Image.Resampling.LANCZOS)
+        left=max(0,(nw-w)//2);top=max(0,(nh-h)//2)
+        return im.crop((left,top,left+w,top+h))
+
+    def _start_customer_video(self):
+        try:
+            import cv2
+            self.customer_video=cv2.VideoCapture(str(self.customer_slides[self.customer_slide_index]))
+            if not self.customer_video.isOpened():raise ValueError("video")
+            fps=self.customer_video.get(cv2.CAP_PROP_FPS)
+            self.customer_video_delay=max(15,round(1000/fps)) if fps and fps>0 else 33
+            self._render_customer_video_frame()
+        except Exception:
+            if self.customer_video is not None:self.customer_video.release();self.customer_video=None
+            self._next_customer_slide()
+
+    def _render_customer_video_frame(self):
+        if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_video is not None):return
+        import cv2
+        ok,frame=self.customer_video.read()
+        if not ok:
+            self.customer_video.release();self.customer_video=None;self._next_customer_slide();return
+        from PIL import Image,ImageTk
+        frame=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+        im=self._cover_customer_image(Image.fromarray(frame))
+        self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
+        self.customer_after_id=self.after(self.customer_video_delay,self._render_customer_video_frame)
+
     def _render_customer_slide(self):
         if not (self.customer_label and self.customer_label.winfo_exists()):return
         if not self.customer_slides:
-            lang=get_setting('language','fr');self.customer_label.config(image="",text=('ضع صور العروض داخل مجلد customer_media' if lang=='ar' else 'Ajoutez les offres dans customer_media'));return
+            lang=get_setting('language','fr');self.customer_label.config(image="",text=('ضع الصور أو الفيديوهات داخل مجلد customer_media' if lang=='ar' else 'Ajoutez les images ou vidéos dans customer_media'));return
+        path=self.customer_slides[self.customer_slide_index]
+        if path.suffix.lower() in (".mp4",".avi",".mov",".mkv"):return
         try:
             from PIL import Image,ImageTk
-            path=self.customer_slides[self.customer_slide_index]
-            im=Image.open(path).convert("RGB");w=max(16,self.customer_label.winfo_width());h=max(9,self.customer_label.winfo_height())
-            # cover mode: fill the whole 16:9 display, crop overflow instead of black bars
-            scale=max(w/im.width,h/im.height);nw=max(1,round(im.width*scale));nh=max(1,round(im.height*scale));im=im.resize((nw,nh),Image.Resampling.LANCZOS)
-            left=max(0,(nw-w)//2);top=max(0,(nh-h)//2);im=im.crop((left,top,left+w,top+h))
+            im=self._cover_customer_image(Image.open(path).convert("RGB"))
             self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
         except Exception as e:
-            lang=get_setting('language','fr');self.customer_label.config(image="",text=(f'صورة غير صالحة: {e}' if lang=='ar' else f'Image invalide : {e}'))
+            lang=get_setting('language','fr');self.customer_label.config(image="",text=(f'وسائط غير صالحة: {e}' if lang=='ar' else f'Média invalide : {e}'))
 
     def update_customer_display(self, cart, total):
         # Customer screen is intentionally advertising-first: cashier prices,
