@@ -103,7 +103,7 @@ class SettingsFrame(ttk.Frame):
         ttk.Label(f,text=self.tr('Devise','العملة')).grid(row=1,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.cur,width=10).grid(row=1,column=1,sticky="w",padx=8)
         ttk.Checkbutton(f,text=self.tr('Autoriser stock négatif','السماح بالمخزون السالب'),variable=self.neg).grid(row=2,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Bloquer vente si stock insuffisant','منع البيع عند نقص المخزون'),variable=self.block_insufficient).grid(row=3,column=0,columnspan=2,sticky="w")
-        ttk.Checkbutton(f,text=self.tr('Demander un client avant encaissement','طلب الزبون قبل الأداء'),variable=self.require_client).grid(row=4,column=0,columnspan=2,sticky="w")
+        ttk.Checkbutton(f,text=self.tr('Afficher le choix du client pendant la vente','إظهار اختيار الزبون أثناء البيع'),variable=self.require_client).grid(row=4,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Choix du vendeur pendant la vente','اختيار البائع أثناء البيع'),variable=self.choose_seller).grid(row=5,column=0,columnspan=2,sticky="w")
         ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=6,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=6,column=1,padx=8)
         ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=7,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=7,column=1,sticky="w",padx=8)
