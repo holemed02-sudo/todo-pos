@@ -102,3 +102,29 @@ def set_product_categories(conn, product_id, category_ids):
     conn.execute('DELETE FROM product_categories WHERE product_id=?', (product_id,))
     conn.executemany('INSERT INTO product_categories(product_id,category_id) VALUES(?,?)',
                      [(product_id,cid) for cid in category_ids])
+
+
+def add_product_barcode(product_id, barcode, qty_multiplier=1, price_override_cents=None, label=''):
+    """Add a unit/pack barcode while deliberately allowing sharing across products."""
+    code = str(barcode or '').strip()
+    if not code:
+        raise ValueError('Barcode obligatoire')
+    try:
+        multiplier = float(qty_multiplier)
+    except (TypeError, ValueError):
+        raise ValueError('Multiplicateur invalide')
+    if not multiplier > 0 or multiplier != multiplier or multiplier in (float('inf'), float('-inf')):
+        raise ValueError('Multiplicateur invalide')
+    price = None if price_override_cents is None else int(price_override_cents)
+    if price is not None and price < 0:
+        raise ValueError('Prix pack invalide')
+    with connect() as conn:
+        if not conn.execute('SELECT 1 FROM products WHERE id=? AND active=1', (product_id,)).fetchone():
+            raise ValueError('Article introuvable')
+        if conn.execute('SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?', (product_id, code)).fetchone():
+            raise ValueError('Ce barcode existe déjà pour cet article.')
+        cur = conn.execute(
+            'INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)',
+            (product_id, code, str(label or '').strip(), multiplier, price))
+        conn.commit()
+        return cur.lastrowid
