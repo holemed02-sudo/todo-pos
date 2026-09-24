@@ -7,7 +7,7 @@ import math
 from services.money import to_cents
 from services.images import import_image, abs_image
 from screens.common import labeled_entry
-from services.catalog import list_categories, get_product_categories, set_product_categories
+from services.catalog import list_categories, get_product_categories, set_product_categories, add_product_barcode
 try:
     from PIL import Image,ImageTk
     PIL=True
@@ -618,11 +618,7 @@ class ProductsFrame(ttk.Frame):
                 if not code:raise ValueError(self.tr("Barcode obligatoire","الباركود إجباري"))
                 m=float((mult.get() or '1').replace(',','.'));pr=to_cents(price.get()) if price.get().strip() else None
                 if not math.isfinite(m) or m<=0 or (pr is not None and pr<0):raise ValueError(self.tr("Pack invalide","الحزمة غير صالحة"))
-                with connect() as c:
-                    require_admin(c)
-                    if c.execute('SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?',(pid,code)).fetchone():
-                        raise ValueError(self.tr("Ce barcode existe déjà pour cet article.","هذا الباركود موجود مسبقاً لهذا المنتوج."))
-                    c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,?,?,?)",(pid,code,m,pr));c.commit()
+                add_product_barcode(pid,code,m,pr)
                 w.destroy();self.refresh()
             except Exception as e:messagebox.showerror("ToDo",str(e),parent=w)
         ttk.Button(f,text=self.tr("Enregistrer","حفظ"),command=save).grid(row=4,column=0,columnspan=2,pady=15)
