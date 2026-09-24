@@ -278,7 +278,9 @@ class SettingsFrame(ttk.Frame):
         def reload():
             tree.delete(*tree.get_children())
             with connect() as conn: rows=conn.execute("SELECT id,username,display_name,role,active FROM users ORDER BY display_name").fetchall()
-            for r in rows:tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],r["role"],self.tr("Oui","نعم") if r["active"] else self.tr("Non","لا")))
+            for r in rows:
+                role_label=self.tr("Administrateur","مدير") if r["role"]=="admin" else self.tr("Caissier","كاشير") if r["role"]=="cashier" else r["role"]
+                tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],role_label,self.tr("Oui","نعم") if r["active"] else self.tr("Non","لا")))
         def selected():
             sel=tree.selection()
             if not sel: messagebox.showwarning(self.tr("Utilisateurs","المستخدمون"),self.tr("Sélectionnez un utilisateur.","اختر مستخدماً."),parent=w);return None
