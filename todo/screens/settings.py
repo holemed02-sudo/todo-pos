@@ -204,7 +204,9 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Limite de recherche entre 1 et 1000.","حد البحث بين 1 و1000."),parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
-        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get() or "ask")
+        print_mode=self.print_mode.get() or "ask"
+        if print_mode not in ('ask','always','never'):print_mode='ask'
+        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",print_mode)
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');new_language=self.language.get();language_changed=new_language!=get_setting('language','fr');set_setting('language',new_language)
         try:
             seconds=int(self.customer_seconds.get())
@@ -212,7 +214,9 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 120 secondes.","مدة شاشة الزبون بين 2 و120 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
-        set_setting("auto_backup_minutes",self.auto_backup.get())
+        backup_minutes=self.auto_backup.get()
+        if backup_minutes not in ('0','5','10','15','30','60'):backup_minutes='15'
+        set_setting("auto_backup_minutes",backup_minutes)
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
     def test_customer(self):
