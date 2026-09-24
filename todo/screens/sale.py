@@ -87,7 +87,7 @@ class SaleFrame(ttk.Frame):
         self.catalog_tabs.pack(fill='both',expand=True)
         self.products=ttk.Treeview(self.list_page,columns=('price','stock'),show='tree headings',selectmode='browse',style='Catalog.Treeview')
         self.products.heading('#0',text=self.tr('PRODUIT','المنتوج'));self.products.column('#0',width=240,minwidth=160)
-        for key,label in [('price','PRIX'),('stock','STOCK')]:
+        for key,label in [('price',self.tr('PRIX','الثمن')),('stock',self.tr('STOCK','المخزون'))]:
             self.products.heading(key,text=label);self.products.column(key,width=85,stretch=False,anchor='e')
         self.products.pack(fill='both',expand=True)
         photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
@@ -112,7 +112,7 @@ class SaleFrame(ttk.Frame):
         checkout_area.pack(side='bottom',fill='x')
         actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
         ttk.Button(checkout_area,text=self.tr('Fonctions','الوظائف'),command=self.functions).pack(fill='x',pady=4)
-        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),('Qté F8',self.set_qty),('Remise ligne',self.line_discount),('Suppr.',self.remove)]:
+        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),(self.tr('Qté F8','الكمية F8'),self.set_qty),(self.tr('Remise ligne','تخفيض السطر'),self.line_discount),(self.tr('Suppr.','حذف'),self.remove)]:
             ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
         total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
@@ -123,7 +123,7 @@ class SaleFrame(ttk.Frame):
         ttk.Label(right,text=self.tr('Ticket en cours','التذكرة الحالية'),style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
         self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
         self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=170,minwidth=100)
-        for key,label,width in [('qty','QTÉ',55),('price','P.U.',70),('discount','REMISE',75),('total','NET',85)]:
+        for key,label,width in [('qty',self.tr('QTÉ','الكمية'),55),('price',self.tr('P.U.','ثمن الوحدة'),70),('discount',self.tr('REMISE','التخفيض'),75),('total',self.tr('NET','الصافي'),85)]:
             self.ticket.heading(key,text=label);self.ticket.column(key,width=width,minwidth=40,anchor='e')
         self.ticket.tag_configure('offer',background='#DCFCE7',foreground='#166534')
         self.ticket.tag_configure('even',background='#F8FAFC')
@@ -131,7 +131,7 @@ class SaleFrame(ttk.Frame):
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
-        for label,command in [('F2 Espèces',lambda:self.set_payment('CASH')),('F3 Carte',lambda:self.set_payment('CARD')),('F4 Attente',self.hold),('Liste attente',self.show_held),('F7 Remise',self.discount),('ESC Annuler',self.cancel)]:
+        for label,command in [(self.tr('F2 Espèces','F2 نقداً'),lambda:self.set_payment('CASH')),(self.tr('F3 Carte','F3 بطاقة'),lambda:self.set_payment('CARD')),(self.tr('F4 Attente','F4 انتظار'),self.hold),(self.tr('Liste attente','لائحة الانتظار'),self.show_held),(self.tr('F7 Remise','F7 تخفيض'),self.discount),(self.tr('ESC Annuler','ESC إلغاء'),self.cancel)]:
             ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
         self.status=ttk.Label(self,text=self.tr('Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter','الماسح جاهز · Ctrl+F بحث · Enter إضافة'))
         self.status.pack(anchor='w',pady=(8,0))
