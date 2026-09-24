@@ -42,7 +42,7 @@ jobs:
           Copy-Item README_1_1_AR.md,VALIDATION.md dist/ToDo/
       - name: Build Windows installer
         shell: cmd
-        run: "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" installer.iss
+        run: '"C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss'
       - name: Create Windows ZIP package
         shell: pwsh
         run: Compress-Archive -Path dist/ToDo/* -DestinationPath dist/ToDo-POS-1.1.0-Windows.zip -Force
