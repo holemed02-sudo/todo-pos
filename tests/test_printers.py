@@ -38,8 +38,8 @@ class PrinterTests(unittest.TestCase):
             product_id=c.execute("SELECT last_insert_rowid()").fetchone()[0]
             c.execute("INSERT INTO sale_items(sale_id,product_id,name_snapshot,qty,unit_price_cents,line_total_cents,net_total_cents,pricing_mode,qty_multiplier) VALUES(?,?,'Test',1,1000,1000,1000,'UNIT',1)",(sale_id,product_id))
         payload=receipts.build_escpos_receipt(sale_id,cut=True,open_drawer=False)
-        self.assertTrue(payload.startswith(b'\\x1b@'))
-        self.assertTrue(payload.endswith(b'\\x1dV\\x00'))
+        self.assertTrue(payload.startswith(bytes((27,64))))
+        self.assertTrue(payload.endswith(bytes((29,86,0))))
         self.assertNotIn(bytes((27,112,0,50,250)),payload)
         database.set_setting('drawer_pin','1')
         payload=receipts.build_escpos_receipt(sale_id,cut=True,open_drawer=True)
