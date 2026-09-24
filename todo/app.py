@@ -377,15 +377,19 @@ class ToDoApp(tk.Tk):
 
     def _render_customer_video_frame(self):
         if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_video is not None):return
-        import cv2
-        ok,frame=self.customer_video.read()
-        if not ok:
-            self.customer_video.release();self.customer_video=None;self._next_customer_slide();return
-        from PIL import Image,ImageTk
-        frame=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-        im=self._cover_customer_image(Image.fromarray(frame))
-        self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
-        self.customer_after_id=self.after(self.customer_video_delay,self._render_customer_video_frame)
+        try:
+            import cv2
+            ok,frame=self.customer_video.read()
+            if not ok:
+                self.customer_video.release();self.customer_video=None;self._next_customer_slide();return
+            from PIL import Image,ImageTk
+            frame=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+            im=self._cover_customer_image(Image.fromarray(frame))
+            self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
+            self.customer_after_id=self.after(self.customer_video_delay,self._render_customer_video_frame)
+        except Exception:
+            if self.customer_video is not None:self.customer_video.release();self.customer_video=None
+            self._skip_bad_customer_media()
 
     def _render_customer_slide(self):
         if not (self.customer_label and self.customer_label.winfo_exists()):return
