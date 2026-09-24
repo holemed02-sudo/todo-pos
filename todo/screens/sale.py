@@ -261,8 +261,8 @@ class SaleFrame(ttk.Frame):
     def open_drawer(self):
         from services.printers import open_drawer
         try:
-            open_drawer();self.status.config(text='Commande envoyée au tiroir.')
-        except Exception as error:messagebox.showerror('Tiroir',str(error),parent=self)
+            open_drawer();self.status.config(text=self.tr('Commande envoyée au tiroir.','تم إرسال أمر فتح الدرج.'))
+        except Exception as error:messagebox.showerror(self.tr('Tiroir','درج النقود'),str(error),parent=self)
 
     def add_misc(self):
         from services.misc import misc_line
@@ -274,7 +274,7 @@ class SaleFrame(ttk.Frame):
         if quantity is None:return
         try:
             self.cart.append(misc_line(name,price,quantity));self.refresh(len(self.cart)-1)
-        except (ValueError,ArithmeticError) as error:messagebox.showerror('Divers',str(error),parent=self)
+        except (ValueError,ArithmeticError) as error:messagebox.showerror(self.tr('Divers','منتوج إضافي'),str(error),parent=self)
         self.focus_search()
 
     def cash_tools(self,action=None):
@@ -294,10 +294,10 @@ class SaleFrame(ttk.Frame):
     def duplicate_receipt(self):
         with connect() as conn:
             rows=conn.execute('SELECT id,sale_no,total_cents,created_at FROM sales ORDER BY id DESC LIMIT 100').fetchall()
-        window=tk.Toplevel(self);window.title('Duplicata — choisir un ticket')
+        window=tk.Toplevel(self);window.title(self.tr('Duplicata — choisir un ticket','نسخة التذكرة — اختر تذكرة'))
         window.transient(self.winfo_toplevel());window.grab_set()
         tree=ttk.Treeview(window,columns=('number','date','total'),show='headings',height=12)
-        for key,label in [('number','Ticket'),('date','Date'),('total','Total')]:tree.heading(key,text=label)
+        for key,label in [('number',self.tr('Ticket','التذكرة')),('date',self.tr('Date','التاريخ')),('total',self.tr('Total','المجموع'))]:tree.heading(key,text=label)
         tree.pack(fill='both',expand=True,padx=12,pady=12)
         for row in rows:tree.insert('','end',iid=str(row['id']),values=(row['sale_no'],row['created_at'],fmt(row['total_cents'],self.currency)))
         def choose(event=None):
@@ -417,7 +417,7 @@ class SaleFrame(ttk.Frame):
             if len(rows)==1:self.add_product(rows[0]['id'])
             else:
                 self.render_products();self.focus_catalog()
-                self.status.config(text='Choisissez un produit puis Entrée.' if rows else 'Aucun produit trouvé.')
+                self.status.config(text=self.tr('Choisissez un produit puis Entrée.','اختر منتوجاً ثم اضغط Enter.') if rows else self.tr('Aucun produit trouvé.','لم يتم العثور على أي منتوج.'))
                 if not rows:self.unknown_product(code)
         return 'break'
 
@@ -430,7 +430,7 @@ class SaleFrame(ttk.Frame):
         window.transient(self.winfo_toplevel());window.grab_set()
         self.bell()
         tk.Label(window,text=self.tr('!  Produit inconnu','!  منتوج غير معروف'),bg='#DC2626',fg='white',font=('Segoe UI',30,'bold')).pack(pady=(28,8))
-        tk.Label(window,text='Produit inconnu',bg='#DC2626',fg='white',font=('Segoe UI',18)).pack()
+        tk.Label(window,text=self.tr('Produit inconnu','منتوج غير معروف'),bg='#DC2626',fg='white',font=('Segoe UI',18)).pack()
         tk.Label(window,text=code,bg='#DC2626',fg='white',font=('Segoe UI',20),wraplength=580).pack(pady=18)
         def close():
             window.destroy();self.query.set('');self.render_products();self.after_idle(self.focus_search)
@@ -454,7 +454,7 @@ class SaleFrame(ttk.Frame):
 
     def pick_barcode(self,rows):
         w=tk.Toplevel(self);w.title(self.tr('Même code-barres — choisir le produit','نفس الباركود — اختر المنتوج'));w.geometry('900x620');w.transient(self);w.grab_set()
-        ttk.Label(w,text=f'{len(rows)} produits utilisent ce même barcode',font=('Segoe UI',16,'bold')).pack(anchor='w',padx=16,pady=(14,2))
+        ttk.Label(w,text=self.tr(f'{len(rows)} produits utilisent ce même code-barres',f'{len(rows)} منتوجات تستعمل نفس الباركود'),font=('Segoe UI',16,'bold')).pack(anchor='w',padx=16,pady=(14,2))
         ttk.Label(w,text=self.tr('Choisissez le produit selon le nom, la photo et le prix.','اختر المنتوج حسب الاسم والصورة والثمن.')).pack(anchor='w',padx=16,pady=(0,10))
         canvas=tk.Canvas(w,highlightthickness=0);scroll=ttk.Scrollbar(w,orient='vertical',command=canvas.yview);inner=ttk.Frame(canvas)
         inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')));canvas.create_window((0,0),window=inner,anchor='nw');canvas.configure(yscrollcommand=scroll.set);canvas.pack(side='left',fill='both',expand=True,padx=(16,0),pady=(0,16));scroll.pack(side='right',fill='y',padx=(0,16),pady=(0,16))
@@ -464,7 +464,7 @@ class SaleFrame(ttk.Frame):
         for i,(r,p,price) in enumerate(details):
             card=tk.Frame(inner,bg='white',bd=1,relief='solid',cursor='hand2');card.grid(row=i//3,column=i%3,padx=7,pady=7,sticky='nsew')
             thumb=self.thumbnail({'id':r['id'],'image_path':p['image_path']},110);pic=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',34));pic.pack(fill='both',expand=True,padx=8,pady=6)
-            tk.Label(card,text=r['name'],bg='white',font=('Segoe UI',11,'bold'),wraplength=230).pack(fill='x',padx=8);pack=f"Pack ×{r['qty_multiplier']:g}" if r['qty_multiplier']!=1 else 'Unité';tk.Label(card,text=f"{pack} · Stock {p['stock_qty']:g}",bg='white').pack(fill='x',padx=8)
+            tk.Label(card,text=r['name'],bg='white',font=('Segoe UI',11,'bold'),wraplength=230).pack(fill='x',padx=8);pack=(self.tr('Pack','علبة')+f" ×{r['qty_multiplier']:g}") if r['qty_multiplier']!=1 else self.tr('Unité','وحدة');tk.Label(card,text=f"{pack} · {self.tr('Stock','المخزون')} {p['stock_qty']:g}",bg='white').pack(fill='x',padx=8)
             tk.Label(card,text=fmt(line_total(price,r['qty_multiplier']),self.currency),bg='#2563EB',fg='white',font=('Segoe UI',15,'bold'),pady=6).pack(fill='x',pady=(6,0))
             for widget in [card,*card.winfo_children()]:widget.bind('<Button-1>',lambda e,x=r:choose(x))
         for col in range(3):inner.columnconfigure(col,weight=1)
@@ -478,11 +478,11 @@ class SaleFrame(ttk.Frame):
         try:
             qty=float(qty)*float(self.scan_quantity.get().replace(',','.'))
             if not math.isfinite(float(qty)) or float(qty)<=0:
-                raise ValueError('Quantité invalide')
+                raise ValueError(self.tr('Quantité invalide','الكمية غير صالحة'))
             with connect() as conn:
                 p=conn.execute('SELECT * FROM products WHERE id=? AND active=1',(pid,)).fetchone()
-                if not p:raise ValueError('Article introuvable')
-                if not p['allow_fraction'] and not float(qty).is_integer():raise ValueError('Quantité entière requise')
+                if not p:raise ValueError(self.tr('Article introuvable','المنتوج غير موجود'))
+                if not p['allow_fraction'] and not float(qty).is_integer():raise ValueError(self.tr('Quantité entière requise','الكمية يجب أن تكون عدداً صحيحاً'))
                 index=next((i for i,x in enumerate(self.cart) if x['product_id']==pid and x.get('barcode_id')==barcode_id),None)
                 new_qty=float(qty)+(self.cart[index]['qty'] if index is not None else 0)
                 unit=resolve_unit_price(pid,new_qty,barcode_id,conn,self.price_grid_id)
@@ -495,7 +495,7 @@ class SaleFrame(ttk.Frame):
                     index=len(self.cart)-1
                 else:self.cart[index].update(qty=new_qty,unit_price_cents=str(unit))
             self.query.set('');self.scan_quantity.set('1');self.refresh(index);self.focus_search()
-            self.status.config(text=f"Ajouté : {p['name']}")
+            self.status.config(text=self.tr('Ajouté : ','تمت الإضافة: ')+p['name'])
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
     def selected(self):
@@ -525,18 +525,18 @@ class SaleFrame(ttk.Frame):
         if self.cart:
             chosen=str(min(index if index is not None else len(self.cart)-1,len(self.cart)-1))
             self.ticket.selection_set(chosen);self.ticket.see(chosen)
-        self.subtotal_label.config(text=f'Sous-total {fmt(sub,self.currency)}  ·  Remise ticket {fmt(self.ticket_discount_cents,self.currency)}')
+        self.subtotal_label.config(text=f"{self.tr('Sous-total','المجموع الفرعي')} {fmt(sub,self.currency)}  ·  {self.tr('Remise ticket','تخفيض التذكرة')} {fmt(self.ticket_discount_cents,self.currency)}")
         self.total_label.config(text=fmt(total,self.currency))
         self.app.update_customer_display(self.cart,total)
 
     def update_quantity(self,index,qty):
         if not math.isfinite(float(qty)):
-            messagebox.showerror('ToDo','Quantité invalide.',parent=self);return
+            messagebox.showerror('ToDo',self.tr('Quantité invalide.','الكمية غير صالحة.'),parent=self);return
         x=self.cart[index]
         if qty<=0:self.cart.pop(index)
         else:
             if not x.get('allow_fraction',False) and not float(qty).is_integer():
-                messagebox.showerror('ToDo','Quantité entière requise.',parent=self);return
+                messagebox.showerror('ToDo',self.tr('Quantité entière requise.','الكمية يجب أن تكون عدداً صحيحاً.'),parent=self);return
             try:unit=Decimal(x['unit_price_cents']) if x.get('manual_unit_price') else resolve_unit_price(x['product_id'],qty,x.get('barcode_id'))
             except ValueError as e:
                 messagebox.showerror('ToDo',str(e),parent=self);return
