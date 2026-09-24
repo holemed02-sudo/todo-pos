@@ -33,9 +33,9 @@ class PaymentDialog(tk.Toplevel):
         body.pack(fill='both', expand=True)
         modes = ttk.Frame(body)
         modes.pack(fill='x', pady=(0, 12))
-        choices=[('F2 Espèces / نقداً','CASH'),('F3 Carte / بطاقة','CARD'),('Mixte / مختلط','MIXED')]
-        if client_name:choices.append(('Crédit / كريدي','CREDIT'))
-        if client_name:ttk.Label(body,text='Client : '+client_name).pack(anchor='w')
+        choices=[(self.tr('F2 Espèces','F2 نقداً'),'CASH'),(self.tr('F3 Carte','F3 بطاقة'),'CARD'),(self.tr('Mixte','مختلط'),'MIXED')]
+        if client_name:choices.append((self.tr('Crédit','دين'),'CREDIT'))
+        if client_name:ttk.Label(body,text=self.tr('Client : ','الزبون: ')+client_name).pack(anchor='w')
         for label, value in choices:
             ttk.Radiobutton(modes, text=label, variable=self.method, value=value,
                             command=self.update_amount).pack(side='left', expand=True, padx=8)
