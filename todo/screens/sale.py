@@ -238,7 +238,9 @@ class SaleFrame(ttk.Frame):
             w.destroy();self.refresh();self.status.config(text=self.tr(f'Grille active : {name}',f'لائحة الأثمان الحالية: {name}'));self.focus_search()
         for grid_id,name in choices:
             ttk.Button(w,text=('✓ ' if grid_id==self.price_grid_id else '')+name,command=lambda g=grid_id,n=name:select(g,n)).pack(fill='x',padx=20,pady=4,ipady=6)
-        w.bind('<Escape>',lambda e:(w.destroy(),self.focus_search()))
+        def cancel():
+            self.query.set('');self.scan_quantity.set('1');w.destroy();self.focus_search()
+        w.bind('<Escape>',lambda e:cancel())
 
     def restore_price(self):
         index=self.selected()
