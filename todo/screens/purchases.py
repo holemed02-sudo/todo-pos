@@ -104,6 +104,5 @@ class PurchasesFrame(ttk.Frame):
                 self.refresh_suppliers(supplier_id)
             paid=to_cents(self.paid.get() or "0")
             pid,total=receive_purchase(supplier_id,self.invoice.get().strip(),self.lines,paid_cents=paid)
-            messagebox.showinfo("ToDo",f"{self.tr('Réception','استلام')} #{pid}
-{self.tr('Total','المجموع')}: {fmt(total)}",parent=self);self.lines=[];self.paid.set("0");self.refresh_lines();self.search()
+            messagebox.showinfo("ToDo",f"{self.tr('Réception','استلام')} #{pid}\\n{self.tr('Total','المجموع')}: {fmt(total)}",parent=self);self.lines=[];self.paid.set("0");self.refresh_lines();self.search()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
