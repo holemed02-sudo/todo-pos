@@ -84,8 +84,11 @@ def record_cash(session_id,user_id,amount_cents,kind,note):
         raise ValueError('Mouvement invalide')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
-        if not conn.execute("SELECT id FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone():
+        session=conn.execute("SELECT user_id FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone()
+        if not session:
             raise ValueError('La caisse est fermée.')
+        if int(session['user_id'])!=int(user_id):
+            raise PermissionError('Cette caisse appartient à un autre utilisateur.')
         if kind=='EXPENSE':
             conn.execute('INSERT INTO expenses(session_id,user_id,label,amount_cents) VALUES(?,?,?,?)',(session_id,user_id,note,amount))
         else:
