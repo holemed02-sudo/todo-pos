@@ -45,7 +45,8 @@ class SaleFrame(ttk.Frame):
         self.payment_label=ttk.Label(top,text=self.tr('Paiement : CASH','الأداء: نقداً'),style='Accent.TLabel')
         self.payment_label.pack(side='right')
         self.client_button=ttk.Button(top,text=self.tr('F6 Client : passage','F6 الزبون: عابر'),command=self.choose_client)
-        self.client_button.pack(side='left',padx=18)
+        if get_setting('require_client_on_sale','0')=='1':
+            self.client_button.pack(side='left',padx=18)
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
             self.seller_button.pack(side='left',padx=(0,12))
