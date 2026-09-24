@@ -133,7 +133,7 @@ class SettingsFrame(ttk.Frame):
         self.print_mode_box['values']=list(self.print_mode_labels);self.print_mode_box.set(next((k for k,v in self.print_mode_labels.items() if v==self.print_mode.get()),list(self.print_mode_labels)[0]));self.print_mode_box.grid(row=1,column=1,sticky='w',padx=8)
         ttk.Label(p,text=self.tr('Comportement impression','سلوك الطباعة')).grid(row=2,column=0,sticky='w')
         ttk.Label(p,text=self.tr('Demander / Toujours / Jamais','سؤال / دائماً / أبداً')).grid(row=2,column=1,columnspan=2,sticky='w')
-        self.drawer_enabled=tk.BooleanVar(value=get_setting('drawer_enabled','0')=='1');self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
+        self.drawer_enabled=tk.BooleanVar(value=get_setting('drawer_enabled','0')=='1')
         self.drawer_pin=tk.StringVar(value=get_setting('drawer_pin','0'))
         ttk.Checkbutton(p,text=self.tr('Tiroir connecté à une imprimante ESC/POS','درج النقود متصل بطابعة ESC/POS'),variable=self.drawer_enabled).grid(row=3,column=0,columnspan=2,sticky='w')
         ttk.Label(p,text=self.tr('Connecteur tiroir','موصل درج النقود')).grid(row=4,column=0,sticky='w')
