@@ -314,6 +314,7 @@ class ToDoApp(tk.Tk):
             target=min(others,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
             w.geometry(f"{target.width}x{target.height}+{target.x}+{target.y}");w.overrideredirect(True)
         else:
+            # Keep a normal window on single-monitor tills so the cashier is not trapped.
             w.geometry("1280x720")
         w.bind("<Escape>",lambda e:self.toggle_customer_display())
         self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center",bd=0,highlightthickness=0)
