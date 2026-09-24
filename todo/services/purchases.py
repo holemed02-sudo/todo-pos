@@ -24,6 +24,10 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
         paid_cents = int(paid_cents or 0)
         if paid_cents < 0 or paid_cents > total:
             raise ValueError("Règlement fournisseur invalide")
+        if supplier_id:
+            supplier=conn.execute("SELECT 1 FROM suppliers WHERE id=? AND active=1",(supplier_id,)).fetchone()
+            if not supplier:
+                raise ValueError("Fournisseur introuvable")
         if paid_cents and not supplier_id:
             raise ValueError("Fournisseur obligatoire pour enregistrer un règlement")
         cur = conn.execute(
