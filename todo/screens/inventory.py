@@ -79,7 +79,7 @@ class InventaireFrame(ttk.Frame):
                         f'{diff:+g}' if abs(diff) > 0.001 else '—'),
                 tags=(tag,))
         pending=sum(1 for p in self.products if abs(self.counted.get(p['id'],float(p['stock_qty']))-float(p['stock_qty']))>0.001)
-        self.pending_label.config(text=f'{pending} écart(s) à valider')
+        self.pending_label.config(text=self.tr(f'{pending} écart(s) à valider',f'{pending} فرق في انتظار التأكيد'))
 
     def _edit_cell(self, event):
         sel = self.tree.selection()
@@ -87,7 +87,7 @@ class InventaireFrame(ttk.Frame):
         pid = int(sel[0])
         pname = self.tree.item(sel[0], 'values')[1]
         val = simpledialog.askfloat(
-            'Inventaire', f'Quantité comptée — {pname} :', parent=self)
+            self.tr('Inventaire','الجرد'), self.tr(f'Quantité comptée — {pname} :',f'الكمية المعدودة — {pname}:'), parent=self)
         if val is None: return
         self.counted[pid] = val
         self._redraw()
@@ -105,7 +105,7 @@ class InventaireFrame(ttk.Frame):
                 if counted is None: continue
                 delta = counted - theory
                 if abs(delta) < 0.001: continue
-                apply_stock_movement(conn, pid, delta, 'INVENTAIRE',
+                apply_stock_movement(conn, pid, delta, 'INVENTORY',
                                      note=f'Inventaire : théorique {theory:g} → compté {counted:g}')
                 n_adj += 1
             conn.commit()
