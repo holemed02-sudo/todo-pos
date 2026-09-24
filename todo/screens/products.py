@@ -168,7 +168,7 @@ class ProductEditor(tk.Toplevel):
     def add_barcode_row(self, barcode="", multiplier="1", price=""):
         row=ttk.Frame(self.barcodes_frame);row.pack(fill="x",pady=2)
         code=tk.StringVar(value=str(barcode));mult=tk.StringVar(value=str(multiplier));pack=tk.StringVar(value=str(price))
-        ttk.Entry(row,textvariable=code,width=22).pack(side="left",padx=3);ttk.Label(row,text="×").pack(side="left");ttk.Entry(row,textvariable=mult,width=7).pack(side="left",padx=3);ttk.Label(row,text="Prix pack").pack(side="left");ttk.Entry(row,textvariable=pack,width=10).pack(side="left",padx=3)
+        ttk.Entry(row,textvariable=code,width=22).pack(side="left",padx=3);ttk.Label(row,text="×").pack(side="left");ttk.Entry(row,textvariable=mult,width=7).pack(side="left",padx=3);ttk.Label(row,text=self.tr("Prix pack","ثمن الحزمة")).pack(side="left");ttk.Entry(row,textvariable=pack,width=10).pack(side="left",padx=3)
         item=[code,mult,pack,row]
         def remove():
             row.destroy()
@@ -182,20 +182,20 @@ class ProductEditor(tk.Toplevel):
         for code,mult,pack,_ in self.barcode_rows:
             value=code.get().strip()
             if not value:continue
-            if value in seen:raise ValueError("Code-barres répété dans la même fiche.")
+            if value in seen:raise ValueError(self.tr("Code-barres répété dans la même fiche.","الباركود مكرر في نفس بطاقة المنتوج."))
             qty=float((mult.get() or "1").replace(",", "."));price=to_cents(pack.get()) if pack.get().strip() else None
-            if not math.isfinite(qty) or qty<=0 or (price is not None and price<0):raise ValueError("Barcode / pack invalide")
+            if not math.isfinite(qty) or qty<=0 or (price is not None and price<0):raise ValueError(self.tr("Barcode / pack invalide","باركود / حزمة غير صالحة"))
             seen.add(value);result.append((value,qty,price))
         return result
 
     def add_offer_row(self, minimum="", price="", mode="UNIT"):
         row=ttk.Frame(self.offers_frame);row.pack(fill="x",pady=2)
         minimum_var=tk.StringVar(value=str(minimum));price_var=tk.StringVar(value=str(price))
-        mode_var=tk.StringVar(value='Lot' if mode=='BUNDLE' else 'Prix/unité')
-        ttk.Combobox(row,textvariable=mode_var,values=['Prix/unité','Lot'],state='readonly',width=10).pack(side='left')
-        ttk.Label(row,text="Qté").pack(side="left")
+        mode_var=tk.StringVar(value=self.tr('Lot','حزمة') if mode=='BUNDLE' else self.tr('Prix/unité','ثمن/الوحدة'))
+        ttk.Combobox(row,textvariable=mode_var,values=[self.tr('Prix/unité','ثمن/الوحدة'),self.tr('Lot','حزمة')],state='readonly',width=10).pack(side='left')
+        ttk.Label(row,text=self.tr("Qté","الكمية")).pack(side="left")
         ttk.Entry(row,textvariable=minimum_var,width=9).pack(side="left",padx=4)
-        ttk.Label(row,text="Prix DH").pack(side="left")
+        ttk.Label(row,text=self.tr("Prix DH","الثمن DH")).pack(side="left")
         ttk.Entry(row,textvariable=price_var,width=12).pack(side="left",padx=4)
         def remove():
             row.destroy();self.offer_rows.remove((minimum_var,price_var,mode_var))
@@ -207,17 +207,17 @@ class ProductEditor(tk.Toplevel):
         for minimum_var,price_var,mode_var in self.offer_rows:
             if not minimum_var.get().strip() and not price_var.get().strip():continue
             q=float(minimum_var.get().replace(',','.'));price=to_cents(price_var.get())
-            if not math.isfinite(q) or q<=0 or price<0:raise ValueError("Offre invalide")
-            if any(v[0]==q for v in values):raise ValueError('Une seule offre par quantité.')
-            values.append((q,price,'BUNDLE' if mode_var.get()=='Lot' else 'UNIT'))
+            if not math.isfinite(q) or q<=0 or price<0:raise ValueError(self.tr("Offre invalide","عرض غير صالح"))
+            if any(v[0]==q for v in values):raise ValueError(self.tr('Une seule offre par quantité.','يسمح بعرض واحد فقط لكل كمية.'))
+            values.append((q,price,'BUNDLE' if mode_var.get()==self.tr('Lot','حزمة') else 'UNIT'))
         return values
 
     def choose_image(self):
-        p=filedialog.askopenfilename(parent=self,filetypes=[("Images","*.png *.jpg *.jpeg *.webp *.bmp"),("Tous","*.*")])
+        p=filedialog.askopenfilename(parent=self,filetypes=[(self.tr("Images","الصور"),"*.png *.jpg *.jpeg *.webp *.bmp"),(self.tr("Tous","الكل"),"*.*")])
         if p:self.img_source=p;self.preview_image(p)
 
     def add_category(self):
-        name=simpledialog.askstring("Famille","Nom de la nouvelle famille :",parent=self)
+        name=simpledialog.askstring(self.tr("Famille","العائلة"),self.tr("Nom de la nouvelle famille :","اسم العائلة الجديدة:"),parent=self)
         if not name or not name.strip():return
         name=name.strip()
         try:
