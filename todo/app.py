@@ -338,7 +338,9 @@ class ToDoApp(tk.Tk):
         if self.customer_slides and self.customer_slides[self.customer_slide_index].suffix.lower() in (".mp4",".avi",".mov",".mkv"):
             self._start_customer_video();return
         self._render_customer_slide()
-        seconds=max(2,int(get_setting("customer_slide_seconds","6") or 6))
+        try:seconds=int(get_setting("customer_slide_seconds","6") or 6)
+        except (TypeError,ValueError):seconds=6
+        seconds=max(2,min(300,seconds))
         self.customer_after_id=self.after(seconds*1000,self._next_customer_slide)
 
     def _next_customer_slide(self):
