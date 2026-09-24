@@ -27,20 +27,31 @@ class StockFrame(ttk.Frame):
             card=tk.Frame(self.kpi,bg=bg,height=62);card.pack(side="left",fill="x",expand=True,padx=3);card.pack_propagate(False)
             value=tk.Label(card,text="0",bg=bg,fg="white",font=("Segoe UI",15,"bold"));value.pack(anchor="w",padx=10,pady=(5,0));tk.Label(card,text=title,bg=bg,fg="white").pack(anchor="w",padx=10);self.kpi_values.append(value)
         self.refresh()
+    def _movement_label(self, value):
+        labels={'ADJUSTMENT':self.tr('Ajustement','تسوية'),'OPENING':self.tr('Ouverture','رصيد افتتاحي'),'INVENTORY':self.tr('Inventaire','جرد'),'PURCHASE':self.tr('Réception','استلام'),'SALE':self.tr('Vente','بيع'),'RETURN':self.tr('Retour','إرجاع'),'OUT':self.tr('Sortie','إخراج')}
+        return labels.get(value, value or '')
+
+    def _ref_label(self, value):
+        labels={'purchase':self.tr('Réception','استلام'),'sale':self.tr('Vente','بيع'),'return':self.tr('Retour','إرجاع'),'inventory':self.tr('Inventaire','جرد'),'import':self.tr('Import','استيراد'),'adjustment':self.tr('Ajustement','تسوية')}
+        return labels.get((value or '').lower(), value or '')
+
     def refresh(self):
         q=f"%{self.q.get().strip()}%";extra=""
         if self.filter.get()==self.tr("Alertes stock","تنبيهات المخزون"):extra=" AND p.stock_qty<=p.alert_qty"
         elif self.filter.get()==self.tr("Stock négatif","مخزون سالب"):extra=" AND p.stock_qty<0"
         with connect() as c:
             r=c.execute("""SELECT p.id,p.name,p.stock_qty,p.alert_qty,
-                COALESCE((SELECT movement_type||' '||qty_delta||' @ '||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
+                COALESCE((SELECT movement_type||'|'||qty_delta||'|'||created_at FROM stock_movements sm WHERE sm.product_id=p.id ORDER BY sm.id DESC LIMIT 1),'') last
                 FROM products p WHERE p.active=1 AND p.name LIKE ?"""+extra+""" ORDER BY p.name""",(q,)).fetchall()
             st=c.execute("""SELECT COUNT(*),COALESCE(SUM(CASE WHEN stock_qty<=alert_qty THEN 1 ELSE 0 END),0),COALESCE(SUM(CASE WHEN stock_qty<0 THEN 1 ELSE 0 END),0),COALESCE(SUM(stock_qty*purchase_price_cents),0),COALESCE(SUM(stock_qty*sale_price_cents),0) FROM products WHERE active=1""").fetchone()
         for label,value in zip(self.kpi_values,[st[0],st[1],st[2],f"{st[3]/100:.2f}",f"{st[4]/100:.2f}"]):label.config(text=str(value))
         self.t.delete(*self.t.get_children())
         for x in r:
             tags=('negative',) if x['stock_qty']<0 else (('alert',) if x['stock_qty']<=x['alert_qty'] else ())
-            self.t.insert("", "end",values=(x["id"],x["name"],f"{x['stock_qty']:g}",f"{x['alert_qty']:g}",x["last"]),tags=tags)
+            last=x["last"]
+            if last:
+                parts=last.split("|",2);last=f"{self._movement_label(parts[0])} {parts[1]} @ {parts[2]}" if len(parts)==3 else last
+            self.t.insert("", "end",values=(x["id"],x["name"],f"{x['stock_qty']:g}",f"{x['alert_qty']:g}",last),tags=tags)
         self.t.tag_configure('negative',background='#FEE2E2',foreground='#991B1B');self.t.tag_configure('alert',background='#FEF3C7',foreground='#92400E')
     def adjust(self):
         s=self.t.selection()
@@ -64,6 +75,6 @@ class StockFrame(ttk.Frame):
             tree.heading(key,text=label);tree.column(key,width=width)
         tree.pack(fill='both',expand=True,padx=12,pady=12)
         with connect() as conn:
-            rows=conn.execute("SELECT sm.*,COALESCE(u.display_name,'Historique') username FROM stock_movements sm LEFT JOIN users u ON u.id=sm.user_id WHERE product_id=? ORDER BY sm.id DESC",(pid,)).fetchall()
+            rows=conn.execute("SELECT sm.*,u.display_name username FROM stock_movements sm LEFT JOIN users u ON u.id=sm.user_id WHERE product_id=? ORDER BY sm.id DESC",(pid,)).fetchall()
         for r in rows:
-            tree.insert('','end',values=(r['created_at'],r['username'],r['movement_type'],r['old_qty'],r['qty_delta'],r['stock_after'],f"{r['ref_type']} #{r['ref_id'] or ''}",r['note']))
+            tree.insert('','end',values=(r['created_at'],r['username'] or self.tr('Historique','سجل'),self._movement_label(r['movement_type']),r['old_qty'],r['qty_delta'],r['stock_after'],f"{self._ref_label(r['ref_type'])} #{r['ref_id'] or ''}",r['note']))
