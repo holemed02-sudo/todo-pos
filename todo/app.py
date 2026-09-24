@@ -358,7 +358,17 @@ class ToDoApp(tk.Tk):
             self._render_customer_video_frame()
         except Exception:
             if self.customer_video is not None:self.customer_video.release();self.customer_video=None
-            self._next_customer_slide()
+            self._skip_bad_customer_media()
+
+    def _skip_bad_customer_media(self):
+        if not self.customer_slides:return
+        bad=self.customer_slides.pop(self.customer_slide_index)
+        if not self.customer_slides:
+            lang=get_setting('language','fr')
+            self.customer_label.config(image="",text=(f'وسائط غير صالحة: {bad.name}' if lang=='ar' else f'Média invalide : {bad.name}'))
+            return
+        self.customer_slide_index%=len(self.customer_slides)
+        self._show_customer_slide()
 
     def _render_customer_video_frame(self):
         if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_video is not None):return
