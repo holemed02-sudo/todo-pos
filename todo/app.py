@@ -258,13 +258,16 @@ class ToDoApp(tk.Tk):
             self._mark_nav(getattr(self,'current_key','home'))
 
     def choose_theme(self):
-        window=tk.Toplevel(self);window.title('Thème / الألوان');window.transient(self);window.grab_set()
-        ttk.Label(window,text='Couleur principale / اللون الرئيسي').pack(padx=25,pady=15)
+        lang=get_setting('language','fr')
+        tr=lambda fr,ar: ar if lang=='ar' else fr
+        window=tk.Toplevel(self);window.title(tr('Thème','الألوان'));window.transient(self);window.grab_set()
+        ttk.Label(window,text=tr('Couleur principale','اللون الرئيسي')).pack(padx=25,pady=15)
         def choose(name):
             set_setting('theme',name);self.apply_theme();window.destroy()
-        for name,color in [('Bleu','#2563EB'),('Vert','#15803D'),('Violet','#7C3AED')]:
-            tk.Button(window,text=name,bg=color,fg='white',command=lambda n=name:choose(n)).pack(fill='x',padx=25,pady=6,ipady=10)
-        ttk.Button(window,text='Fermer',command=window.destroy).pack(pady=12)
+        themes=[('Bleu','أزرق','#2563EB'),('Vert','أخضر','#15803D'),('Violet','بنفسجي','#7C3AED')]
+        for fr,ar,color in themes:
+            tk.Button(window,text=tr(fr,ar),bg=color,fg='white',command=lambda n=fr:choose(n)).pack(fill='x',padx=25,pady=6,ipady=10)
+        ttk.Button(window,text=tr('Fermer','إغلاق'),command=window.destroy).pack(pady=12)
 
     def _is_text_input(self, widget):
         try:
