@@ -76,3 +76,19 @@ class SupplierTests(unittest.TestCase):
         add_supplier_payment(s1, 400, purchase_id=p1)
         with self.assertRaises(ValueError):
             add_supplier_payment(s1, 601, purchase_id=p1)
+
+    def test_supplier_payment_requires_admin_and_leaves_balance_unchanged(self):
+        sid = save_supplier('Protected Supplier')
+        with database.connect() as conn:
+            pid = conn.execute("INSERT INTO purchases(supplier_id,total_cents) VALUES(?,?)",(sid,1000)).lastrowid
+            cashier = conn.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES('pay_cashier','Pay Cashier','x','cashier')").lastrowid
+        token = current_user.set(cashier)
+        try:
+            with self.assertRaises(PermissionError):
+                add_supplier_payment(sid, 300, purchase_id=pid)
+        finally:
+            current_user.reset(token)
+        rows = supplier_purchases(sid)
+        self.assertEqual(rows[0]['paid'], 0)
+        with database.connect() as conn:
+            self.assertEqual(conn.execute("SELECT COUNT(*) FROM supplier_payments WHERE supplier_id=?",(sid,)).fetchone()[0],0)
