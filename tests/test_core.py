@@ -9,7 +9,7 @@ from services.sales import complete_sale,create_return,hold_sale,resume_held,lis
 from services.pricing import resolve_unit_price,line_total
 from services.inventory import apply_stock_movement
 from services.purchases import receive_purchase
-from services.catalog import search_products,scan_barcode
+from services.catalog import search_products,scan_barcode,add_product_barcode
 from services.security import current_user,hash_pin,verify_pin
 
 class CoreTests(unittest.TestCase):
@@ -185,6 +185,17 @@ class CoreTests(unittest.TestCase):
   invalid=Path(self.temp.name)/'bad.db';invalid.write_bytes(b'not sqlite')
   with self.assertRaises((ValueError,sqlite3.Error)):backup.restore_backup(invalid)
   self.assertEqual(self.stock(),20)
+ def test_catalog_barcode_pack_service(self):
+  second=self.product('Second barcode product')
+  bid=add_product_barcode(self.pid,'BOX6',6,5400)
+  self.assertTrue(bid)
+  add_product_barcode(second,'BOX6',1,None)
+  rows=scan_barcode('BOX6')
+  self.assertEqual(len(rows),2)
+  own=[r for r in rows if r['id']==self.pid][0]
+  self.assertEqual(own['qty_multiplier'],6)
+  with self.assertRaises(ValueError):add_product_barcode(self.pid,'BOX6',1,None)
+  with self.assertRaises(ValueError):add_product_barcode(self.pid,'BAD',0,None)
  def test_search_and_ambiguity(self):
   second=self.product('Huile Olive')
   with db.connect() as c:
