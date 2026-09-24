@@ -307,7 +307,9 @@ class ToDoApp(tk.Tk):
         except Exception:pass
         if len(screens)>1:
             main_x=self.winfo_rootx();main_y=self.winfo_rooty()
-            primary=min(screens,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
+            def contains(m,x,y):return m.x<=x<m.x+m.width and m.y<=y<m.y+m.height
+            primary=next((m for m in screens if contains(m,main_x,main_y)),None)
+            if primary is None:primary=min(screens,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
             others=[m for m in screens if m is not primary]
             target=min(others,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
             w.geometry(f"{target.width}x{target.height}+{target.x}+{target.y}");w.overrideredirect(True)
