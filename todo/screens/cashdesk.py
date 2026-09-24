@@ -85,12 +85,42 @@ Cash OUT       : {fmt(t['cash_out'])}
             tree.insert("","end",values=(r["id"],r["username"],r["opened_at"],r["closed_at"],fmt(r["opening_cash_cents"],""),fmt(r["expected_cash_cents"],""),fmt(r["actual_cash_cents"] or 0,""),fmt(diff,"")),tags=(tag,))
         ttk.Label(w,text=self.tr(f"{len(rows)} clôture(s) · Écart cumulé {fmt(total_diff)}",f"{len(rows)} إغلاق · الفرق التراكمي {fmt(total_diff)}"),font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
 
+    def _count_close_cash(self, expected):
+        w=tk.Toplevel(self);w.title(self.tr('Comptage caisse','عدّ الصندوق'));w.transient(self.winfo_toplevel());w.grab_set();w.geometry('560x520')
+        ttk.Label(w,text=self.tr('Cash attendu','النقد المتوقع'),font=('Segoe UI',11)).pack(pady=(16,2))
+        ttk.Label(w,text=fmt(expected),font=('Segoe UI',24,'bold')).pack()
+        counts={};total=tk.IntVar(value=0);result={'value':None}
+        summary=ttk.Label(w,text='',font=('Segoe UI',10));summary.pack(pady=6)
+        total_label=ttk.Label(w,text=fmt(0),font=('Segoe UI',22,'bold'));total_label.pack(pady=4)
+        grid=ttk.Frame(w);grid.pack(fill='x',padx=16,pady=8)
+        values=(200,100,50,20,10,5,2,1,0.5)
+        def refresh():
+            cents=sum(to_cents(str(v))*n for v,n in counts.items());total.set(cents)
+            total_label.config(text=fmt(cents))
+            parts=[f'{v:g}×{n}' for v,n in counts.items() if n]
+            summary.config(text=' · '.join(parts))
+        def add(v,delta=1):
+            counts[v]=max(0,counts.get(v,0)+delta);refresh()
+        for i,v in enumerate(values):
+            box=ttk.Frame(grid);box.grid(row=i//3,column=i%3,sticky='nsew',padx=4,pady=4)
+            ttk.Button(box,text=f'+ {v:g} DH',command=lambda x=v:add(x),width=13).pack(fill='x')
+            ttk.Button(box,text=self.tr('Retirer','نقص')+f' {v:g}',command=lambda x=v:add(x,-1),width=13).pack(fill='x',pady=(2,0))
+        for c in range(3):grid.columnconfigure(c,weight=1)
+        def clear():counts.clear();refresh()
+        def validate():result['value']=total.get();w.destroy()
+        buttons=ttk.Frame(w);buttons.pack(side='bottom',fill='x',padx=16,pady=16)
+        ttk.Button(buttons,text=self.tr('Effacer','مسح'),command=clear).pack(side='left')
+        ttk.Button(buttons,text=self.tr('Annuler','إلغاء'),command=w.destroy).pack(side='right',padx=6)
+        ttk.Button(buttons,text=self.tr('Valider le comptage','تأكيد العد'),style='Primary.TButton',command=validate).pack(side='right')
+        w.bind('<Escape>',lambda e:w.destroy());self.wait_window(w)
+        return None if result['value'] is None else result['value']/100
+
     def close(self):
         s=get_open_session()
         if not s:return
         with connect() as c:t=session_totals(c,s["id"])
         expected=int(s["opening_cash_cents"])+t["cash_sales"]-t["cash_returns"]-t["expenses"]+t["cash_in"]-t["cash_out"]
-        actual=simpledialog.askfloat(self.tr("Clôture","إغلاق الصندوق"),self.tr(f"Cash attendu : {fmt(expected)}\n\nCash réel compté (DH):",f"النقد المتوقع : {fmt(expected)}\n\nالنقد الفعلي المحسوب (DH):"),parent=self,minvalue=0)
+        actual=self._count_close_cash(expected)
         if actual is None:return
         try:
             expected,diff,t=close_session(s["id"],to_cents(actual))
