@@ -120,7 +120,8 @@ class CoreTests(unittest.TestCase):
  def test_bundle_groups_remainder_and_refund(self):
   with db.connect() as c:
    c.execute("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,3,2500,'BUNDLE')",(self.pid,))
-  for qty,total in [(1,1000),(2,2000),(3,2500),(4,3500),(6,5000),(7,6000)]:
+  # Threshold promo applies its per-unit rate to every unit once reached.
+  for qty,total in [(1,1000),(2,2000),(3,2500),(4,3333),(6,5000),(7,5833)]:
    self.assertEqual(line_total(resolve_unit_price(self.pid,qty),qty),total)
   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=3)],'CASH',2500)
   refunds=[create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])['total_cents'] for _ in range(3)]
