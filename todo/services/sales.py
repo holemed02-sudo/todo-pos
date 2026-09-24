@@ -160,6 +160,8 @@ def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH
         conn.execute('BEGIN IMMEDIATE');validate_session(conn,session_id,user_id)
         sale=conn.execute('SELECT * FROM sales WHERE id=?',(sale_id,)).fetchone()
         if not sale:raise ValueError('Vente introuvable')
+        if int(sale['session_id'])!=int(session_id):
+            raise ValueError('La vente appartient à une autre session de caisse.')
         requested={}
         for item,qty in items:
             qty=Decimal(str(qty))
