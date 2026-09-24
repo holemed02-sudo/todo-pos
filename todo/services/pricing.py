@@ -29,9 +29,9 @@ def resolve_unit_price(product_id, qty, barcode_id=None, conn=None, grid_id=None
     if rule and rule['pricing_mode']=='BUNDLE':
         count=Decimal(str(qty));size=Decimal(str(rule['min_qty']))
         if size<=0:raise ValueError('Quantité offre invalide')
-        groups=count//size;remainder=count-groups*size
-        # Complete groups use the advertised total; leftover units keep the normal price.
-        return (groups*rule['unit_price_cents']+remainder*(grid_price if grid_price is not None else p[0]))/count
+        # Once the threshold is reached, keep the promotional per-unit price for
+        # the whole quantity (e.g. a 2+ offer also applies to quantities 3, 5...).
+        return Decimal(rule['unit_price_cents'])/size
     return Decimal(rule[0] if rule else (grid_price if grid_price is not None else p[0]))
 
 def line_total(unit,qty):
