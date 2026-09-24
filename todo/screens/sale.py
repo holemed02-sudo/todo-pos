@@ -493,7 +493,8 @@ class SaleFrame(ttk.Frame):
                 if index is not None and self.cart[index].get('manual_unit_price'):
                     unit=Decimal(self.cart[index]['unit_price_cents'])
                 barcode_row=conn.execute('SELECT qty_multiplier,price_override_cents FROM product_barcodes WHERE id=?',(barcode_id,)).fetchone() if barcode_id else None
-                step=barcode_row['qty_multiplier'] if barcode_row and barcode_row['price_override_cents'] is not None else 1
+                # A carton/pack barcode must keep its physical quantity step even when it has no special pack price.
+                step=barcode_row['qty_multiplier'] if barcode_row else 1
                 if index is None:
                     self.cart.append(dict(product_id=pid,name=p['name'],qty=new_qty,barcode_id=barcode_id,barcode=barcode,unit_price_cents=str(unit),qty_multiplier=step,base_price_cents=p['sale_price_cents'],image_path=p['image_path'],allow_fraction=p['allow_fraction'],discount_cents=0))
                     index=len(self.cart)-1
