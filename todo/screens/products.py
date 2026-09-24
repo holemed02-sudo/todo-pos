@@ -7,7 +7,7 @@ import math
 from services.money import to_cents
 from services.images import import_image, abs_image
 from screens.common import labeled_entry
-from services.catalog import list_categories, get_product_categories, set_product_categories, add_product_barcode
+from services.catalog import list_categories, get_product_categories, set_product_categories, add_product_barcode, list_product_label_barcodes, product_label_data
 try:
     from PIL import Image,ImageTk
     PIL=True
@@ -402,31 +402,68 @@ class ProductsFrame(ttk.Frame):
         pid=self.sel()
         if not pid:
             messagebox.showinfo(self.tr("Étiquette","الملصق"),self.tr("Sélectionnez un article.","اختر منتوجاً."),parent=self);return
-        copies=simpledialog.askinteger(self.tr("Étiquette","الملصق"),self.tr("Nombre d'étiquettes :","عدد الملصقات:"),initialvalue=1,minvalue=1,maxvalue=200,parent=self)
-        if copies is None:return
-        path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Enregistrer les étiquettes","حفظ الملصقات"))
-        if not path:return
         try:
+            codes=list_product_label_barcodes(pid)
+            if not codes:raise ValueError(self.tr("Cet article n'a pas de code-barres.","هذا المنتوج لا يتوفر على باركود."))
+            barcode_id=codes[0]['id']
+            if len(codes)>1:
+                w=tk.Toplevel(self);w.title(self.tr("Choisir le code-barres","اختر الباركود"));w.transient(self);w.grab_set()
+                choice=tk.IntVar(value=barcode_id)
+                ttk.Label(w,text=self.tr("Unité / carton à imprimer :","الوحدة / الكرتونة المراد طباعتها:")).pack(anchor='w',padx=14,pady=(14,6))
+                for code in codes:
+                    mult=float(code['qty_multiplier']);label=(code['label'] or '').strip()
+                    desc=f"{code['barcode']} — {label or self.tr('Unité','وحدة')}"
+                    if abs(mult-1)>1e-9:desc+=f" — ×{mult:g}"
+                    if code['price_override_cents'] is not None:desc+=f" — {fmt(code['price_override_cents'])}"
+                    ttk.Radiobutton(w,text=desc,variable=choice,value=code['id']).pack(anchor='w',padx=18,pady=3)
+                accepted={'ok':False}
+                def accept():accepted['ok']=True;w.destroy()
+                ttk.Button(w,text=self.tr("Continuer","متابعة"),command=accept).pack(pady=12)
+                w.protocol("WM_DELETE_WINDOW",w.destroy);self.wait_window(w)
+                if not accepted['ok']:return
+                barcode_id=choice.get()
+            data=product_label_data(pid,barcode_id)
+            copies=simpledialog.askinteger(self.tr("Étiquette","الملصق"),self.tr("Nombre d'étiquettes :","عدد الملصقات:"),initialvalue=1,minvalue=1,maxvalue=500,parent=self)
+            if copies is None:return
+            size=simpledialog.askstring(self.tr("Format","القياس"),self.tr("Format: A4, 58x40 ou 50x30","القياس: A4 أو 58x40 أو 50x30"),initialvalue="58x40",parent=self)
+            if size is None:return
+            size=size.strip().upper().replace(' ','')
+            if size not in ('A4','58X40','50X30'):raise ValueError(self.tr("Format invalide.","قياس غير صالح."))
+            path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Enregistrer les étiquettes","حفظ الملصقات"))
+            if not path:return
             from reportlab.lib.pagesizes import A4
+            from reportlab.lib.units import mm
             from reportlab.pdfgen import canvas
             from reportlab.graphics.barcode import code128
-            with connect() as c:
-                row=c.execute("""SELECT p.name,p.sale_price_cents,(SELECT barcode FROM product_barcodes b WHERE b.product_id=p.id ORDER BY id LIMIT 1) barcode FROM products p WHERE p.id=?""",(pid,)).fetchone()
-            if not row:raise ValueError(self.tr("Article introuvable.","المنتوج غير موجود."))
-            barcode=(row["barcode"] or "").strip()
-            if not barcode:raise ValueError(self.tr("Cet article n'a pas de code-barres.","هذا المنتوج لا يتوفر على باركود."))
-            cv=canvas.Canvas(path,pagesize=A4);page_w,page_h=A4;label_w=page_w/3;label_h=95
-            for n in range(copies):
-                slot=n%24;col=slot%3;line=slot//3
-                if n and slot==0:cv.showPage()
-                x=col*label_w+8;y=page_h-(line+1)*label_h+8
-                cv.rect(x,y,label_w-16,label_h-10)
-                cv.setFont("Helvetica-Bold",9);cv.drawCentredString(x+(label_w-16)/2,y+label_h-25,row["name"][:34])
-                cv.setFont("Helvetica-Bold",13);cv.drawCentredString(x+(label_w-16)/2,y+label_h-42,fmt(row["sale_price_cents"]))
-                bc=code128.Code128(barcode,barHeight=24,barWidth=0.7);bc.drawOn(cv,x+((label_w-16)-bc.width)/2,y+14)
-                cv.setFont("Helvetica",7);cv.drawCentredString(x+(label_w-16)/2,y+5,barcode)
+            barcode=data['barcode'];name=data['name'];price=data['price_cents']
+            if size=='A4':
+                cv=canvas.Canvas(path,pagesize=A4);page_w,page_h=A4;label_w=page_w/3;label_h=95;slots=24
+                for n in range(copies):
+                    slot=n%slots;col=slot%3;line=slot//3
+                    if n and slot==0:cv.showPage()
+                    x=col*label_w+8;y=page_h-(line+1)*label_h+8
+                    self._draw_label(cv,x,y,label_w-16,label_h-10,name,price,barcode,data)
+            else:
+                w_mm,h_mm=(58,40) if size=='58X40' else (50,30)
+                page=(w_mm*mm,h_mm*mm);cv=canvas.Canvas(path,pagesize=page)
+                for n in range(copies):
+                    if n:cv.showPage()
+                    self._draw_label(cv,2*mm,2*mm,page[0]-4*mm,page[1]-4*mm,name,price,barcode,data)
             cv.save();messagebox.showinfo(self.tr("Étiquette","الملصق"),self.tr(f"{copies} étiquette(s) créée(s).",f"تم إنشاء {copies} ملصق."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Étiquette","الملصق"),str(e),parent=self)
+
+    def _draw_label(self,cv,x,y,w,h,name,price,barcode,data):
+        from reportlab.graphics.barcode import code128
+        cv.rect(x,y,w,h)
+        title=name[:34]
+        if data.get('barcode_label'):title=(title+" "+data['barcode_label'])[:38]
+        mult=float(data.get('qty_multiplier') or 1)
+        if abs(mult-1)>1e-9:title=(title+f" ×{mult:g}")[:42]
+        cv.setFont("Helvetica-Bold",8);cv.drawCentredString(x+w/2,y+h-13,title)
+        cv.setFont("Helvetica-Bold",12);cv.drawCentredString(x+w/2,y+h-29,fmt(price))
+        bar_h=max(14,min(24,h-48));bc=code128.Code128(barcode,barHeight=bar_h,barWidth=0.55)
+        scale=min(1,max(0.45,(w-8)/bc.width));cv.saveState();cv.translate(x+(w-bc.width*scale)/2,y+11);cv.scale(scale,1);bc.drawOn(cv,0,0);cv.restoreState()
+        cv.setFont("Helvetica",6.5);cv.drawCentredString(x+w/2,y+3,barcode)
 
     def export_catalogue(self):
         path=filedialog.asksaveasfilename(parent=self,defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title=self.tr("Exporter le catalogue","تصدير الكتالوج"))
