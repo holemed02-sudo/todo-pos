@@ -166,7 +166,7 @@ class SortiesFrame(ttk.Frame):
             rows = conn.execute(
                 "SELECT p.id, p.name, p.stock_qty, "
                 "  COALESCE((SELECT sm.qty_delta||'  '||sm.note||'  @ '||sm.created_at "
-                "             FROM stock_movements sm WHERE sm.product_id=p.id AND sm.movement_type='SORTIE' "
+                "             FROM stock_movements sm WHERE sm.product_id=p.id AND sm.movement_type='OUT' "
                 "             ORDER BY sm.id DESC LIMIT 1),'') last_exit "
                 "FROM products p WHERE p.active=1 "
                 "AND (? = '' OR instr(lower(p.name), lower(?)) > 0) ORDER BY p.name",
@@ -175,7 +175,7 @@ class SortiesFrame(ttk.Frame):
             log_rows = conn.execute(
                 "SELECT sm.created_at, p.name, sm.qty_delta, sm.note "
                 "FROM stock_movements sm JOIN products p ON p.id=sm.product_id "
-                "WHERE sm.movement_type='SORTIE' ORDER BY sm.id DESC LIMIT 30"
+                "WHERE sm.movement_type='OUT' ORDER BY sm.id DESC LIMIT 30"
             ).fetchall()
 
         self.tree.delete(*self.tree.get_children())
@@ -202,7 +202,7 @@ class SortiesFrame(ttk.Frame):
         try:
             with connect() as conn:
                 conn.execute('BEGIN IMMEDIATE')
-                apply_stock_movement(conn, pid, -qty, 'SORTIE', note=reason)
+                apply_stock_movement(conn, pid, -qty, 'OUT', note=reason)
                 conn.commit()
             self.refresh()
         except Exception as e:
