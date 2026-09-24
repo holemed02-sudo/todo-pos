@@ -32,8 +32,8 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
         validate_session(conn,session_id,user_id)
-        if held_id is not None and not conn.execute('SELECT id FROM held_sales WHERE id=?',(held_id,)).fetchone():
-            raise ValueError('Ce ticket en attente a déjà été encaissé ou supprimé.')
+        if held_id is not None and not conn.execute('SELECT id FROM held_sales WHERE id=? AND cashier_user_id=?',(held_id,user_id)).fetchone():
+            raise ValueError('Ce ticket en attente a déjà été encaissé, supprimé ou appartient à un autre utilisateur.')
         if client_id is not None and not conn.execute('SELECT id FROM clients WHERE id=? AND active=1',(client_id,)).fetchone():
             raise ValueError('Client introuvable.')
         if seller_id is not None and not conn.execute('SELECT id FROM sellers WHERE id=? AND active=1',(seller_id,)).fetchone():
