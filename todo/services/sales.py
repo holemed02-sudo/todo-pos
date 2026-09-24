@@ -141,6 +141,9 @@ def resume_held(held_id):
     with connect() as conn:
         row=conn.execute('SELECT * FROM held_sales WHERE id=?',(held_id,)).fetchone()
         if not row:raise ValueError('Ticket introuvable')
+        active_user=current_user.get()
+        if active_user is not None and int(row['cashier_user_id'])!=int(active_user):
+            raise PermissionError('Ce ticket en attente appartient à un autre utilisateur.')
         cart=json.loads(row['payload_json'])
         for line in cart:
             if line.get('pricing_mode')=='PACK':
