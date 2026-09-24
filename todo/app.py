@@ -314,9 +314,7 @@ class ToDoApp(tk.Tk):
         else:
             w.geometry("1280x720")
         w.bind("<Escape>",lambda e:self.toggle_customer_display())
-        tk.Label(w,text=get_setting("shop_name","ToDo"),bg="#0F172A",fg="white",font=("Segoe UI",34,"bold")).pack(pady=(35,8))
-        tk.Label(w,text=('مرحبا بكم' if lang=='ar' else 'Bienvenue'),bg="#0F172A",fg="#FACC15",font=("Segoe UI",22,"bold")).pack()
-        self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center")
+        self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center",bd=0,highlightthickness=0)
         self.customer_label.pack(fill="both",expand=True)
         self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide())
         w.lift();self._load_customer_slides()
