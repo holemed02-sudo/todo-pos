@@ -3,14 +3,14 @@ from database import connect
 from services.security import require_admin
 from services.inventory import apply_stock_movement
 
-def receive_purchase(supplier_id, supplier_invoice, lines, notes=""):
+def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=0):
     if not lines:
         raise ValueError("Réception vide")
     with connect() as conn:
         conn.execute("BEGIN IMMEDIATE")
         require_admin(conn)
         total = sum(int(round(float(x["qty"]) * int(x["unit_cost_cents"]))) for x in lines)
-        cur = conn.execute(
+        paid_cents=int(paid_cents or 0)\n        if paid_cents < 0 or paid_cents > total:\n            raise ValueError("Règlement fournisseur invalide")\n        if paid_cents and not supplier_id:\n            raise ValueError("Fournisseur obligatoire pour enregistrer un règlement")\n        cur = conn.execute(
             "INSERT INTO purchases(supplier_id,supplier_invoice,total_cents,notes) VALUES(?,?,?,?)",
             (supplier_id or None, supplier_invoice or "", total, notes or "")
         )
