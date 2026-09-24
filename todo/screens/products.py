@@ -434,9 +434,9 @@ class ProductsFrame(ttk.Frame):
         try:
             from openpyxl import Workbook
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["product key","barcode","article","famille","prix achat","prix vente","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
+            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
             with connect() as c:
-                rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.alert_qty,p.allow_fraction
+                rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
                 barcode_rows=c.execute("SELECT product_id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes ORDER BY product_id,id").fetchall()
@@ -446,11 +446,11 @@ class ProductsFrame(ttk.Frame):
                 codes=barcodes_by_product.get(r["id"]) or [{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
                 # product key is an exchange-file grouping token only; it is deliberately not a database id.
                 exchange_key=f"TODO-{seq:06d}"
-                for code in codes:ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
+                for code in codes:ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":18,"I":14,"J":14,"K":18,"L":10}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10}.items():ws.column_dimensions[col].width=width
             wb.save(path)
-            messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s). Le stock, les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج. لم يتم تصدير المخزون أو المبيعات أو الزبائن."),parent=self)
+            messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s), stock inclus. Les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج مع المخزون. لم يتم تصدير المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
 
     def import_excel(self):
