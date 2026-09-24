@@ -15,14 +15,14 @@ class ReturnsFrame(ttk.Frame):
         ttk.Button(top,text=self.tr('Chercher ticket','بحث عن تذكرة'),command=self.load).pack(side="left")
         self.info=ttk.Label(self,text="");self.info.pack(anchor="w",pady=8)
         self.t=ttk.Treeview(self,columns=("id","name","sold","returned","available","price"),show="headings")
-        for c,h,w in [("id","Line",55),("name","Article",260),("sold","Vendu",75),("returned","Retourné",80),("available","Disponible",85),("price","Prix",90)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
+        for c,h,w in [("id",self.tr("Ligne","السطر"),55),("name",self.tr("Article","المنتوج"),260),("sold",self.tr("Vendu","المباع"),75),("returned",self.tr("Retourné","المرتجع"),80),("available",self.tr("Disponible","المتاح"),85),("price",self.tr("Prix","الثمن"),90)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True);ttk.Button(self,text=self.tr('Retourner ligne sélectionnée','إرجاع السطر المحدد'),command=self.do_return).pack(fill="x",pady=8)
         self.sale_id=None
     def load(self):
         no=self.no.get().strip()
         with connect() as c:
             s=c.execute("SELECT * FROM sales WHERE sale_no=?",(no,)).fetchone()
-            if not s:messagebox.showerror("ToDo","Ticket introuvable.",parent=self);return
+            if not s:messagebox.showerror("ToDo",self.tr("Ticket introuvable.","التذكرة غير موجودة."),parent=self);return
             rows=c.execute("""SELECT si.*,
              COALESCE((SELECT SUM(ri.qty) FROM return_items ri WHERE ri.sale_item_id=si.id),0) returned
              FROM sale_items si WHERE si.sale_id=?""",(s["id"],)).fetchall()
@@ -34,11 +34,11 @@ class ReturnsFrame(ttk.Frame):
         if not s:return
         vals=self.t.item(s[0],"values");line=int(vals[0]);available=float(vals[4])
         if available<=0:return
-        qty=simpledialog.askfloat("Retour","Quantité à retourner:",parent=self,minvalue=0.001,maxvalue=available)
+        qty=simpledialog.askfloat(self.tr("Retour","إرجاع"),self.tr("Quantité à retourner:","الكمية المراد إرجاعها:"),parent=self,minvalue=0.001,maxvalue=available)
         if qty is None:return
         sess=get_open_session()
-        if not sess:messagebox.showerror("ToDo","Ouvrez la caisse.",parent=self);return
-        reason=simpledialog.askstring("Retour","Raison:",parent=self) or ""
+        if not sess:messagebox.showerror("ToDo",self.tr("Ouvrez la caisse.","افتح الصندوق."),parent=self);return
+        reason=simpledialog.askstring(self.tr("Retour","إرجاع"),self.tr("Raison:","السبب:"),parent=self) or ""
         try:
             refund_method='AUTO' if getattr(self,'sale_payment',None)=='MIXED' else ('CARD' if getattr(self,'sale_payment',None)=='CARD' else 'CASH')
             r=create_return(self.sale_id,sess["id"],self.app.user["id"],[(line,qty)],reason,refund_method)
