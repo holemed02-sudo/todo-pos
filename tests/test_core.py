@@ -204,6 +204,16 @@ class CoreTests(unittest.TestCase):
    with db.connect() as c:apply_stock_movement(c,self.pid,1,'ADJUSTMENT',note='Test')
  def test_purchase(self):
   receive_purchase(None,'INV-1',[dict(product_id=self.pid,qty=3,unit_cost_cents=400)]);self.assertEqual(self.stock(),23)
+ def test_inventory_requires_admin_and_records_standard_type(self):
+  with db.connect() as c:
+   apply_stock_movement(c,self.pid,-2,'INVENTORY',note='Comptage physique')
+   row=c.execute("SELECT movement_type,old_qty,stock_after FROM stock_movements WHERE product_id=? ORDER BY id DESC LIMIT 1",(self.pid,)).fetchone()
+   self.assertEqual(tuple(row),('INVENTORY',20,18))
+  with db.connect() as c:cashier=c.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES('inv_cashier','Inv Cashier',?,'cashier')",(hash_pin('5678'),)).lastrowid
+  current_user.set(cashier)
+  with self.assertRaises(PermissionError):
+   with db.connect() as c:apply_stock_movement(c,self.pid,1,'INVENTORY',note='Comptage')
+  current_user.set(self.uid)
  def test_migration_idempotent(self):
   sale=self.sell(discount=123);db.init_db();db.init_db()
   with db.connect() as c:self.assertEqual(c.execute('SELECT net_total_cents FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0],877)
