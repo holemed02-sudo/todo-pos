@@ -203,7 +203,7 @@ class CoreTests(unittest.TestCase):
   self.assertEqual(audit_row['details'],'BOX6')
   current_user.set(None)
   with self.assertRaises(PermissionError):add_product_barcode(self.pid,'NOADMIN',1,None)
-  self.login_admin()
+  current_user.set(self.uid)
   self.assertEqual(len(scan_barcode('NOADMIN')),0)
  def test_search_and_ambiguity(self):
   second=self.product('Huile Olive')
