@@ -148,12 +148,12 @@ class JournalFrame(ttk.Frame):
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
         w=tk.Toplevel(self);w.title(self.tr("Rapport clients","تقرير الزبائن"));w.geometry("700x540");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("client","tickets","sales"),show="headings")
-        for key,title,width in [("client","Client",330),("tickets","Tickets",100),("sales","Ventes nettes",150)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="client" else "w")
+        for key,title,width in [("client",self.tr("Client","الزبون"),330),("tickets",self.tr("Tickets","التذاكر"),100),("sales",self.tr("Ventes nettes","صافي المبيعات"),150)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="e" if key!="client" else "w")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
         total=0
         for r in rows:
             total+=r["sales"] or 0;tree.insert("","end",values=(r["label"],r["tickets"],fmt(r["sales"] or 0,"")))
-        ttk.Label(w,text=f"Total ventes nettes {fmt(total)}",font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
+        ttk.Label(w,text=self.tr("Total ventes nettes ","إجمالي صافي المبيعات ")+fmt(total),font=("Segoe UI",11,"bold")).pack(anchor="e",padx=12,pady=(0,12))
     def day_report(self):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
@@ -166,7 +166,7 @@ class JournalFrame(ttk.Frame):
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
         w=tk.Toplevel(self);w.title(self.tr("Rapport par jours","تقرير حسب الأيام"));w.geometry("650x540");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("day","tickets","sales"),show="headings")
-        for key,title,width in [("day","Jour",180),("tickets","Tickets",100),("sales","Ventes nettes",180)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center" if key!="sales" else "e")
+        for key,title,width in [("day",self.tr("Jour","اليوم"),180),("tickets",self.tr("Tickets","التذاكر"),100),("sales",self.tr("Ventes nettes","صافي المبيعات"),180)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center" if key!="sales" else "e")
         tree.pack(fill="both",expand=True,padx=12,pady=12)
         total=0
         for r in rows:
@@ -233,9 +233,9 @@ class JournalFrame(ttk.Frame):
         cash=sum((r["cash_paid"]-r["cash_refund"]) for r in rows)
         card=sum((r["card_paid"]-r["card_refund"]) for r in rows)
         self._simple_report(self.tr("Journal sans détails","السجل بدون تفاصيل"),(self.tr("Indicateur","المؤشر"),self.tr("Valeur","القيمة")),[
-            ("Période",f"{self.date_from.get()} → {self.date_to.get()}"),
-            ("Tickets",str(len(rows))),("Ventes nettes",fmt(total,"")),("Coût",fmt(cost,"")),
-            ("Marge brute",fmt(total-cost,"")),("Cash net",fmt(cash,"")),("Carte nette",fmt(card,""))])
+            (self.tr("Période","الفترة"),f"{self.date_from.get()} → {self.date_to.get()}"),
+            (self.tr("Tickets","التذاكر"),str(len(rows))),(self.tr("Ventes nettes","صافي المبيعات"),fmt(total,"")),(self.tr("Coût","التكلفة"),fmt(cost,"")),
+            (self.tr("Marge brute","الهامش الإجمالي"),fmt(total-cost,"")),(self.tr("Cash net","صافي النقد"),fmt(cash,"")),(self.tr("Carte nette","صافي البطاقة"),fmt(card,""))])
 
     def cumulative_export(self):
         rows=self.rows()
@@ -322,11 +322,11 @@ class JournalFrame(ttk.Frame):
             doc.build([title,Spacer(1,10),summary,Spacer(1,10),table]);messagebox.showinfo("ToDo",self.tr("PDF exporté.","تم تصدير PDF."),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def export(self):
-        p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title="Exporter journal")
+        p=filedialog.asksaveasfilename(defaultextension=".csv",filetypes=[("CSV","*.csv")],title=self.tr("Exporter journal","تصدير السجل"))
         if not p:return
         rows=self.rows()
         with open(p,"w",newline="",encoding="utf-8-sig") as f:
-            wr=csv.writer(f);wr.writerow(["ID","Ticket","Date","Caissier","Vendeur","Paiement","Total cents","Cost cents","Margin cents"])
+            wr=csv.writer(f);wr.writerow(["ID",self.tr("Ticket","التذكرة"),self.tr("Date","التاريخ"),self.tr("Caissier","الكاشير"),self.tr("Vendeur","البائع"),self.tr("Paiement","الدفع"),self.tr("Total cents","المجموع بالسنتيم"),self.tr("Cost cents","التكلفة بالسنتيم"),self.tr("Margin cents","الهامش بالسنتيم")])
             for r in rows:
                 pay=r["payment_method"]
                 if pay=="MIXED":pay="MIXED (Cash {} + Card {})".format(fmt(r["cash_paid"]-r["cash_refund"],""),fmt(r["card_paid"]-r["card_refund"],""))
