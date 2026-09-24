@@ -22,7 +22,7 @@ class CategoryEditor(tk.Toplevel):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.cat_id  = cat['id']   if cat else None
         self.on_saved= on_saved
-        self.title('Famille / عائلة')
+        self.title(self.tr('Famille','العائلة'))
         self.resizable(False, False)
         self.transient(master.winfo_toplevel())
         self.grab_set()
@@ -33,10 +33,10 @@ class CategoryEditor(tk.Toplevel):
 
         f = ttk.Frame(self, padding=20); f.pack(fill='both', expand=True)
 
-        ttk.Label(f, text='Nom / الاسم').grid(row=0, column=0, sticky='w')
+        ttk.Label(f, text=self.tr('Nom','الاسم')).grid(row=0, column=0, sticky='w')
         ttk.Entry(f, textvariable=self.name_var, width=30).grid(row=0, column=1, columnspan=3, sticky='ew', pady=6)
 
-        ttk.Label(f, text='Couleur').grid(row=1, column=0, sticky='w', pady=8)
+        ttk.Label(f, text=self.tr('Couleur','اللون')).grid(row=1, column=0, sticky='w', pady=8)
         self.swatch = tk.Label(f, width=6, relief='groove')
         self.swatch.grid(row=1, column=1, sticky='w', padx=4)
         self._update_swatch()
@@ -47,7 +47,7 @@ class CategoryEditor(tk.Toplevel):
                             command=lambda c=color: self._pick(c))
             btn.grid(row=i//8, column=i%8, padx=2, pady=2)
 
-        ttk.Label(f, text='Icône').grid(row=3, column=0, sticky='w', pady=8)
+        ttk.Label(f, text=self.tr('Icône','الأيقونة')).grid(row=3, column=0, sticky='w', pady=8)
         icon_frame = ttk.Frame(f); icon_frame.grid(row=3, column=1, columnspan=3, sticky='ew')
         for i,icon in enumerate(self.ICONS):
             lbl = icon if icon else '—'
@@ -55,7 +55,7 @@ class CategoryEditor(tk.Toplevel):
                       relief='flat', cursor='hand2',
                       command=lambda ic=icon: self.icon_var.set(ic)).grid(row=i//7,column=i%7,padx=1)
 
-        ttk.Button(f, text='Enregistrer', style='Primary.TButton',
+        ttk.Button(f, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton',
                    command=self.save).grid(row=4, column=0, columnspan=4, sticky='ew', pady=16)
 
     def _pick(self, color):
@@ -72,7 +72,7 @@ class CategoryEditor(tk.Toplevel):
         icon  = self.icon_var.get().strip()
         if not name:
             from tkinter import messagebox
-            messagebox.showerror('Famille', 'Le nom est obligatoire.', parent=self); return
+            messagebox.showerror(self.tr('Famille','العائلة'), self.tr('Le nom est obligatoire.','الاسم إجباري.'), parent=self); return
         with connect() as conn:
             require_admin(conn)
             if self.cat_id:
@@ -225,10 +225,10 @@ class SettingsFrame(ttk.Frame):
     def refresh_printers(self):
         from services.printers import installed_printers
         try:self.printer_choice['values']=installed_printers()
-        except Exception as error:messagebox.showerror('Imprimantes',str(error),parent=self)
+        except Exception as error:messagebox.showerror(self.tr('Imprimantes','الطابعات'),str(error),parent=self)
 
     def backup(self):
-        try:messagebox.showinfo("ToDo",f"Backup:\n{create_backup()}",parent=self)
+        try:messagebox.showinfo("ToDo",self.tr(f"Backup:\n{create_backup()}",f"نسخة احتياطية:\n{create_backup()}"),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def restore(self):
         p=filedialog.askopenfilename(parent=self,filetypes=[("SQLite DB","*.db"),("Tous","*.*")])
@@ -236,7 +236,7 @@ class SettingsFrame(ttk.Frame):
         if not messagebox.askyesno("ToDo",self.tr("Restaurer ce backup ? Une copie de sécurité sera créée.","استرجاع هذه النسخة؟ سيتم إنشاء نسخة أمان أولاً."),parent=self):return
         try:
             s=restore_backup(p)
-            messagebox.showinfo('ToDo',f'Restauré. Copie sécurité: {s}\nLe programme va se fermer. Relancez ToDo.',parent=self)
+            messagebox.showinfo("ToDo",self.tr(f"Restauré. Copie sécurité: {s}\nLe programme va se fermer. Relancez ToDo.",f"تم الاسترجاع. نسخة الأمان: {s}\nسيتم إغلاق البرنامج. أعد تشغيل ToDo."),parent=self)
             self.app.destroy()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def full_backup(self):
@@ -254,14 +254,14 @@ class SettingsFrame(ttk.Frame):
             self.app.destroy()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def new_user(self):
-        user=simpledialog.askstring("Utilisateur","Username:",parent=self)
+        user=simpledialog.askstring(self.tr("Utilisateur","المستخدم"),self.tr("Username:","اسم المستخدم:"),parent=self)
         if not user:return
-        name=simpledialog.askstring("Utilisateur","Nom affiché:",parent=self) or user
-        pin=simpledialog.askstring("Utilisateur","PIN:",parent=self,show="*")
+        name=simpledialog.askstring(self.tr("Utilisateur","المستخدم"),self.tr("Nom affiché:","الاسم المعروض:"),parent=self) or user
+        pin=simpledialog.askstring(self.tr("Utilisateur","المستخدم"),"PIN:",parent=self,show="*")
         if not pin:return
         if not pin.isdigit() or len(pin)<4:
             messagebox.showerror("ToDo",self.tr("PIN : au moins 4 chiffres","PIN: أربعة أرقام على الأقل"),parent=self);return
-        role=simpledialog.askstring("Utilisateur","Role (admin/cashier):",parent=self) or "cashier"
+        role=simpledialog.askstring(self.tr("Utilisateur","المستخدم"),self.tr("Rôle (admin/cashier):","الصلاحية (admin/cashier):"),parent=self) or "cashier"
         if role not in ("admin","cashier"):
             messagebox.showerror("ToDo",self.tr("Rôle invalide","صلاحية غير صالحة"),parent=self);return
         try:
@@ -273,12 +273,12 @@ class SettingsFrame(ttk.Frame):
         with connect() as conn: require_admin(conn)
         w=tk.Toplevel(self);w.title(self.tr("Utilisateurs","المستخدمون"));w.geometry("720x500");w.transient(self.winfo_toplevel())
         tree=ttk.Treeview(w,columns=("id","username","name","role","active"),show="headings")
-        for key,label,width in [("id","ID",55),("username","Utilisateur",150),("name","Nom",190),("role","Rôle",100),("active","Actif",70)]:tree.heading(key,text=label);tree.column(key,width=width,anchor="center" if key in ("id","role","active") else "w")
+        for key,label,width in [("id","ID",55),("username",self.tr("Utilisateur","المستخدم"),150),("name",self.tr("Nom","الاسم"),190),("role",self.tr("Rôle","الصلاحية"),100),("active",self.tr("Actif","نشط"),70)]:tree.heading(key,text=label);tree.column(key,width=width,anchor="center" if key in ("id","role","active") else "w")
         tree.pack(fill="both",expand=True,padx=12,pady=12);bar=ttk.Frame(w);bar.pack(fill="x",padx=12,pady=(0,12))
         def reload():
             tree.delete(*tree.get_children())
             with connect() as conn: rows=conn.execute("SELECT id,username,display_name,role,active FROM users ORDER BY display_name").fetchall()
-            for r in rows:tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],r["role"],"Oui" if r["active"] else "Non"))
+            for r in rows:tree.insert("","end",iid=str(r["id"]),values=(r["id"],r["username"],r["display_name"],r["role"],self.tr("Oui","نعم") if r["active"] else self.tr("Non","لا")))
         def selected():
             sel=tree.selection()
             if not sel: messagebox.showwarning(self.tr("Utilisateurs","المستخدمون"),self.tr("Sélectionnez un utilisateur.","اختر مستخدماً."),parent=w);return None
@@ -302,7 +302,7 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(bar,text=self.tr('Activer / Désactiver','تفعيل / تعطيل'),command=toggle).pack(side="left");ttk.Button(bar,text=self.tr('Admin ↔ Caissier','مدير ↔ كاشير'),command=role).pack(side="left",padx=8);reload()
 
     def change_pin(self):
-        pin=simpledialog.askstring('PIN','Nouveau PIN (4 chiffres minimum):',parent=self,show='*')
+        pin=simpledialog.askstring('PIN',self.tr('Nouveau PIN (4 chiffres minimum):','PIN جديد (4 أرقام على الأقل):'),parent=self,show='*')
         if pin is None:return
         if not pin.isdigit() or len(pin)<4:
             messagebox.showerror('ToDo',self.tr('Utilisez au moins 4 chiffres.','استعمل أربعة أرقام على الأقل.'),parent=self);return
@@ -314,9 +314,9 @@ class SettingsFrame(ttk.Frame):
     def audit_log(self):
         w=tk.Toplevel(self);w.title(self.tr('Journal des actions','سجل العمليات'));w.geometry('960x520')
         tree=ttk.Treeview(w,columns=('date','user','action','document','details'),show='headings')
-        for key,label,width in [('date','Date',150),('user','Utilisateur',140),('action','Action',140),('document','Document',100),('details','Détails',300)]:
+        for key,label,width in [('date',self.tr('Date','التاريخ'),150),('user',self.tr('Utilisateur','المستخدم'),140),('action',self.tr('Action','العملية'),140),('document',self.tr('Document','الوثيقة'),100),('details',self.tr('Détails','التفاصيل'),300)]:
             tree.heading(key,text=label);tree.column(key,width=width)
         tree.pack(fill='both',expand=True,padx=12,pady=12)
         with connect() as conn:
-            rows=conn.execute("SELECT a.*,COALESCE(u.display_name,'Système') username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 1000").fetchall()
-        for r in rows:tree.insert('','end',values=(r['created_at'],r['username'],r['action'],r['document'],r['details']))
+            rows=conn.execute("SELECT a.*,u.display_name username FROM audit_log a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 1000").fetchall()
+        for r in rows:tree.insert('','end',values=(r['created_at'],r['username'] or self.tr('Système','النظام'),r['action'],r['document'],r['details']))
