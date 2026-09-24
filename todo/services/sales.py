@@ -128,7 +128,7 @@ def hold_sale(user_id,cart,label='',discount_cents=0,held_id=None,client_id=None
         if held_id is None:
             held_id=conn.execute('INSERT INTO held_sales(label,cashier_user_id,payload_json,discount_cents,client_id) VALUES(?,?,?,?,?)',(label or 'Ticket en attente',user_id,payload,int(discount_cents),client_id)).lastrowid
         else:
-            cur=conn.execute('UPDATE held_sales SET label=?,payload_json=?,discount_cents=?,client_id=? WHERE id=?',(label or 'Ticket en attente',payload,int(discount_cents),client_id,held_id))
+            cur=conn.execute('UPDATE held_sales SET label=?,payload_json=?,discount_cents=?,client_id=? WHERE id=? AND cashier_user_id=?',(label or 'Ticket en attente',payload,int(discount_cents),client_id,held_id,user_id))
             if cur.rowcount!=1:raise ValueError('Ticket en attente introuvable')
         audit(conn,'HOLD',held_id,user_id=user_id)
         return held_id
