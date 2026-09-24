@@ -554,7 +554,7 @@ class SaleFrame(ttk.Frame):
         index=self.selected()
         if index is None:return
         step=self.cart[index].get('qty_multiplier',1)
-        qty=simpledialog.askfloat('Quantité','Nombre de packs:' if step!=1 else 'Nouvelle quantité:',initialvalue=self.cart[index]['qty']/step,parent=self,minvalue=0.001)
+        qty=simpledialog.askfloat(self.tr('Quantité','الكمية'),self.tr('Nombre de packs:','عدد العلب:') if step!=1 else self.tr('Nouvelle quantité:','الكمية الجديدة:'),initialvalue=self.cart[index]['qty']/step,parent=self,minvalue=0.001)
         if qty is not None:self.update_quantity(index,qty*step)
         self.focus_search()
 
@@ -564,7 +564,7 @@ class SaleFrame(ttk.Frame):
 
     def discount(self):
         if not self.cart:return
-        amount=simpledialog.askfloat('Remise ticket','Montant de la remise:',parent=self,minvalue=0,maxvalue=self.totals()[0]/100)
+        amount=simpledialog.askfloat(self.tr('Remise ticket','تخفيض التذكرة'),self.tr('Montant de la remise:','قيمة التخفيض:'),parent=self,minvalue=0,maxvalue=self.totals()[0]/100)
         if amount is not None:self.ticket_discount_cents=to_cents(amount);self.refresh()
         self.focus_search()
 
@@ -572,7 +572,7 @@ class SaleFrame(ttk.Frame):
         index=self.selected()
         if index is None:return
         x=self.cart[index]
-        amount=simpledialog.askfloat('Remise ligne','Montant de la remise:',parent=self,minvalue=0,maxvalue=line_total(x['unit_price_cents'],x['qty'])/100)
+        amount=simpledialog.askfloat(self.tr('Remise ligne','تخفيض السطر'),self.tr('Montant de la remise:','قيمة التخفيض:'),parent=self,minvalue=0,maxvalue=line_total(x['unit_price_cents'],x['qty'])/100)
         if amount is not None:
             x['discount_cents']=to_cents(amount)
             self.ticket_discount_cents=min(self.ticket_discount_cents,self.totals()[0]);self.refresh(index)
@@ -583,12 +583,12 @@ class SaleFrame(ttk.Frame):
         if index is None:return
         line=self.cart[index]
         if line.get('qty_multiplier',1)!=1:
-            messagebox.showinfo('ToDo','Pour un pack, utilisez la remise ligne.',parent=self);return
-        amount=simpledialog.askstring('Modifier prix',f"{line['name']}\nNouveau prix unitaire (DH) :",initialvalue=f"{Decimal(line['unit_price_cents'])/100:.2f}",parent=self)
+            messagebox.showinfo('ToDo',self.tr('Pour un pack, utilisez la remise ligne.','بالنسبة للعلبة، استعمل تخفيض السطر.'),parent=self);return
+        amount=simpledialog.askstring(self.tr('Modifier prix','تعديل الثمن'),self.tr(f"{line['name']}\nNouveau prix unitaire (DH) :",f"{line['name']}\nالثمن الجديد للوحدة (DH):"),initialvalue=f"{Decimal(line['unit_price_cents'])/100:.2f}",parent=self)
         if amount is None:return
         try:
             price=to_cents(amount)
-            if price<0:raise ValueError('Prix invalide')
+            if price<0:raise ValueError(self.tr('Prix invalide','الثمن غير صالح'))
             line['unit_price_cents']=str(price)
             line['manual_unit_price']=True
             line['discount_cents']=min(line.get('discount_cents',0),line_total(price,line['qty']))
@@ -638,8 +638,8 @@ class SaleFrame(ttk.Frame):
 
     def update_client_label(self):
         from services.clients import get_client
-        name=get_client(self.client_id)['name'] if self.client_id is not None else 'passage'
-        self.client_button.configure(text='F6 Client : '+name[:30])
+        name=get_client(self.client_id)['name'] if self.client_id is not None else self.tr('passage','عابر')
+        self.client_button.configure(text=self.tr('F6 Client : ','F6 الزبون: ')+name[:30])
 
     def set_payment(self,method):
         self.payment=method;labels={'CASH':self.tr('Espèces','نقداً'),'CARD':self.tr('Carte','بطاقة'),'CREDIT':self.tr('Crédit','دين'),'MIXED':self.tr('Mixte','مختلط')};self.payment_label.config(text=self.tr('Paiement : ','الأداء: ')+labels.get(method,method));self.focus_search()
@@ -648,27 +648,27 @@ class SaleFrame(ttk.Frame):
         self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : CASH','الأداء: نقداً'));self.update_client_label();self.update_seller_label();self.refresh();self.focus_search()
 
     def cancel(self):
-        if self.cart and not messagebox.askyesno('Annuler','Vider le ticket en cours ? Un ticket en attente reste sauvegardé.',parent=self):return
+        if self.cart and not messagebox.askyesno(self.tr('Annuler','إلغاء'),self.tr('Vider le ticket en cours ? Un ticket en attente reste sauvegardé.','إفراغ التذكرة الحالية؟ التذكرة الموضوعة في الانتظار تبقى محفوظة.'),parent=self):return
         self.clear()
 
     def hold(self):
         if not self.cart:return
-        label=simpledialog.askstring('Attente','Nom ou numéro du ticket:',parent=self)
+        label=simpledialog.askstring(self.tr('Attente','انتظار'),self.tr('Nom ou numéro du ticket:','اسم أو رقم التذكرة:'),parent=self)
         if label is None:return
         try:
             hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
-            self.clear();self.status.config(text='Ticket et remise sauvegardés.')
+            self.clear();self.status.config(text=self.tr('Ticket et remise sauvegardés.','تم حفظ التذكرة والتخفيض.'))
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
     def show_held(self):
         if self.cart:
-            messagebox.showinfo('ToDo','Mettez le ticket actuel en attente avant de reprendre un autre.',parent=self);return
+            messagebox.showinfo('ToDo',self.tr('Mettez le ticket actuel en attente avant de reprendre un autre.','ضع التذكرة الحالية في الانتظار قبل استئناف تذكرة أخرى.'),parent=self);return
         rows=list_held()
         if not rows:
-            messagebox.showinfo('ToDo','Aucun ticket en attente.',parent=self);return
-        w=tk.Toplevel(self);w.title('Tickets en attente');w.transient(self);w.grab_set()
+            messagebox.showinfo('ToDo',self.tr('Aucun ticket en attente.','لا توجد تذكرة في الانتظار.'),parent=self);return
+        w=tk.Toplevel(self);w.title(self.tr('Tickets en attente','التذاكر في الانتظار'));w.transient(self);w.grab_set()
         tree=ttk.Treeview(w,columns=('date','discount'),show='tree headings')
-        tree.heading('#0',text='Ticket');tree.heading('date',text='Date');tree.heading('discount',text='Remise')
+        tree.heading('#0',text=self.tr('Ticket','التذكرة'));tree.heading('date',text=self.tr('Date','التاريخ'));tree.heading('discount',text=self.tr('Remise','التخفيض'))
         tree.pack(fill='both',expand=True,padx=12,pady=12)
         for r in rows:tree.insert('','end',iid=str(r['id']),text=r['label'],values=(r['created_at'],fmt(r['discount_cents'])))
         def resume(event=None):
@@ -684,7 +684,7 @@ class SaleFrame(ttk.Frame):
         if not self.cart or self.busy:return
         session=get_open_session()
         if not session:
-            messagebox.showinfo('ToDo','Ouvrez la caisse avant de vendre.',parent=self);return
+            messagebox.showinfo('ToDo',self.tr('Ouvrez la caisse avant de vendre.','افتح الصندوق قبل البيع.'),parent=self);return
         self.busy=True
         try:
             total=self.totals()[1]
@@ -700,12 +700,12 @@ class SaleFrame(ttk.Frame):
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
             # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
             self.clear()
-            self.status.config(text=f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}")
+            self.status.config(text=self.tr(f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}",f"آخر بيع: {fmt(total,self.currency)} · المستلم: {fmt(paid,self.currency)} · الباقي: {fmt(result['change_cents'],self.currency)} · {result['sale_no']}"))
             try:
                 if print_ticket:
                     self.show_receipt(result)
                 if print_ticket and mode!='never' and (mode=='always' or dialog_print):print_receipt_windows(result['id'])
-            except Exception as e:messagebox.showwarning('ToDo',f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",parent=self)
+            except Exception as e:messagebox.showwarning('ToDo',self.tr(f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",f"تم تسجيل البيع: {result['sale_no']}\nالتذكرة غير متاحة: {e}"),parent=self)
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
         finally:self.busy=False;self.focus_search()
