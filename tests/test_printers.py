@@ -34,7 +34,9 @@ class PrinterTests(unittest.TestCase):
             sid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
             c.execute("INSERT INTO sales(sale_no,session_id,cashier_user_id,subtotal_cents,discount_cents,total_cents,payment_method,paid_cents,change_cents) VALUES('T-1',?,?,1000,0,1000,'CASH',1000,0)",(sid,current_user.get()))
             sale_id=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-            c.execute("INSERT INTO sale_items(sale_id,name_snapshot,qty,unit_price_cents,line_total_cents,net_total_cents,pricing_mode,qty_multiplier) VALUES(?, 'Test',1,1000,1000,1000,'UNIT',1)",(sale_id,))
+            c.execute("INSERT INTO products(name,sale_price_cents,stock_qty) VALUES('Test',1000,1)")
+            product_id=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+            c.execute("INSERT INTO sale_items(sale_id,product_id,name_snapshot,qty,unit_price_cents,line_total_cents,net_total_cents,pricing_mode,qty_multiplier) VALUES(?,?,'Test',1,1000,1000,1000,'UNIT',1)",(sale_id,product_id))
         payload=receipts.build_escpos_receipt(sale_id,cut=True,open_drawer=False)
         self.assertTrue(payload.startswith(b'\\x1b@'))
         self.assertTrue(payload.endswith(b'\\x1dV\\x00'))
