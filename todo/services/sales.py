@@ -119,6 +119,12 @@ def hold_sale(user_id,cart,label='',discount_cents=0,held_id=None,client_id=None
     payload=json.dumps(cart,ensure_ascii=False,default=str)
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
+        if not conn.execute('SELECT id FROM users WHERE id=? AND active=1',(user_id,)).fetchone():
+            raise ValueError('Utilisateur invalide')
+        if current_user.get() is not None and current_user.get()!=user_id:
+            raise PermissionError('Utilisateur incompatible')
+        if client_id is not None and not conn.execute('SELECT id FROM clients WHERE id=? AND active=1',(client_id,)).fetchone():
+            raise ValueError('Client introuvable.')
         if held_id is None:
             held_id=conn.execute('INSERT INTO held_sales(label,cashier_user_id,payload_json,discount_cents,client_id) VALUES(?,?,?,?,?)',(label or 'Ticket en attente',user_id,payload,int(discount_cents),client_id)).lastrowid
         else:
