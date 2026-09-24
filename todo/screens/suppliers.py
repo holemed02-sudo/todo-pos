@@ -32,7 +32,7 @@ class SupplierEditor(tk.Toplevel):
         try:
             supplier_id = save_supplier(self.name.get(), self.phone.get(), self.notes.get('1.0', 'end-1c'), self.supplier_id)
         except (ValueError, PermissionError) as error:
-            messagebox.showerror('Fournisseur', str(error), parent=self)
+            messagebox.showerror(self.tr('Fournisseur','المورد'), str(error), parent=self)
             return
         self.destroy()
         if self.on_saved:
@@ -54,7 +54,7 @@ class SuppliersFrame(ttk.Frame):
         ttk.Button(toolbar, text=self.tr('Modifier','تعديل'), command=self.edit).pack(side='left')
         ttk.Button(toolbar, text=self.tr('Réceptions du fournisseur','استلامات المورد'), command=self.history).pack(side='left', padx=8)
         self.tree = ttk.Treeview(self, columns=('name', 'phone', 'notes'), show='headings')
-        for key, label, width in [('name', 'Nom', 250), ('phone', 'Téléphone', 160), ('notes', 'Notes', 400)]:
+        for key, label, width in [('name', self.tr('Nom','الاسم'), 250), ('phone', self.tr('Téléphone','الهاتف'), 160), ('notes', self.tr('Notes','ملاحظات'), 400)]:
             self.tree.heading(key, text=label)
             self.tree.column(key, width=width)
         scroll = ttk.Scrollbar(self, orient='vertical', command=self.tree.yview)
@@ -88,9 +88,10 @@ class SuppliersFrame(ttk.Frame):
         window.geometry('760x420')
         with connect() as conn:
             rows = conn.execute('SELECT * FROM purchases WHERE supplier_id=? ORDER BY id DESC', (supplier['id'],)).fetchall()
-        ttk.Label(window, text=f"{len(rows)} réception(s) · Total achats : {fmt(sum(row['total_cents'] for row in rows))}").pack(pady=12)
+        total = fmt(sum(row['total_cents'] for row in rows))
+        ttk.Label(window, text=self.tr(f"{len(rows)} réception(s) · Total achats : {total}", f"{len(rows)} استلام · إجمالي المشتريات: {total}")).pack(pady=12)
         tree = ttk.Treeview(window, columns=('id', 'date', 'invoice', 'total'), show='headings')
-        for key, label in [('id', 'Réception'), ('date', 'Date'), ('invoice', 'Facture fournisseur'), ('total', 'Total achats')]:
+        for key, label in [('id', self.tr('Réception','الاستلام')), ('date', self.tr('Date','التاريخ')), ('invoice', self.tr('Facture fournisseur','فاتورة المورد')), ('total', self.tr('Total achats','إجمالي المشتريات'))]:
             tree.heading(key, text=label)
             tree.column(key, width=170)
         tree.pack(fill='both', expand=True, padx=12, pady=12)
