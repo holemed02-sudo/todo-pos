@@ -289,8 +289,8 @@ class SaleFrame(ttk.Frame):
             window.after_idle(getattr(frame,action))
 
     def show_shortcuts(self):
-        messagebox.showinfo('Raccourcis',
-            'F2 : Espèces\nF3 : Carte\nF4 : Attente\nF5 : Solder\nF7 : Remise\nF8 : Quantité\nCtrl+F : Recherche\nEntrée : Ajouter / Confirmer\nSuppr : Supprimer ligne\nÉchap : Annuler',parent=self)
+        messagebox.showinfo(self.tr('Raccourcis','الاختصارات'),
+            self.tr('F2 : Espèces\\nF3 : Carte\\nF4 : Attente\\nF5 : Solder\\nF7 : Remise\\nF8 : Quantité\\nCtrl+F : Recherche\\nEntrée : Ajouter / Confirmer\\nSuppr : Supprimer ligne\\nÉchap : Annuler','F2 : نقداً\\nF3 : بطاقة\\nF4 : انتظار\\nF5 : إتمام البيع\\nF7 : تخفيض\\nF8 : الكمية\\nCtrl+F : بحث\\nEnter : إضافة / تأكيد\\nDelete : حذف السطر\\nEsc : إلغاء'),parent=self)
 
     def duplicate_receipt(self):
         with connect() as conn:
