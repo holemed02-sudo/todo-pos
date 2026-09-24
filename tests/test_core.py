@@ -126,6 +126,10 @@ class CoreTests(unittest.TestCase):
   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=3)],'CASH',2500)
   refunds=[create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])['total_cents'] for _ in range(3)]
   self.assertEqual(sum(refunds),2500)
+  sale4=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=4)],'CASH',3333)
+  self.assertEqual(sale4['total_cents'],3333)
+  refunds4=[create_return(sale4['id'],self.session,self.uid,[(self.item(sale4),1)])['total_cents'] for _ in range(4)]
+  self.assertEqual(sum(refunds4),3333)
  def test_invalid_discount(self):
   for d in [-1,1001]:
    with self.assertRaises(ValueError):self.sell(discount=d)
