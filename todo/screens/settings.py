@@ -231,7 +231,7 @@ class SettingsFrame(ttk.Frame):
         try:messagebox.showinfo("ToDo",self.tr(f"Backup:\n{create_backup()}",f"نسخة احتياطية:\n{create_backup()}"),parent=self)
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
     def restore(self):
-        p=filedialog.askopenfilename(parent=self,filetypes=[("SQLite DB","*.db"),("Tous","*.*")])
+        p=filedialog.askopenfilename(parent=self,filetypes=[("SQLite DB","*.db"),(self.tr("Tous les fichiers","كل الملفات"),"*.*")])
         if not p:return
         if not messagebox.askyesno("ToDo",self.tr("Restaurer ce backup ? Une copie de sécurité sera créée.","استرجاع هذه النسخة؟ سيتم إنشاء نسخة أمان أولاً."),parent=self):return
         try:
