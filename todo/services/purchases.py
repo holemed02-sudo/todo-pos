@@ -10,7 +10,12 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
         conn.execute("BEGIN IMMEDIATE")
         require_admin(conn)
         total = sum(int(round(float(x["qty"]) * int(x["unit_cost_cents"]))) for x in lines)
-        paid_cents=int(paid_cents or 0)\n        if paid_cents < 0 or paid_cents > total:\n            raise ValueError("Règlement fournisseur invalide")\n        if paid_cents and not supplier_id:\n            raise ValueError("Fournisseur obligatoire pour enregistrer un règlement")\n        cur = conn.execute(
+        paid_cents = int(paid_cents or 0)
+        if paid_cents < 0 or paid_cents > total:
+            raise ValueError("Règlement fournisseur invalide")
+        if paid_cents and not supplier_id:
+            raise ValueError("Fournisseur obligatoire pour enregistrer un règlement")
+        cur = conn.execute(
             "INSERT INTO purchases(supplier_id,supplier_invoice,total_cents,notes) VALUES(?,?,?,?)",
             (supplier_id or None, supplier_invoice or "", total, notes or "")
         )
@@ -26,5 +31,10 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
             )
             conn.execute("UPDATE products SET purchase_price_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(cost,pid))
             apply_stock_movement(conn,pid,qty,"PURCHASE",cost,"purchase",pid_purchase,supplier_invoice or "")
+        if paid_cents:
+            conn.execute(
+                "INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)",
+                (supplier_id,pid_purchase,paid_cents,"Règlement à la réception")
+            )
         conn.commit()
         return pid_purchase, total
