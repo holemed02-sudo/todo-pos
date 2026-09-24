@@ -214,6 +214,12 @@ class CoreTests(unittest.TestCase):
   with self.assertRaises(PermissionError):
    with db.connect() as c:apply_stock_movement(c,self.pid,1,'INVENTORY',note='Comptage')
   current_user.set(self.uid)
+ def test_manual_stock_exit_uses_standard_out_type(self):
+  with db.connect() as c:
+   apply_stock_movement(c,self.pid,-3,'OUT',note='Casse')
+   row=c.execute("SELECT movement_type,old_qty,stock_after,note FROM stock_movements WHERE product_id=? ORDER BY id DESC LIMIT 1",(self.pid,)).fetchone()
+   self.assertEqual(tuple(row),('OUT',20,17,'Casse'))
+
  def test_migration_idempotent(self):
   sale=self.sell(discount=123);db.init_db();db.init_db()
   with db.connect() as c:self.assertEqual(c.execute('SELECT net_total_cents FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()[0],877)
