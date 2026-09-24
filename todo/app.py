@@ -42,6 +42,8 @@ class ToDoApp(tk.Tk):
         self.customer_slides = []
         self.customer_slide_index = 0
         self.customer_after_id = None
+        self.customer_video = None
+        self.customer_video_delay = 33
         self.shell = None
         self.lock_window = None
         self._keyboard_target = None
