@@ -40,8 +40,13 @@ jobs:
         run: |
           Copy-Item dist/ImporterToDo.exe dist/ToDo/ImporterToDo.exe
           Copy-Item README_1_1_AR.md,VALIDATION.md dist/ToDo/
+      - name: Create Windows ZIP package
+        shell: pwsh
+        run: Compress-Archive -Path dist/ToDo/* -DestinationPath dist/ToDo-POS-1.1.0-Windows.zip -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ToDo-POS-1.1.0-Windows
-          path: dist/ToDo
+          path: |
+            dist/ToDo
+            dist/ToDo-POS-1.1.0-Windows.zip
           if-no-files-found: error
