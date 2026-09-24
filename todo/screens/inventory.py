@@ -194,9 +194,9 @@ class SortiesFrame(ttk.Frame):
             messagebox.showinfo(self.tr('Sorties','الإخراج'), self.tr('Sélectionnez un article.','اختر منتجاً.'), parent=self); return
         pid   = int(sel[0])
         pname = self.rows[sel[0]]['name']
-        qty   = simpledialog.askfloat('Sortie', f'Quantité sortie — {pname} :', parent=self)
+        qty   = simpledialog.askfloat(self.tr('Sortie','إخراج'), self.tr(f'Quantité sortie — {pname} :',f'الكمية المخرجة — {pname}:'), parent=self)
         if qty is None or qty <= 0: return
-        reason = simpledialog.askstring('Sortie', 'Raison obligatoire (casse, perte, don…) :', parent=self)
+        reason = simpledialog.askstring(self.tr('Sortie','إخراج'), self.tr('Raison obligatoire (casse, perte, don…) :','السبب إجباري (كسر، ضياع، تبرع…):'), parent=self)
         if reason is None or not reason.strip():
             messagebox.showinfo(self.tr('Sorties','الإخراج'),self.tr('La raison est obligatoire.','السبب إلزامي.'),parent=self); return
         try:
