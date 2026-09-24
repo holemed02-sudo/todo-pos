@@ -51,4 +51,28 @@ class SupplierTests(unittest.TestCase):
         self.assertEqual(list_suppliers(), [])
 
 
-# Supplier payment allocation regressions are covered above.
+    def test_supplier_payment_allocates_oldest_open_invoices(self):
+        sid = save_supplier('Supplier')
+        with database.connect() as conn:
+            p1 = conn.execute("INSERT INTO purchases(supplier_id,supplier_invoice,total_cents) VALUES(?,?,?)",(sid,'F1',1000)).lastrowid
+            p2 = conn.execute("INSERT INTO purchases(supplier_id,supplier_invoice,total_cents) VALUES(?,?,?)",(sid,'F2',2000)).lastrowid
+        add_supplier_payment(sid, 1500)
+        rows = {r['id']: r for r in supplier_purchases(sid)}
+        self.assertEqual(rows[p1]['paid'], 1000)
+        self.assertEqual(rows[p2]['paid'], 500)
+        with self.assertRaises(ValueError):
+            add_supplier_payment(sid, 1600)
+
+    def test_supplier_payment_rejects_wrong_invoice_and_overpayment(self):
+        s1 = save_supplier('Supplier 1')
+        s2 = save_supplier('Supplier 2')
+        with database.connect() as conn:
+            p1 = conn.execute("INSERT INTO purchases(supplier_id,total_cents) VALUES(?,?)",(s1,1000)).lastrowid
+            p2 = conn.execute("INSERT INTO purchases(supplier_id,total_cents) VALUES(?,?)",(s2,1000)).lastrowid
+        with self.assertRaises(ValueError):
+            add_supplier_payment(s1, 100, purchase_id=p2)
+        with self.assertRaises(ValueError):
+            add_supplier_payment(s1, 1001, purchase_id=p1)
+        add_supplier_payment(s1, 400, purchase_id=p1)
+        with self.assertRaises(ValueError):
+            add_supplier_payment(s1, 601, purchase_id=p1)
