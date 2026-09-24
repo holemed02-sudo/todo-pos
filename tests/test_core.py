@@ -146,6 +146,17 @@ class CoreTests(unittest.TestCase):
    self.assertEqual(line_total(resolve_unit_price(self.pid,12,bid,c),12),11000)
   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=12,barcode_id=bid,barcode='PACK')],'CASH',11000)
   self.assertEqual(sale['total_cents'],11000)
+  def test_carton_without_override_uses_multiplier_and_quantity_promo(self):
+   with db.connect() as c:
+    c.execute("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,2,1800,'BUNDLE')",(self.pid,))
+    bid=c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,'CARTON6',6,NULL)",(self.pid,)).lastrowid
+    self.assertEqual(line_total(resolve_unit_price(self.pid,6,bid,c),6),5400)
+    self.assertEqual(line_total(resolve_unit_price(self.pid,12,bid,c),12),10800)
+   sale=complete_sale(self.session,self.uid,[dict(product_id=self.pid,qty=12,barcode_id=bid,barcode='CARTON6')],'CASH',10800)
+   self.assertEqual(sale['total_cents'],10800)
+   with db.connect() as c:
+    row=c.execute('SELECT qty,qty_multiplier,pricing_mode,barcode_used FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()
+   self.assertEqual((row['qty'],row['qty_multiplier'],row['pricing_mode'],row['barcode_used']),(12,6,'UNIT','CARTON6'))
  def test_hold_persists_discount(self):
   hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'Held',200)
   state=resume_held(hid);self.assertEqual(state['discount_cents'],200);self.assertEqual(len(list_held()),1)
