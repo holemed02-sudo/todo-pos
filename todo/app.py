@@ -306,7 +306,10 @@ class ToDoApp(tk.Tk):
             screens=get_monitors()
         except Exception:pass
         if len(screens)>1:
-            main_x=self.winfo_rootx();target=max(screens,key=lambda m:abs(m.x-main_x))
+            main_x=self.winfo_rootx();main_y=self.winfo_rooty()
+            primary=min(screens,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
+            others=[m for m in screens if m is not primary]
+            target=min(others,key=lambda m:(m.x-main_x)**2+(m.y-main_y)**2)
             w.geometry(f"{target.width}x{target.height}+{target.x}+{target.y}");w.overrideredirect(True)
         else:
             w.geometry("1280x720")
