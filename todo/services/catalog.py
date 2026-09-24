@@ -4,7 +4,7 @@ from database import connect, get_setting
 def search_products(query='', category=None, limit=None, images_only=False, offset=0):
     query = query.strip()
     with connect() as conn:
-        limit = max(1, min(200, int(limit or get_setting('search_limit', '60', conn))))
+        limit = max(1, min(1000, int(limit or get_setting('search_limit', '60', conn))))
         args  = []
         # Multi-category: filter via product_categories junction table
         if category is not None:
