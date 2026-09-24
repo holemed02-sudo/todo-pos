@@ -196,6 +196,15 @@ class CoreTests(unittest.TestCase):
   self.assertEqual(own['qty_multiplier'],6)
   with self.assertRaises(ValueError):add_product_barcode(self.pid,'BOX6',1,None)
   with self.assertRaises(ValueError):add_product_barcode(self.pid,'BAD',0,None)
+  with db.connect() as c:
+   audit_row=c.execute("SELECT action,document,details FROM audit_log WHERE action='PRODUCT_BARCODE_ADD' ORDER BY id DESC LIMIT 1").fetchone()
+  self.assertIsNotNone(audit_row)
+  self.assertEqual(audit_row['document'],str(second))
+  self.assertEqual(audit_row['details'],'BOX6')
+  current_user.set(None)
+  with self.assertRaises(PermissionError):add_product_barcode(self.pid,'NOADMIN',1,None)
+  self.login_admin()
+  self.assertEqual(len(scan_barcode('NOADMIN')),0)
  def test_search_and_ambiguity(self):
   second=self.product('Huile Olive')
   with db.connect() as c:
