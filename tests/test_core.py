@@ -307,4 +307,16 @@ class CoreTests(unittest.TestCase):
   state=resume_held(hid)
   self.assertEqual(line_total(state['cart'][0]['unit_price_cents'],6),2500)
 
+  def test_label_data_uses_selected_pack_barcode_and_price(self):
+    from services.catalog import product_label_data,list_product_label_barcodes
+    with connect() as c:
+      pid=c.execute("INSERT INTO products(name,sale_price_cents,stock_qty) VALUES('Label item',500,20)").lastrowid;c.commit()
+    add_product_barcode(pid,'UNIT-1',1,None,'Unité')
+    pack_id=add_product_barcode(pid,'CARTON-6',6,2700,'Carton')
+    rows=list_product_label_barcodes(pid)
+    self.assertEqual([r['barcode'] for r in rows],['UNIT-1','CARTON-6'])
+    unit=product_label_data(pid,rows[0]['id']);pack=product_label_data(pid,pack_id)
+    self.assertEqual(unit['price_cents'],500);self.assertEqual(pack['barcode'],'CARTON-6')
+    self.assertEqual(pack['qty_multiplier'],6);self.assertEqual(pack['price_cents'],2700)
+
 if __name__=='__main__':unittest.main()
