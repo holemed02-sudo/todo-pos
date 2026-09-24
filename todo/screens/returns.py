@@ -26,7 +26,7 @@ class ReturnsFrame(ttk.Frame):
             rows=c.execute("""SELECT si.*,
              COALESCE((SELECT SUM(ri.qty) FROM return_items ri WHERE ri.sale_item_id=si.id),0) returned
              FROM sale_items si WHERE si.sale_id=?""",(s["id"],)).fetchall()
-        self.sale_id=s["id"];self.sale_payment=s["payment_method"];self.info.config(text=f"{s['sale_no']} — {fmt(s['total_cents'])} — {s['created_at']} — Paiement: {s['payment_method']}");self.t.delete(*self.t.get_children())
+        self.sale_id=s["id"];self.sale_payment=s["payment_method"];self.info.config(text=f"{s['sale_no']} — {fmt(s['total_cents'])} — {s['created_at']} — {self.tr('Paiement','الأداء')}: {self._payment_label(s['payment_method'])}");self.t.delete(*self.t.get_children())
         for x in rows:self.t.insert("", "end",values=(x["id"],x["name_snapshot"],f"{x['qty']:g}",f"{x['returned']:g}",f"{float(x['qty'])-float(x['returned']):g}",fmt(x["unit_price_cents"],"")))
     def do_return(self):
         if not self.sale_id:return
@@ -42,7 +42,7 @@ class ReturnsFrame(ttk.Frame):
         try:
             refund_method='AUTO' if getattr(self,'sale_payment',None)=='MIXED' else ('CARD' if getattr(self,'sale_payment',None)=='CARD' else 'CASH')
             r=create_return(self.sale_id,sess["id"],self.app.user["id"],[(line,qty)],reason,refund_method)
-            detail="\n".join(f"{p['payment_method']}: {fmt(p['amount_cents'])}" for p in r.get('refund_payments',[]))
+            detail="\n".join(f"{self._payment_label(p['payment_method'])}: {fmt(p['amount_cents'])}" for p in r.get('refund_payments',[]))
             if detail:detail="\n"+detail
-            messagebox.showinfo("ToDo",f"{r['return_no']}\nRemboursement: {fmt(r['refund_paid_cents'])}{detail}\nDette annulée: {fmt(r['debt_reduction_cents'])}",parent=self);self.load()
+            messagebox.showinfo("ToDo",f"{r['return_no']}\n{self.tr('Remboursement','المبلغ المسترجع')}: {fmt(r['refund_paid_cents'])}{detail}\n{self.tr('Dette annulée','الدين الملغى')}: {fmt(r['debt_reduction_cents'])}",parent=self);self.load()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)
