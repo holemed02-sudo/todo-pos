@@ -392,8 +392,8 @@ class ToDoApp(tk.Tk):
             from PIL import Image,ImageTk
             im=self._cover_customer_image(Image.open(path).convert("RGB"))
             self.customer_photo=ImageTk.PhotoImage(im);self.customer_label.config(image=self.customer_photo,text="")
-        except Exception as e:
-            lang=get_setting('language','fr');self.customer_label.config(image="",text=(f'وسائط غير صالحة: {e}' if lang=='ar' else f'Média invalide : {e}'))
+        except Exception:
+            self._skip_bad_customer_media()
 
     def update_customer_display(self, cart, total):
         # Customer screen is intentionally advertising-first: cashier prices,
