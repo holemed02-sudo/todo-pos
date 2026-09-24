@@ -575,6 +575,9 @@ class ProductsFrame(ttk.Frame):
                     c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
                     if action=="replace":
                         pid=target["id"]
+                        if product_key and product_key in imported_groups and imported_groups[product_key]!=pid:
+                            raise ValueError(self.tr("Un même product key ne peut pas mettre à jour plusieurs articles existants.","لا يمكن لنفس مفتاح المنتوج تحديث عدة منتجات موجودة."))
+                        if product_key:imported_groups[product_key]=pid
                         c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,[catid])
@@ -584,7 +587,7 @@ class ProductsFrame(ttk.Frame):
                         audit(c,'PRODUCT_IMPORT_UPDATE',pid);updated+=1
                         continue
                     group_key=product_key or None
-                    if action=="new" and group_key and group_key in imported_groups:
+                    if action in ("new","shared") and group_key and group_key in imported_groups:
                         pid=imported_groups[group_key]
                         if barcode and not c.execute("SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?",(pid,barcode)).fetchone():
                             c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
