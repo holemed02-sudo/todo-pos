@@ -61,8 +61,7 @@ class PurchasesFrame(ttk.Frame):
         s=self.prod.selection()
         if not s:return
         vals=self.prod.item(s[0],"values");pid=int(vals[0]);name=vals[1]
-        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{name}
-{self.tr('Quantité reçue:','الكمية المستلمة:')}",parent=self,minvalue=0.001)
+        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{name}\\n{self.tr('Quantité reçue:','الكمية المستلمة:')}",parent=self,minvalue=0.001)
         if qty is None:return
         cost=simpledialog.askfloat(self.tr("Coût","التكلفة"),f"{self.tr('Prix achat unitaire','ثمن الشراء للوحدة')} {name}:",parent=self,minvalue=0)
         if cost is None:return
@@ -82,8 +81,7 @@ class PurchasesFrame(ttk.Frame):
         i=self._selected_line_index()
         if i is None:return
         x=self.lines[i]
-        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{x['name']}
-{self.tr('Quantité reçue:','الكمية المستلمة:')}",initialvalue=x['qty'],parent=self,minvalue=0.001)
+        qty=simpledialog.askfloat(self.tr("Qté","الكمية"),f"{x['name']}\\n{self.tr('Quantité reçue:','الكمية المستلمة:')}",initialvalue=x['qty'],parent=self,minvalue=0.001)
         if qty is None:return
         cost=simpledialog.askfloat(self.tr("Coût","التكلفة"),f"{self.tr('Prix achat unitaire','ثمن الشراء للوحدة')} {x['name']}:",initialvalue=x['unit_cost_cents']/100,parent=self,minvalue=0)
         if cost is None:return
