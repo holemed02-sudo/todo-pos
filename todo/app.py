@@ -394,6 +394,10 @@ class ToDoApp(tk.Tk):
     def _render_customer_slide(self):
         if not (self.customer_label and self.customer_label.winfo_exists()):return
         if not self.customer_slides:
+            if self.customer_after_id:
+                try:self.after_cancel(self.customer_after_id)
+                except Exception:pass
+            self.customer_after_id=None
             lang=get_setting('language','fr');self.customer_label.config(image="",text=('ضع الصور أو الفيديوهات داخل مجلد customer_media' if lang=='ar' else 'Ajoutez les images ou vidéos dans customer_media'));return
         path=self.customer_slides[self.customer_slide_index]
         if path.suffix.lower() in (".mp4",".avi",".mov",".mkv"):return
