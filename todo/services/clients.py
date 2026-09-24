@@ -82,7 +82,7 @@ def add_payment(client_id, amount_cents, note='', sale_id=None, payment_method='
         raise ValueError('Montant ou mode de paiement invalide.')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE');uid=require_admin(conn)
-        session=conn.execute("SELECT id FROM cash_sessions WHERE status='OPEN' AND cashier_user_id=? ORDER BY id DESC LIMIT 1",(uid,)).fetchone()
+        session=conn.execute("SELECT id FROM cash_sessions WHERE status='OPEN' AND user_id=? ORDER BY id DESC LIMIT 1",(uid,)).fetchone()
         if session is None:raise ValueError('Ouvrez votre caisse avant un règlement.')
         client=conn.execute('SELECT * FROM clients WHERE id=? AND active=1',(client_id,)).fetchone()
         if client is None:raise ValueError('Client introuvable.')
