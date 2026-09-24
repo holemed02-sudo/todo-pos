@@ -363,19 +363,19 @@ class ProductsFrame(ttk.Frame):
         ttk.Button(top,text=self.tr('Modifier','تعديل'),command=self.edit).pack(side="right",padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
         self.t=ttk.Treeview(self,columns=cols,show="headings")
-        cfg=[("id","ID",50),("barcode","Barcode",145),("name","Article",260),("cat","Famille",130),("buy","Achat",85),("sell","Vente",85),("stock","Stock",80),("alert","Alerte",80),("img","Img",45)]
+        cfg=[("id","ID",50),("barcode",self.tr("Barcode","الباركود"),145),("name",self.tr("Article","المنتوج"),260),("cat",self.tr("Famille","العائلة"),130),("buy",self.tr("Achat","الشراء"),85),("sell",self.tr("Vente","البيع"),85),("stock",self.tr("Stock","المخزون"),80),("alert",self.tr("Alerte","التنبيه"),80),("img",self.tr("Img","صورة"),45)]
         for c,h,w in cfg:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True);self.t.bind("<Double-1>",lambda e:self.edit())
         self.kpi_bar=tk.Frame(self,bg='#F6F7FB');self.kpi_bar.pack(fill='x',pady=(8,2))
         self.kpi_values=[]
-        for title,color in [('Articles','#DC2626'),('Alertes stock','#F59E0B'),('Prix quantité','#E07B00'),('Valeur stock achat','#2563EB'),('Stock négatif','#16A34A')]:
+        for title,color in [(self.tr('Articles','المنتجات'),'#DC2626'),(self.tr('Alertes stock','تنبيهات المخزون'),'#F59E0B'),(self.tr('Prix quantité','ثمن الكمية'),'#E07B00'),(self.tr('Valeur stock achat','قيمة مخزون الشراء'),'#2563EB'),(self.tr('Stock négatif','مخزون سالب'),'#16A34A')]:
             card=tk.Frame(self.kpi_bar,bg=color,height=72);card.pack(side='left',fill='x',expand=True,padx=3);card.pack_propagate(False)
             value=tk.Label(card,text='0',bg=color,fg='white',font=('Segoe UI',18,'bold'));value.pack(anchor='w',padx=12,pady=(7,0))
             tk.Label(card,text=title,bg=color,fg='white',font=('Segoe UI',9)).pack(anchor='w',padx=12)
             self.kpi_values.append(value)
         pages=ttk.Frame(self);pages.pack(fill='x',pady=6)
-        ttk.Button(pages,text='Précédent',command=lambda:self.go_page(max(0,self.page-1))).pack(side='left')
-        ttk.Button(pages,text='Suivant',command=lambda:self.go_page(self.page+1)).pack(side='left',padx=8)
+        ttk.Button(pages,text=self.tr('Précédent','السابق'),command=lambda:self.go_page(max(0,self.page-1))).pack(side='left')
+        ttk.Button(pages,text=self.tr('Suivant','التالي'),command=lambda:self.go_page(self.page+1)).pack(side='left',padx=8)
         self.page_label=ttk.Label(pages);self.page_label.pack(side='right')
         self.refresh()
     def go_page(self,page):
@@ -384,9 +384,9 @@ class ProductsFrame(ttk.Frame):
         q=f"%{self.q.get().strip()}%"
         with connect() as c:
             extra=""
-            if self.filter.get()=="Alertes stock":extra=" AND p.stock_qty<=p.alert_qty"
-            elif self.filter.get()=="Stock négatif":extra=" AND p.stock_qty<0"
-            elif self.filter.get()=="Promotions":extra=" AND EXISTS(SELECT 1 FROM quantity_prices qp WHERE qp.product_id=p.id AND qp.active=1)"
+            if self.filter.get()==self.tr("Alertes stock","تنبيهات المخزون"):extra=" AND p.stock_qty<=p.alert_qty"
+            elif self.filter.get()==self.tr("Stock négatif","مخزون سالب"):extra=" AND p.stock_qty<0"
+            elif self.filter.get()==self.tr("Promotions","العروض"):extra=" AND EXISTS(SELECT 1 FROM quantity_prices qp WHERE qp.product_id=p.id AND qp.active=1)"
             sql="""SELECT p.*,COALESCE(cat.name,'') category,
                 (SELECT barcode FROM product_barcodes b WHERE b.product_id=p.id ORDER BY id LIMIT 1) barcode
                 FROM products p LEFT JOIN categories cat ON cat.id=p.category_id
@@ -395,16 +395,16 @@ class ProductsFrame(ttk.Frame):
             stats=c.execute("SELECT COUNT(*),COALESCE(SUM(stock_qty*purchase_price_cents),0),COALESCE(SUM(CASE WHEN stock_qty<0 THEN 1 ELSE 0 END),0),COALESCE(SUM(CASE WHEN stock_qty<=alert_qty THEN 1 ELSE 0 END),0) FROM products WHERE active=1").fetchone()
             promos=c.execute("SELECT COUNT(*) FROM quantity_prices WHERE active=1").fetchone()[0]
         self.kpi_values[0].config(text=str(stats[0]));self.kpi_values[1].config(text=str(stats[3]));self.kpi_values[2].config(text=str(promos));self.kpi_values[3].config(text=f"{stats[1]/100:.2f}");self.kpi_values[4].config(text=str(stats[2]))
-        self.page_label.config(text=f'Page {self.page+1} · {len(rows)} produits · 200 par page')
+        self.page_label.config(text=self.tr(f'Page {self.page+1} · {len(rows)} produits · 200 par page',f'الصفحة {self.page+1} · {len(rows)} منتوج · 200 في الصفحة'))
         self.t.delete(*self.t.get_children())
         for r in rows:self.t.insert("", "end",values=(r["id"],r["barcode"] or "",r["name"],r["category"],f"{r['purchase_price_cents']/100:.2f}",f"{r['sale_price_cents']/100:.2f}",f"{r['stock_qty']:g}",f"{r['alert_qty']:g}","✓" if r["image_path"] else ""))
     def label_pdf(self):
         pid=self.sel()
         if not pid:
-            messagebox.showinfo("Étiquette","Sélectionnez un article.",parent=self);return
+            messagebox.showinfo(self.tr("Étiquette","الملصق"),self.tr("Sélectionnez un article.","اختر منتوجاً."),parent=self);return
         copies=simpledialog.askinteger("Étiquette","Nombre d'étiquettes :",initialvalue=1,minvalue=1,maxvalue=200,parent=self)
         if copies is None:return
-        path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title="Enregistrer les étiquettes")
+        path=filedialog.asksaveasfilename(parent=self,defaultextension=".pdf",filetypes=[("PDF","*.pdf")],title=self.tr("Enregistrer les étiquettes","حفظ الملصقات"))
         if not path:return
         try:
             from reportlab.lib.pagesizes import A4
@@ -412,7 +412,7 @@ class ProductsFrame(ttk.Frame):
             from reportlab.graphics.barcode import code128
             with connect() as c:
                 row=c.execute("""SELECT p.name,p.sale_price_cents,(SELECT barcode FROM product_barcodes b WHERE b.product_id=p.id ORDER BY id LIMIT 1) barcode FROM products p WHERE p.id=?""",(pid,)).fetchone()
-            if not row:raise ValueError("Article introuvable.")
+            if not row:raise ValueError(self.tr("Article introuvable.","المنتوج غير موجود."))
             barcode=(row["barcode"] or "").strip()
             if not barcode:raise ValueError("Cet article n'a pas de code-barres.")
             cv=canvas.Canvas(path,pagesize=A4);page_w,page_h=A4;label_w=page_w/3;label_h=95
@@ -425,8 +425,8 @@ class ProductsFrame(ttk.Frame):
                 cv.setFont("Helvetica-Bold",13);cv.drawCentredString(x+(label_w-16)/2,y+label_h-42,fmt(row["sale_price_cents"]))
                 bc=code128.Code128(barcode,barHeight=24,barWidth=0.7);bc.drawOn(cv,x+((label_w-16)-bc.width)/2,y+14)
                 cv.setFont("Helvetica",7);cv.drawCentredString(x+(label_w-16)/2,y+5,barcode)
-            cv.save();messagebox.showinfo("Étiquette",f"{copies} étiquette(s) créée(s).",parent=self)
-        except Exception as e:messagebox.showerror("Étiquette",str(e),parent=self)
+            cv.save();messagebox.showinfo(self.tr("Étiquette","الملصق"),self.tr(f"{copies} étiquette(s) créée(s).",f"تم إنشاء {copies} ملصق."),parent=self)
+        except Exception as e:messagebox.showerror(self.tr("Étiquette","الملصق"),str(e),parent=self)
 
     def export_catalogue(self):
         path=filedialog.asksaveasfilename(parent=self,defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title=self.tr("Exporter le catalogue","تصدير الكتالوج"))
