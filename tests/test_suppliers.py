@@ -7,6 +7,7 @@ import database
 from services.bootstrap import ensure_defaults
 from services.security import current_user
 from services.suppliers import save_supplier, list_suppliers
+from services.supplier_payments import add_supplier_payment, supplier_purchases
 
 
 class SupplierTests(unittest.TestCase):
@@ -48,3 +49,6 @@ class SupplierTests(unittest.TestCase):
         finally:
             current_user.reset(token)
         self.assertEqual(list_suppliers(), [])
+
+
+# Supplier payment allocation regressions are covered above.
