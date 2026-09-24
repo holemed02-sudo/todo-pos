@@ -33,6 +33,10 @@ class JournalFrame(ttk.Frame):
         self.refresh()
     def set_period(self,days):
         end=date.today();self.date_to.set(str(end));self.date_from.set(str(end-timedelta(days=days)));self.refresh()
+    def _payment_label(self, method):
+        labels={'CASH':self.tr('Espèces','نقداً'),'CARD':self.tr('Carte','بطاقة'),'CREDIT':self.tr('Crédit','دين'),'MIXED':self.tr('Mixte','مختلط'),'AUTO':self.tr('Automatique','تلقائي')}
+        return labels.get(method,method or '')
+
     def rows(self):
         try:
             date.fromisoformat(self.date_from.get());date.fromisoformat(self.date_to.get())
@@ -185,7 +189,7 @@ class JournalFrame(ttk.Frame):
             from reportlab.lib.styles import getSampleStyleSheet
             from reportlab.platypus import SimpleDocTemplate,Table,TableStyle,Paragraph,Spacer
             data=[[self.tr("Ticket","التذكرة"),self.tr("Date","التاريخ"),self.tr("Caissier","الكاشير"),self.tr("Vendeur","البائع"),self.tr("Paiement","الدفع"),self.tr("Total","المجموع")]]
-            for r in rows:data.append([r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],r["payment_method"],fmt(r["total_cents"],"")])
+            for r in rows:data.append([r["sale_no"],r["created_at"],r["display_name"],r["seller_name"],self._payment_label(r["payment_method"]),fmt(r["total_cents"],"")])
             doc=SimpleDocTemplate(p,pagesize=landscape(A4),rightMargin=24,leftMargin=24,topMargin=24,bottomMargin=24)
             table=Table(data,repeatRows=1,colWidths=[125,125,110,110,90,90]);table.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#2563EB")),("TEXTCOLOR",(0,0),(-1,0),colors.white),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.3,colors.grey),("FONTSIZE",(0,0),(-1,-1),8)]))
             styles=getSampleStyleSheet();doc.build([Paragraph(self.tr("Rapport Journal","تقرير السجل"),styles["Title"]),Spacer(1,8),Paragraph(f"{self.date_from.get()} - {self.date_to.get()}",styles["Heading3"]),Spacer(1,8),table])
@@ -225,7 +229,7 @@ class JournalFrame(ttk.Frame):
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
         self._simple_report(self.tr("Entête journal","رؤوس السجل"),
             (self.tr("Ticket","التذكرة"),self.tr("Date","التاريخ"),self.tr("Caissier","الكاشير"),self.tr("Vendeur","البائع"),self.tr("Client","الزبون"),self.tr("Paiement","الدفع"),self.tr("Total","المجموع")),
-            [(r["sale_no"],r["created_at"],r["cashier"],r["seller"],r["client"],r["payment_method"],fmt(r["total_cents"],"")) for r in rows])
+            [(r["sale_no"],r["created_at"],r["cashier"],r["seller"],r["client"],self._payment_label(r["payment_method"]),fmt(r["total_cents"],"")) for r in rows])
 
     def summary_report(self):
         rows=self.rows()
@@ -261,7 +265,7 @@ class JournalFrame(ttk.Frame):
             FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
             WHERE s.status='COMPLETED' AND date(s.created_at)>=? AND date(s.created_at)<=? GROUP BY sp.payment_method ORDER BY sp.payment_method"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get(),self.date_from.get(),self.date_to.get())).fetchall()
-        self._simple_report(self.tr("Paiements","الدفعات"),(self.tr("Mode","الطريقة"),self.tr("Encaissé","المقبوض"),self.tr("Remboursé","المسترجع"),self.tr("Net","الصافي")),[(r["method"],fmt(r["paid"] or 0,""),fmt(r["refunded"] or 0,""),fmt((r["paid"] or 0)-(r["refunded"] or 0),"")) for r in rows])
+        self._simple_report(self.tr("Paiements","الدفعات"),(self.tr("Mode","الطريقة"),self.tr("Encaissé","المقبوض"),self.tr("Remboursé","المسترجع"),self.tr("Net","الصافي")),[(self._payment_label(r["method"]),fmt(r["paid"] or 0,""),fmt(r["refunded"] or 0,""),fmt((r["paid"] or 0)-(r["refunded"] or 0),"")) for r in rows])
 
     def return_report(self):
         try:
@@ -271,7 +275,7 @@ class JournalFrame(ttk.Frame):
         sql="""SELECT r.return_no,r.created_at,s.sale_no,r.refund_method,r.total_cents
             FROM returns r JOIN sales s ON s.id=r.sale_id WHERE date(r.created_at)>=? AND date(r.created_at)<=? ORDER BY r.id DESC"""
         with connect() as c:rows=c.execute(sql,(self.date_from.get(),self.date_to.get())).fetchall()
-        self._simple_report(self.tr("Retours","المرتجعات"),(self.tr("Retour","المرتجع"),self.tr("Date","التاريخ"),self.tr("Ticket","التذكرة"),self.tr("Mode","الطريقة"),self.tr("Montant","المبلغ")),[(r["return_no"],r["created_at"],r["sale_no"],r["refund_method"],fmt(r["total_cents"],"")) for r in rows])
+        self._simple_report(self.tr("Retours","المرتجعات"),(self.tr("Retour","المرتجع"),self.tr("Date","التاريخ"),self.tr("Ticket","التذكرة"),self.tr("Mode","الطريقة"),self.tr("Montant","المبلغ")),[(r["return_no"],r["created_at"],r["sale_no"],self._payment_label(r["refund_method"]),fmt(r["total_cents"],"")) for r in rows])
 
     def _simple_report(self,title,headers,rows):
         w=tk.Toplevel(self);w.title(title);w.geometry("820x540");w.transient(self.winfo_toplevel())
