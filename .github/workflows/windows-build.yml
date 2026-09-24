@@ -46,6 +46,11 @@ jobs:
       - name: Create Windows ZIP package
         shell: pwsh
         run: Compress-Archive -Path dist/ToDo/* -DestinationPath dist/ToDo-POS-1.1.0-Windows.zip -Force
+      - name: Generate SHA256 checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist/ToDo-POS-1.1.0-Windows.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  ToDo-POS-1.1.0-Windows.zip" } | Set-Content dist/SHA256SUMS.txt
+          Get-FileHash dist/ToDo-POS-1.1.0-Setup.exe -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  ToDo-POS-1.1.0-Setup.exe" } | Add-Content dist/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: ToDo-POS-1.1.0-Windows
@@ -53,4 +58,5 @@ jobs:
             dist/ToDo
             dist/ToDo-POS-1.1.0-Windows.zip
             dist/ToDo-POS-1.1.0-Setup.exe
+            dist/SHA256SUMS.txt
           if-no-files-found: error
