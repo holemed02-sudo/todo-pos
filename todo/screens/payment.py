@@ -22,6 +22,7 @@ class PaymentDialog(tk.Toplevel):
         self.amount = tk.StringVar(value=f'{total / 100:.2f}')
         self.card_amount = tk.StringVar(value='0.00')
         self.print_ticket = tk.BooleanVar(value=False)
+        self.cash_parts = {}
         self.cash_tendered_cents = total
         tk.Label(self, text=self.tr('TOTAL À PAYER','المجموع'), bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
@@ -49,6 +50,8 @@ class PaymentDialog(tk.Toplevel):
         for index, value in enumerate((200, 100, 50, 20, 10, 5, 2, 1, 0.5)):
             ttk.Button(denominations, text=f'{value:g} DH', command=lambda n=value: self.add_cash(n)).grid(
                 row=index//5, column=index%5, sticky='nsew', padx=3, pady=3, ipady=5)
+        self.cash_breakdown = ttk.Label(body, text='')
+        self.cash_breakdown.pack(fill='x', pady=(0,4))
         for column in range(5):
             denominations.columnconfigure(column, weight=1)
         ttk.Button(body, text=self.tr('Effacer espèces','مسح النقد'), command=self.clear_cash).pack(fill='x', pady=(0, 4))
@@ -109,19 +112,23 @@ class PaymentDialog(tk.Toplevel):
         # starts a fresh cash count; after that every tap accumulates.
         if self.cash_tendered_cents == self.total and current == self.total:
             current = 0
+        self.cash_parts[amount]=self.cash_parts.get(amount,0)+1
         self.cash_tendered_cents = current + to_cents(str(amount))
+        self._render_cash_parts()
         self.amount.set(f'{self.cash_tendered_cents / 100:.2f}')
         self.focus_amount()
 
     def clear_cash(self):
         self.method.set('CASH')
         self.cash_tendered_cents = 0
+        self.cash_parts.clear();self._render_cash_parts()
         self.amount.set('0.00')
         self.focus_amount()
 
     def exact(self):
         self.method.set('CASH')
         self.cash_tendered_cents = self.total
+        self.cash_parts.clear();self._render_cash_parts()
         self.amount.set(f'{self.total / 100:.2f}')
         self.focus_amount()
 
@@ -142,6 +149,11 @@ class PaymentDialog(tk.Toplevel):
             except Exception:
                 pass
         self.update_amount()
+
+    def _render_cash_parts(self):
+        if not hasattr(self,'cash_breakdown'):return
+        parts=[f"{value:g}×{count}" for value,count in sorted(self.cash_parts.items(),reverse=True) if count]
+        self.cash_breakdown.configure(text=(self.tr('Compté : ','محسوب: ')+'  ·  '.join(parts)) if parts else '')
 
     def paid_cents(self):
         if self.method.get() == 'CARD': return self.total
