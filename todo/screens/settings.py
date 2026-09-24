@@ -130,7 +130,7 @@ class SettingsFrame(ttk.Frame):
         ttk.Label(p,text=self.tr('Après validation','بعد تأكيد البيع')).grid(row=1,column=0,sticky="w",pady=5)
         self.print_mode_box=ttk.Combobox(p,state='readonly',width=18)
         self.print_mode_labels={self.tr('Demander','سؤال'):'ask',self.tr('Toujours imprimer','الطباعة دائماً'):'always',self.tr('Ne jamais imprimer','عدم الطباعة'):'never'}
-        self.print_mode_box['values']=list(self.print_mode_labels);self.print_mode_box.set(next((k for k,v in self.print_mode_labels.items() if v==self.print_mode.get()),list(self.print_mode_labels)[0]));self.print_mode_box.grid(row=1,column=1,sticky='w',padx=8)
+        self.print_mode_box['values']=list(self.print_mode_labels);self.print_mode_box.set(next((k for k,v in self.print_mode_labels.items() if v==self.print_mode.get()),list(self.print_mode_labels)[0]));self.print_mode_box.bind('<<ComboboxSelected>>',lambda e:self.print_mode.set(self.print_mode_labels.get(self.print_mode_box.get(),'ask')));self.print_mode_box.grid(row=1,column=1,sticky='w',padx=8)
         ttk.Label(p,text=self.tr('Comportement impression','سلوك الطباعة')).grid(row=2,column=0,sticky='w')
         ttk.Label(p,text=self.tr('Demander / Toujours / Jamais','سؤال / دائماً / أبداً')).grid(row=2,column=1,columnspan=2,sticky='w')
         self.drawer_enabled=tk.BooleanVar(value=get_setting('drawer_enabled','0')=='1')
@@ -205,7 +205,7 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Limite de recherche entre 1 et 1000.","حد البحث بين 1 و1000."),parent=self);return
         set_setting("shop_name",self.shop.get().strip() or "ToDo");set_setting("currency",self.cur.get().strip() or "DH");set_setting("allow_negative_stock","1" if self.neg.get() else "0")
-        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());selected_print_mode=self.print_mode_labels.get(self.print_mode_box.get(),self.print_mode.get() or 'ask');set_setting("print_mode",selected_print_mode)
+        set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",self.print_mode.get() or "ask")
         set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');new_language=self.language.get();language_changed=new_language!=get_setting('language','fr');set_setting('language',new_language)
         try:
             seconds=int(self.customer_seconds.get())
@@ -213,7 +213,6 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 120 secondes.","مدة شاشة الزبون بين 2 و120 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
-        set_setting("station_id",self.station_id.get().strip() or "CAISSE-1")
         set_setting("auto_backup_minutes",self.auto_backup.get())
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
