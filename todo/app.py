@@ -318,7 +318,7 @@ class ToDoApp(tk.Tk):
         self.customer_label.pack(fill="both",expand=True)
         self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide() if self.customer_video is None else None)
         w.protocol("WM_DELETE_WINDOW",self.toggle_customer_display)
-        w.lift();self._load_customer_slides()
+        w.lift();w.focus_set();self._load_customer_slides()
 
     def _load_customer_slides(self):
         folder=Path.cwd()/"customer_media";folder.mkdir(exist_ok=True)
