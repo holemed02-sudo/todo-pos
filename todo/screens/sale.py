@@ -61,6 +61,7 @@ class SaleFrame(ttk.Frame):
         searchbar.pack(fill='x',pady=(0,12))
         ttk.Label(searchbar,text=self.tr('⌕  SCANNER / RECHERCHER','⌕  مسح / بحث'),style='CardTitle.TLabel').pack(side='left',padx=(0,14))
         self.query=tk.StringVar()
+        self.scan_quantity=tk.StringVar(value='1')
         self.entry=ttk.Entry(searchbar,textvariable=self.query,style='Search.TEntry')
         self.entry.pack(side='left',fill='x',expand=True)
         self.entry.bind('<Return>',self.confirm_search)
