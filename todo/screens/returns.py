@@ -7,16 +7,16 @@ from services.money import fmt
 
 class ReturnsFrame(ttk.Frame):
     def __init__(self,master,app):
-        super().__init__(master,padding=10);self.app=app
+        super().__init__(master,padding=16);self.app=app
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text=self.tr('Retours','المرتجعات'),font=("Segoe UI",22,"bold")).pack(side="left")
-        self.no=tk.StringVar();e=ttk.Entry(top,textvariable=self.no,width=28);e.pack(side="left",padx=15);e.bind("<Return>",lambda x:self.load())
-        ttk.Button(top,text=self.tr('Chercher ticket','بحث عن تذكرة'),command=self.load).pack(side="left")
+        ttk.Label(top,text=self.tr('Retours','المرتجعات'),style='Title.TLabel').pack(side='left')
+        self.no=tk.StringVar();e=ttk.Entry(top,textvariable=self.no,width=28,style='Search.TEntry');e.pack(side='left',padx=15);e.bind("<Return>",lambda x:self.load())
+        ttk.Button(top,text=self.tr('Chercher ticket','بحث عن تذكرة'),style='Primary.TButton',command=self.load).pack(side='left')
         self.info=ttk.Label(self,text="");self.info.pack(anchor="w",pady=8)
         self.t=ttk.Treeview(self,columns=("id","name","sold","returned","available","price"),show="headings")
         for c,h,w in [("id",self.tr("Ligne","السطر"),55),("name",self.tr("Article","المنتوج"),260),("sold",self.tr("Vendu","المباع"),75),("returned",self.tr("Retourné","المرتجع"),80),("available",self.tr("Disponible","المتاح"),85),("price",self.tr("Prix","الثمن"),90)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
-        self.t.pack(fill="both",expand=True);ttk.Button(self,text=self.tr('Retourner ligne sélectionnée','إرجاع السطر المحدد'),command=self.do_return).pack(fill="x",pady=8)
+        self.t.pack(fill='both',expand=True);ttk.Button(self,text=self.tr('Retourner ligne sélectionnée','إرجاع السطر المحدد'),style='Danger.TButton',command=self.do_return).pack(fill='x',pady=8,ipady=5)
         self.sale_id=None
     def load(self):
         no=self.no.get().strip()
