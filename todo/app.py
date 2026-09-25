@@ -473,7 +473,12 @@ class ToDoApp(tk.Tk):
                 try:self.after_cancel(self.customer_after_id)
                 except Exception:pass
             self.customer_after_id=None
-            lang=get_setting('language','fr');self.customer_label.config(image="",text=('ضع الصور أو الفيديوهات داخل مجلد customer_media' if lang=='ar' else 'Ajoutez les images ou vidéos dans customer_media'));return
+            lang=get_setting('language','fr')
+            placeholder=('ToDo\n\nالعروض والإعلانات\n\nضع الصور أو الفيديوهات داخل مجلد customer_media'
+                         if lang=='ar' else
+                         'ToDo\n\nOffres & promotions\n\nAjoutez les images ou vidéos dans customer_media')
+            self.customer_label.config(image="",text=placeholder,font=("Segoe UI",28,"bold"),fg="white",bg="#0F172A")
+            return
         path=self.customer_slides[self.customer_slide_index]
         if path.suffix.lower() in (".mp4",".avi",".mov",".mkv"):return
         try:
@@ -487,7 +492,10 @@ class ToDoApp(tk.Tk):
         # Customer screen is intentionally advertising-first: cashier prices,
         # ticket lines and totals are never mirrored to the public display.
         if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_label):return
-        lang=get_setting('language','fr');self.customer_label.config(text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'))
+        # Never interrupt an active promotion with sale text.  The public screen
+        # remains advertising-only by design; show branded text only when empty.
+        if not self.customer_slides:
+            self._render_customer_slide()
 
     def lock_cashier(self):
         from screens.cashier_tools import CashierLock
