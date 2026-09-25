@@ -429,10 +429,10 @@ class ToDoApp(tk.Tk):
             except Exception:pass
             self.customer_video=None
 
-    def _apply_customer_display_mode(self):
+    def _apply_customer_display_mode(self, mode=None):
         if not (self.customer_window and self.customer_window.winfo_exists()):
             return
-        mode=get_setting('customer_display_mode','promotions')
+        mode=mode or get_setting('customer_display_mode','promotions')
         if mode=='prices':
             self._stop_customer_media()
             if self.customer_label and self.customer_label.winfo_exists():
