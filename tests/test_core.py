@@ -197,6 +197,19 @@ class CoreTests(unittest.TestCase):
   self.assertEqual((media/'promo.mp4').read_bytes(),b'original-video')
   self.assertFalse((media/'extra.txt').exists())
 
+ def test_full_backup_rejects_invalid_manifest(self):
+  backup.BASE=Path(self.temp.name)
+  good_db=backup.create_backup()
+  bad=Path(self.temp.name)/'bad.todozip'
+  import zipfile,json
+  with zipfile.ZipFile(bad,'w',zipfile.ZIP_DEFLATED) as z:
+   z.write(good_db,'todo.db')
+   z.writestr('manifest.json',json.dumps({'format':'wrong-format','version':1}))
+  with self.assertRaises(ValueError):backup.restore_full_backup(bad)
+  missing=Path(self.temp.name)/'missing-manifest.todozip'
+  with zipfile.ZipFile(missing,'w',zipfile.ZIP_DEFLATED) as z:z.write(good_db,'todo.db')
+  with self.assertRaises(ValueError):backup.restore_full_backup(missing)
+
  def test_restore_and_invalid_backup(self):
   saved=backup.create_backup();self.sell();backup.restore_backup(saved);self.assertEqual(self.stock(),20)
   invalid=Path(self.temp.name)/'bad.db';invalid.write_bytes(b'not sqlite')
