@@ -96,27 +96,29 @@ class InventaireFrame(ttk.Frame):
         diffs = {pid: cnt for pid, cnt in self.counted.items()}
         if not diffs:
             messagebox.showinfo(self.tr('Inventaire','الجرد'), self.tr('Aucun écart saisi.','لم يتم إدخال أي فرق.'), parent=self); return
+        pending=[p for p in self.products if p['id'] in diffs and abs(diffs[p['id']]-float(p['stock_qty']))>0.001]
+        if not pending:
+            messagebox.showinfo(self.tr('Inventaire','الجرد'), self.tr('Aucun écart à appliquer.','لا يوجد فرق للتطبيق.'), parent=self); return
+        if not messagebox.askyesno(self.tr('Valider inventaire','تأكيد الجرد'),
+            self.tr(f'Appliquer {len(pending)} écart(s) de stock en une seule opération ?',f'تطبيق {len(pending)} فروق في المخزون دفعة واحدة؟'),parent=self):return
         n_adj = 0
-        with connect() as conn:
-            conn.execute('BEGIN IMMEDIATE')
-            for p in self.products:
-                pid = p['id']
-                counted = diffs.get(pid)
-                if counted is None: continue
-                row = conn.execute('SELECT stock_qty FROM products WHERE id=? AND active=1', (pid,)).fetchone()
-                if row is None: continue
-                # The inventory screen may stay open while sales/purchases change stock.
-                # Re-read inside the write transaction so the final stock equals the physical count.
-                theory = float(row['stock_qty'])
-                delta = counted - theory
-                if abs(delta) < 0.001: continue
-                apply_stock_movement(conn, pid, delta, 'INVENTORY',
-                                     note=f'Inventaire : théorique {theory:g} → compté {counted:g}')
-                n_adj += 1
-            conn.commit()
+        try:
+            with connect() as conn:
+                require_admin(conn)
+                conn.execute('BEGIN IMMEDIATE')
+                for p in pending:
+                    pid=p['id'];counted=diffs[pid]
+                    row = conn.execute('SELECT stock_qty FROM products WHERE id=? AND active=1', (pid,)).fetchone()
+                    if row is None: continue
+                    theory=float(row['stock_qty']);delta=counted-theory
+                    if abs(delta)<0.001:continue
+                    apply_stock_movement(conn,pid,delta,'INVENTORY',note=f'Inventaire : théorique {theory:g} → compté {counted:g}')
+                    n_adj+=1
+                conn.commit()
+        except Exception as e:
+            messagebox.showerror(self.tr('Inventaire','الجرد'),str(e),parent=self);return
         messagebox.showinfo(self.tr('Inventaire','الجرد'), self.tr(f'{n_adj} article(s) ajusté(s).',f'تمت تسوية {n_adj} منتج.'), parent=self)
-        self.counted.clear()
-        self.refresh()
+        self.counted.clear();self.refresh()
 
 
 # ── Sorties ───────────────────────────────────────────────────────────────
@@ -197,17 +199,24 @@ class SortiesFrame(ttk.Frame):
         sel = self.tree.selection()
         if not sel:
             messagebox.showinfo(self.tr('Sorties','الإخراج'), self.tr('Sélectionnez un article.','اختر منتجاً.'), parent=self); return
-        pid   = int(sel[0])
-        pname = self.rows[sel[0]]['name']
-        qty   = simpledialog.askfloat(self.tr('Sortie','إخراج'), self.tr(f'Quantité sortie — {pname} :',f'الكمية المخرجة — {pname}:'), parent=self)
-        if qty is None or qty <= 0: return
+        selected=list(sel)
         reason = simpledialog.askstring(self.tr('Sortie','إخراج'), self.tr('Raison obligatoire (casse, perte, don…) :','السبب إجباري (كسر، ضياع، تبرع…):'), parent=self)
         if reason is None or not reason.strip():
             messagebox.showinfo(self.tr('Sorties','الإخراج'),self.tr('La raison est obligatoire.','السبب إلزامي.'),parent=self); return
+        entries=[]
+        for key in selected:
+            pname=self.rows[key]['name']
+            qty=simpledialog.askfloat(self.tr('Sortie','إخراج'),self.tr(f'Quantité sortie — {pname} :',f'الكمية المخرجة — {pname}:'),parent=self)
+            if qty is None:return
+            if qty<=0:
+                messagebox.showerror(self.tr('Sortie','إخراج'),self.tr('Quantité invalide.','الكمية غير صالحة.'),parent=self);return
+            entries.append((int(key),qty))
+        if not messagebox.askyesno(self.tr('Sorties','الإخراج'),self.tr(f'Enregistrer {len(entries)} sortie(s) en une seule opération ?',f'تسجيل {len(entries)} عمليات إخراج دفعة واحدة؟'),parent=self):return
         try:
             with connect() as conn:
+                require_admin(conn)
                 conn.execute('BEGIN IMMEDIATE')
-                apply_stock_movement(conn, pid, -qty, 'OUT', note=reason)
+                for pid,qty in entries:apply_stock_movement(conn,pid,-qty,'OUT',note=reason)
                 conn.commit()
             self.refresh()
         except Exception as e:
