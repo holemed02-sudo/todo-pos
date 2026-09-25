@@ -417,12 +417,16 @@ class SaleFrame(ttk.Frame):
             r=rows[0];self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
         elif len(rows)>1:self.pick_barcode(rows)
         else:
-            rows=search_products(code,limit=2)
-            if len(rows)==1:self.add_product(rows[0]['id'])
+            # Barcode-like scanner input must never silently become a name search.
+            scanner_like=len(code)>=4 and not any(ch.isspace() for ch in code)
+            if scanner_like:
+                self.unknown_product(code)
             else:
-                self.render_products();self.focus_catalog()
-                self.status.config(text=self.tr('Choisissez un produit puis Entrée.','اختر منتوجاً ثم اضغط Enter.') if rows else self.tr('Aucun produit trouvé.','لم يتم العثور على أي منتوج.'))
-                if not rows:self.unknown_product(code)
+                rows=search_products(code,limit=2)
+                if len(rows)==1:self.add_product(rows[0]['id'])
+                else:
+                    self.render_products();self.focus_catalog()
+                    self.status.config(text=self.tr('Choisissez un produit puis Entrée.','اختر منتوجاً ثم اضغط Enter.') if rows else self.tr('Aucun produit trouvé.','لم يتم العثور على أي منتوج.'))
         return 'break'
 
     def unknown_product(self,code):
