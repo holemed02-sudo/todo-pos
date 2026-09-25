@@ -243,9 +243,10 @@ class SettingsFrame(ttk.Frame):
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
     def test_customer(self):
-        if self.app.customer_window and self.app.customer_window.winfo_exists():
+        mode=self.customer_mode_labels.get(self.customer_mode_box.get(),'promotions')
+        if not (self.app.customer_window and self.app.customer_window.winfo_exists()):
             self.app.toggle_customer_display()
-        self.app.toggle_customer_display()
+        self.app._apply_customer_display_mode(mode)
 
     def refresh_printers(self):
         from services.printers import installed_printers
