@@ -8,18 +8,18 @@ class CashFrame(ttk.Frame):
     def __init__(self,master,app):
         super().__init__(master,padding=15);self.app=app
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
-        ttk.Label(self,text=self.tr('Caisse','الصندوق'),font=("Segoe UI",22,"bold")).pack(anchor="w",pady=(0,15))
+        ttk.Label(self,text=self.tr('Caisse','الصندوق'),style='Title.TLabel').pack(anchor='w',pady=(0,8))
         self.info=ttk.Label(self,text="",font=("Segoe UI",12));self.info.pack(anchor="w",pady=8)
         self.kpis=ttk.Frame(self);self.kpis.pack(fill="x",pady=8);self.kpi_labels={}
         for key,title in [("expected",self.tr("Cash attendu","النقد المتوقع")),("sales",self.tr("Ventes cash","المبيعات النقدية")),("expenses",self.tr("Dépenses","المصاريف")),("returns",self.tr("Retours cash","المرتجعات النقدية"))]:
             card=ttk.LabelFrame(self.kpis,text=title,padding=8);card.pack(side="left",fill="x",expand=True,padx=3);lbl=ttk.Label(card,text="—",font=("Segoe UI",16,"bold"));lbl.pack();self.kpi_labels[key]=lbl
         b=ttk.Frame(self);b.pack(anchor="w",pady=8)
-        ttk.Button(b,text=self.tr('Ouvrir caisse','فتح الصندوق'),command=self.open).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Dépense','مصروف'),command=self.expense).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Cash IN','إدخال نقدي'),command=lambda:self.cashmove("IN")).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Cash OUT','إخراج نقدي'),command=lambda:self.cashmove("OUT")).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Clôturer','إغلاق الصندوق'),command=self.close).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr('Historique clôtures','سجل الإغلاقات'),command=self.history).pack(side="left",padx=4)
+        ttk.Button(b,text=self.tr('Ouvrir caisse','فتح الصندوق'),style='Success.TButton',command=self.open).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('Dépense','مصروف'),style='Danger.TButton',command=self.expense).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('Cash IN','إدخال نقدي'),style='Soft.TButton',command=lambda:self.cashmove('IN')).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('Cash OUT','إخراج نقدي'),style='Soft.TButton',command=lambda:self.cashmove('OUT')).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('Clôturer','إغلاق الصندوق'),style='Primary.TButton',command=self.close).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('Historique clôtures','سجل الإغلاقات'),style='Soft.TButton',command=self.history).pack(side='left',padx=4)
         self.details=tk.Text(self,height=16,font=("Consolas",11));self.details.pack(fill="x",pady=15);self.refresh()
     def refresh(self):
         s=get_open_session();self.details.config(state="normal");self.details.delete("1.0","end")
