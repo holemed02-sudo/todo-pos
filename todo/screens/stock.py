@@ -5,20 +5,20 @@ from services.inventory import apply_stock_movement
 
 class StockFrame(ttk.Frame):
     def __init__(self,master,app=None):
-        super().__init__(master,padding=10)
+        super().__init__(master,padding=16)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
-        ttk.Label(top,text=self.tr('Stock','المخزون'),font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(top,text=self.tr('Stock','المخزون'),style="Title.TLabel").pack(side="left")
         ttk.Label(self,text=self.tr('Quantités, mouvements et inventaire — nom, prix et photo restent dans Articles.','الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في المنتجات.'),foreground="#475569").pack(anchor="w",pady=(0,8))
-        ttk.Button(top,text=self.tr('Ajustement','تسوية المخزون'),command=self.adjust).pack(side="right")
+        ttk.Button(top,text=self.tr('Ajustement','تسوية المخزون'),style="Primary.TButton",command=self.adjust).pack(side="right")
         self.q=tk.StringVar();self.filter=tk.StringVar(value=self.tr('Tous','الكل'))
-        search=ttk.Entry(top,textvariable=self.q,width=24);search.pack(side="left",padx=(20,6));search.bind("<KeyRelease>",lambda e:self.refresh())
+        search=ttk.Entry(top,textvariable=self.q,width=26,style="Search.TEntry");search.pack(side="left",padx=(20,8));search.bind("<KeyRelease>",lambda e:self.refresh())
         box=ttk.Combobox(top,textvariable=self.filter,values=[self.tr('Tous','الكل'),self.tr('Alertes stock','تنبيهات المخزون'),self.tr('Stock négatif','مخزون سالب')],state="readonly",width=15);box.pack(side="left");box.bind("<<ComboboxSelected>>",lambda e:self.refresh())
-        ttk.Button(top,text=self.tr('Historique','السجل'),command=self.ledger).pack(side="right",padx=8)
+        ttk.Button(top,text=self.tr('Historique','السجل'),style="Soft.TButton",command=self.ledger).pack(side="right",padx=8)
         if app is not None:
-            ttk.Button(top,text=self.tr('Articles','المنتجات'),command=lambda: app.show("products")).pack(side="right",padx=8)
+            ttk.Button(top,text=self.tr('Articles','المنتجات'),style="Soft.TButton",command=lambda: app.show("products")).pack(side="right",padx=8)
         cols=("id","name","stock","alert","last")
-        self.t=ttk.Treeview(self,columns=cols,show="headings")
+        self.t=ttk.Treeview(self,columns=cols,show="headings",height=14)
         for c,h,w in [("id","ID",50),("name",self.tr("Article","المنتوج"),320),("stock",self.tr("Stock","المخزون"),100),("alert",self.tr("Alerte","التنبيه"),90),("last",self.tr("Dernier mouvement","آخر حركة"),220)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True)
         self.kpi=tk.Frame(self,bg="#F6F7FB");self.kpi.pack(fill="x",pady=(8,0))
