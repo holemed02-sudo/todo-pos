@@ -38,6 +38,7 @@ class SaleFrame(ttk.Frame):
         self.images={}
         self.search_job=None
         self.busy=False
+        self.last_sale_snapshot=None
         self.bindings=[]
         top=ttk.Frame(self)
         top.pack(fill='x',pady=(0,12))
