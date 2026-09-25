@@ -28,8 +28,8 @@ class SupplierEditor(EmbeddedTouchKeyboard, tk.Toplevel):
         self.notes.grid(row=2, column=1, padx=12)
         self.notes.insert('1.0', (supplier or {}).get('notes', ''))
         ttk.Button(form, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton', command=self.save).grid(row=3, column=1, sticky='ew', padx=12, pady=16)
-        ttk.Button(form, text=self.tr('Annuler','إلغاء'), command=self.destroy).grid(row=3, column=0)
-        ttk.Button(form,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),command=self.toggle_embedded_keyboard).grid(row=4,column=0,columnspan=2,pady=(0,8))
+        ttk.Button(form, text=self.tr('Annuler','إلغاء'), style='Danger.TButton', command=self.destroy).grid(row=3, column=0)
+        ttk.Button(form,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),style='Primary.TButton',command=self.toggle_embedded_keyboard).grid(row=4,column=0,columnspan=2,pady=(0,8),sticky='ew')
         self.init_touch_keyboard(self.first_entry)
 
     def save(self):
@@ -51,12 +51,12 @@ class SuppliersFrame(ttk.Frame):
         toolbar = ttk.Frame(self)
         toolbar.pack(fill='x', pady=12)
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query)
+        entry = ttk.Entry(toolbar, textvariable=self.query, style='Search.TEntry')
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<KeyRelease>', lambda event: self.refresh())
-        ttk.Button(toolbar, text=self.tr('Nouveau','جديد'), command=lambda: SupplierEditor(self, on_saved=self.refresh)).pack(side='left', padx=8)
-        ttk.Button(toolbar, text=self.tr('Modifier','تعديل'), command=self.edit).pack(side='left')
-        ttk.Button(toolbar, text=self.tr('Réceptions du fournisseur','استلامات المورد'), command=self.history).pack(side='left', padx=8)
+        ttk.Button(toolbar, text=self.tr('Nouveau','جديد'), style='Primary.TButton', command=lambda: SupplierEditor(self, on_saved=self.refresh)).pack(side='left', padx=8)
+        ttk.Button(toolbar, text=self.tr('Modifier','تعديل'), style='Soft.TButton', command=self.edit).pack(side='left')
+        ttk.Button(toolbar, text=self.tr('Réceptions du fournisseur','استلامات المورد'), style='Soft.TButton', command=self.history).pack(side='left', padx=8)
         self.tree = ttk.Treeview(self, columns=('name', 'phone', 'notes'), show='headings')
         for key, label, width in [('name', self.tr('Nom','الاسم'), 250), ('phone', self.tr('Téléphone','الهاتف'), 160), ('notes', self.tr('Notes','ملاحظات'), 400)]:
             self.tree.heading(key, text=label)
