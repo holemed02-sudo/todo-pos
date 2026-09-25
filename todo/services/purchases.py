@@ -30,9 +30,14 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
                 raise ValueError("Fournisseur introuvable")
         if paid_cents and not supplier_id:
             raise ValueError("Fournisseur obligatoire pour enregistrer un règlement")
+        invoice = (supplier_invoice or "").strip()
+        if supplier_id and invoice:
+            duplicate = conn.execute("SELECT id FROM purchases WHERE supplier_id=? AND lower(trim(supplier_invoice))=lower(?) LIMIT 1", (supplier_id, invoice)).fetchone()
+            if duplicate:
+                raise ValueError("Facture fournisseur déjà enregistrée.")
         cur = conn.execute(
             "INSERT INTO purchases(supplier_id,supplier_invoice,total_cents,notes) VALUES(?,?,?,?)",
-            (supplier_id or None, supplier_invoice or "", total, notes or "")
+            (supplier_id or None, invoice, total, notes or "")
         )
         pid_purchase = cur.lastrowid
         for pid,qty,cost in normalized:
@@ -42,7 +47,7 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
                 (pid_purchase,pid,qty,cost,lt)
             )
             conn.execute("UPDATE products SET purchase_price_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(cost,pid))
-            apply_stock_movement(conn,pid,qty,"PURCHASE",cost,"purchase",pid_purchase,supplier_invoice or "")
+            apply_stock_movement(conn,pid,qty,"PURCHASE",cost,"purchase",pid_purchase,invoice)
         if paid_cents:
             payment_id=conn.execute(
                 "INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)",
