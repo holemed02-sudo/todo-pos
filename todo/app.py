@@ -191,7 +191,7 @@ class ToDoApp(tk.Tk):
         tk.Button(bar,text="—",bg="#0F5F9A",fg="white",activebackground="#0B4F80",activeforeground="white",
                   relief="flat",bd=0,font=("Segoe UI",16,"bold"),width=4,cursor="hand2",
                   command=self.iconify).pack(side="right",fill="y")
-        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ CLAVIER"),bg="#F59E0B",fg="#111827",
+        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ Clavier"),bg="#F59E0B",fg="#111827",
                   activebackground="#D97706",activeforeground="white",relief="flat",bd=0,
                   font=("Segoe UI",10,"bold"),padx=14,cursor="hand2",
                   command=self.toggle_keyboard).pack(side="right",fill="y",padx=(6,4))
