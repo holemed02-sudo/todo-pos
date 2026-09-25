@@ -10,10 +10,40 @@ class JournalFrame(ttk.Frame):
     def __init__(self,master):
         super().__init__(master,padding=10)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
-        top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text=self.tr('Journal','السجل'),font=("Segoe UI",22,"bold")).pack(side="left")
-        ttk.Button(top,text=self.tr('Export détaillé CSV','تصدير مفصل CSV'),command=self.export).pack(side="right");ttk.Button(top,text=self.tr('Export détaillé Excel','تصدير مفصل Excel'),command=self.export_excel).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export détaillé PDF','تصدير مفصل PDF'),command=self.export_pdf).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport articles','تقرير المنتجات'),command=self.article_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport familles','تقرير الفئات'),command=self.family_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport clients','تقرير الزبائن'),command=self.client_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport vendeurs','تقرير البائعين'),command=self.seller_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport caissiers','تقرير الكاشير'),command=self.cashier_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport global','التقرير العام'),command=self.global_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Rapport jours','تقرير الأيام'),command=self.day_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Sans détails','بدون تفاصيل'),command=self.summary_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Export cumulé','تصدير تراكمي'),command=self.cumulative_export).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Paiements','الدفعات'),command=self.payment_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Retours','المرتجعات'),command=self.return_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Entête','الرؤوس'),command=self.header_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Journal détaillé','السجل المفصل'),command=self.movement_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Imprimer','طباعة'),command=self.print_report).pack(side="right",padx=5);ttk.Button(top,text=self.tr('Actualiser','تحديث'),command=self.refresh).pack(side="right",padx=5)
-        filters=ttk.Frame(self);filters.pack(fill="x",pady=8)
+        top=ttk.Frame(self)
+        top.pack(fill="x",pady=(0,8))
+        ttk.Label(top,text=self.tr('Journal','السجل'),style='Title.TLabel').pack(side='left')
+        ttk.Label(top,text=self.tr('Ventes, paiements et rapports','المبيعات والدفعات والتقارير'),
+                  foreground='#64748B',font=('Segoe UI',9)).pack(side='left',padx=(12,0),pady=(8,0))
+
+        actions=ttk.Frame(self)
+        actions.pack(fill='x',pady=(0,8))
+        action_specs=[
+            (self.tr('Actualiser','تحديث'),self.refresh,'Primary.TButton'),
+            (self.tr('Imprimer','طباعة'),self.print_report,'Soft.TButton'),
+            (self.tr('Export détaillé PDF','تصدير مفصل PDF'),self.export_pdf,'Soft.TButton'),
+            (self.tr('Export détaillé Excel','تصدير مفصل Excel'),self.export_excel,'Soft.TButton'),
+            (self.tr('Export détaillé CSV','تصدير مفصل CSV'),self.export,'Soft.TButton'),
+            (self.tr('Rapport global','التقرير العام'),self.global_report,'Soft.TButton'),
+            (self.tr('Rapport articles','تقرير المنتجات'),self.article_report,'Soft.TButton'),
+            (self.tr('Rapport familles','تقرير الفئات'),self.family_report,'Soft.TButton'),
+            (self.tr('Rapport clients','تقرير الزبائن'),self.client_report,'Soft.TButton'),
+            (self.tr('Rapport vendeurs','تقرير البائعين'),self.seller_report,'Soft.TButton'),
+            (self.tr('Rapport caissiers','تقرير الكاشير'),self.cashier_report,'Soft.TButton'),
+            (self.tr('Rapport jours','تقرير الأيام'),self.day_report,'Soft.TButton'),
+            (self.tr('Sans détails','بدون تفاصيل'),self.summary_report,'Soft.TButton'),
+            (self.tr('Export cumulé','تصدير تراكمي'),self.cumulative_export,'Soft.TButton'),
+            (self.tr('Paiements','الدفعات'),self.payment_report,'Soft.TButton'),
+            (self.tr('Retours','المرتجعات'),self.return_report,'Soft.TButton'),
+            (self.tr('Entête','الرؤوس'),self.header_report,'Soft.TButton'),
+            (self.tr('Journal détaillé','السجل المفصل'),self.movement_report,'Soft.TButton'),
+        ]
+        for index,(label,command,style) in enumerate(action_specs):
+            ttk.Button(actions,text=label,style=style,command=command).grid(
+                row=index//6,column=index%6,sticky='ew',padx=3,pady=3)
+        for col in range(6):actions.columnconfigure(col,weight=1)
+
+        filters=ttk.Frame(self,style="Card.TFrame",padding=10);filters.pack(fill="x",pady=(0,10))
         today=date.today();self.date_from=tk.StringVar(value=str(today));self.date_to=tk.StringVar(value=str(today));self.all_label=self.tr('Tous','الكل');self.cashier=tk.StringVar(value=self.all_label);self.seller=tk.StringVar(value=self.all_label);self.payment=tk.StringVar(value=self.all_label)
         for label,var,width in [(self.tr('Du','من'),self.date_from,11),(self.tr('Au','إلى'),self.date_to,11)]:ttk.Label(filters,text=label).pack(side="left");ttk.Entry(filters,textvariable=var,width=width).pack(side="left",padx=(3,10))
         ttk.Label(filters,text=self.tr('Caissier','الكاشير')).pack(side="left");self.cashier_box=ttk.Combobox(filters,textvariable=self.cashier,state="readonly",width=16);self.cashier_box.pack(side="left",padx=(3,10))
@@ -21,10 +51,11 @@ class JournalFrame(ttk.Frame):
         ttk.Label(filters,text=self.tr('Paiement','الدفع')).pack(side="left");ttk.Combobox(filters,textvariable=self.payment,values=[self.all_label,"CASH","CARD","MIXED","CREDIT"],state="readonly",width=10).pack(side="left",padx=(3,10))
         ttk.Button(filters,text=self.tr('Aujourd’hui','اليوم'),command=lambda:self.set_period(0)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('7 jours','7 أيام'),command=lambda:self.set_period(6)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('30 jours','30 يوماً'),command=lambda:self.set_period(29)).pack(side="left",padx=2);ttk.Button(filters,text=self.tr('Consulter','عرض'),command=self.refresh).pack(side="right")
         cols=("id","ticket","date","cashier","seller","pay","total","cost","margin")
-        self.t=ttk.Treeview(self,columns=cols,show="headings")
+        self.t=ttk.Treeview(self,columns=cols,show="headings",height=15)
         for c,h,w in [("id","ID",45),("ticket",self.tr("Ticket","التذكرة"),190),("date",self.tr("Date","التاريخ"),160),("cashier",self.tr("Caissier","الكاشير"),110),("seller",self.tr("Vendeur","البائع"),110),("pay",self.tr("Paiement","الدفع"),90),("total",self.tr("Total","المجموع"),90),("cost",self.tr("Coût","التكلفة"),90),("margin",self.tr("Marge brute","الهامش الإجمالي"),100)]:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True)
-        self.summary=ttk.Label(self,text="",font=("Segoe UI",11,"bold"));self.summary.pack(anchor="e",pady=6)
+        summary_bar=ttk.Frame(self,style="Card.TFrame",padding=(10,8));summary_bar.pack(fill="x",pady=(8,0))
+        self.summary=ttk.Label(summary_bar,text="",style="Card.TLabel",font=("Segoe UI",11,"bold"));self.summary.pack(side="right")
         with connect() as c:
             names=[r[0] for r in c.execute("SELECT display_name FROM users WHERE active=1 ORDER BY display_name").fetchall()]
             sellers=[r[0] for r in c.execute("SELECT name FROM sellers ORDER BY name COLLATE NOCASE").fetchall()]
