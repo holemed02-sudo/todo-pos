@@ -7,11 +7,12 @@ from services.clients import (
     add_payment, list_payments, client_sales, credit_statement,
 )
 from services.money import fmt
+from screens.common import EmbeddedTouchKeyboard
 
 
 # ── Éditeur client ────────────────────────────────────────────────────────────
 
-class ClientEditor(tk.Toplevel):
+class ClientEditor(EmbeddedTouchKeyboard, tk.Toplevel):
     def __init__(self, master, client=None, on_saved=None):
         super().__init__(master)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
@@ -29,7 +30,8 @@ class ClientEditor(tk.Toplevel):
             (self.tr('Téléphone','الهاتف'), self.phone),
         ]):
             ttk.Label(form, text=label).grid(row=row, column=0, sticky='w', pady=8)
-            ttk.Entry(form, textvariable=var, width=36).grid(row=row, column=1, padx=12)
+            entry=ttk.Entry(form, textvariable=var, width=36);entry.grid(row=row, column=1, padx=12)
+            if row==0:self.first_entry=entry
         ttk.Label(form, text=self.tr('Notes','ملاحظات')).grid(row=2, column=0, sticky='nw')
         self.notes = tk.Text(form, width=36, height=4)
         self.notes.grid(row=2, column=1, padx=12)
@@ -37,6 +39,8 @@ class ClientEditor(tk.Toplevel):
         ttk.Button(form, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton',
                    command=self.save).grid(row=3, column=1, sticky='ew', padx=12, pady=16)
         ttk.Button(form, text=self.tr('Annuler','إلغاء'), command=self.destroy).grid(row=3, column=0)
+        ttk.Button(form,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),command=self.toggle_embedded_keyboard).grid(row=4,column=0,columnspan=2,pady=(0,8))
+        self.init_touch_keyboard(self.first_entry)
 
     def save(self):
         try:
