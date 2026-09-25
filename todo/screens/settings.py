@@ -7,6 +7,32 @@ from services.security import hash_pin, require_admin, audit
 
 
 
+def _sync_windows_startup(enabled):
+    """Register/unregister ToDo for the current Windows user."""
+    if os.name != 'nt':
+        return
+    try:
+        import winreg
+        key_path=r'Software\Microsoft\Windows\CurrentVersion\Run'
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key_path,0,winreg.KEY_SET_VALUE) as key:
+            if enabled:
+                if getattr(sys,'frozen',False):
+                    command=f'"{sys.executable}"'
+                else:
+                    root=Path(__file__).resolve().parents[2]
+                    py=Path(sys.executable)
+                    pythonw=py.with_name('pythonw.exe')
+                    launcher=pythonw if pythonw.exists() else py
+                    command=f'"{launcher}" "{root / "ToDo.pyw"}"'
+                winreg.SetValueEx(key,'ToDoPOS',0,winreg.REG_SZ,command)
+            else:
+                try:winreg.DeleteValue(key,'ToDoPOS')
+                except FileNotFoundError:pass
+    except Exception:
+        # Saving the rest of the settings must never fail because Windows
+        # startup registration is unavailable or restricted.
+        pass
+
 class CategoryEditor(tk.Toplevel):
     """Edit or create a category — name, color, icon."""
     PALETTE = [
@@ -97,6 +123,7 @@ class SettingsFrame(ttk.Frame):
         self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
         self.require_client=tk.BooleanVar(value=get_setting('require_client_on_sale','0')=='1')
         self.choose_seller=tk.BooleanVar(value=get_setting('choose_seller_on_sale','0')=='1')
+        self.start_with_windows=tk.BooleanVar(value=get_setting('start_with_windows','0')=='1')
         self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
         self.language=tk.StringVar(value=get_setting("language","fr"))
         ttk.Label(f,text=self.tr('Nom magasin','اسم المتجر')).grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
@@ -106,9 +133,10 @@ class SettingsFrame(ttk.Frame):
         ttk.Checkbutton(f,text=self.tr('Bloquer vente si stock insuffisant','منع البيع عند نقص المخزون'),variable=self.block_insufficient,command=self.sync_stock_options).grid(row=3,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Afficher le choix du client pendant la vente','إظهار اختيار الزبون أثناء البيع'),variable=self.require_client).grid(row=4,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Choix du vendeur pendant la vente','اختيار البائع أثناء البيع'),variable=self.choose_seller).grid(row=5,column=0,columnspan=2,sticky="w")
-        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=6,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=6,column=1,padx=8)
-        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=7,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=7,column=1,sticky="w",padx=8)
-        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=8,column=0,pady=8,sticky='ew')
+        ttk.Checkbutton(f,text=self.tr('Lancer ToDo au démarrage de Windows','تشغيل ToDo مع بدء Windows'),variable=self.start_with_windows).grid(row=6,column=0,columnspan=3,sticky="w",pady=(3,0))
+        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=7,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=7,column=1,padx=8)
+        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=8,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=8,column=1,sticky="w",padx=8)
+        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=9,column=0,pady=8,sticky='ew')
         pg=ttk.LabelFrame(self,text=self.tr('Grilles de prix','لوائح الأثمان'),padding=10);pg.pack(fill="x",pady=10)
         ttk.Label(pg,text=self.tr('Créez les grilles ici, puis définissez le prix de chaque article dans sa fiche.','أنشئ لوائح الأثمان هنا، ثم حدد ثمن كل منتوج في بطاقته.')).pack(anchor="w")
         self.price_grids_frame=ttk.Frame(pg);self.price_grids_frame.pack(fill="x",pady=6)
@@ -226,7 +254,7 @@ class SettingsFrame(ttk.Frame):
         print_mode=self.print_mode.get() or "ask"
         if print_mode not in ('ask','always','never'):print_mode='ask'
         set_setting("receipt_footer",self.footer.get());set_setting("search_limit",limit);set_setting("printer_name",self.printer.get().strip());set_setting("print_mode",print_mode)
-        set_setting('thermal_raw','1' if self.thermal_raw.get() else '0');set_setting('receipt_chars',self.receipt_chars.get() if self.receipt_chars.get() in ('32','42','48') else '42');set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');new_language=self.language.get();language_changed=new_language!=get_setting('language','fr');set_setting('language',new_language)
+        set_setting('start_with_windows','1' if self.start_with_windows.get() else '0');_sync_windows_startup(self.start_with_windows.get());set_setting('thermal_raw','1' if self.thermal_raw.get() else '0');set_setting('receipt_chars',self.receipt_chars.get() if self.receipt_chars.get() in ('32','42','48') else '42');set_setting('drawer_enabled','1' if self.drawer_enabled.get() else '0');set_setting('drawer_pin',self.drawer_pin.get());set_setting('block_insufficient_stock','1' if self.block_insufficient.get() else '0');set_setting('require_client_on_sale','1' if self.require_client.get() else '0');set_setting('choose_seller_on_sale','1' if self.choose_seller.get() else '0');new_language=self.language.get();language_changed=new_language!=get_setting('language','fr');set_setting('language',new_language)
         try:
             seconds=int(self.customer_seconds.get())
             if seconds<2 or seconds>300:raise ValueError()
