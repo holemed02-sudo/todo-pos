@@ -157,6 +157,7 @@ class SettingsFrame(ttk.Frame):
         self.printer_choice=ttk.Combobox(p,textvariable=self.printer,width=34)
         self.printer_choice.grid(row=0,column=1,padx=8)
         ttk.Button(p,text=self.tr('Actualiser imprimantes','تحديث الطابعات'),command=self.refresh_printers).grid(row=0,column=2,padx=5)
+        ttk.Button(p,text=self.tr('Tester imprimante','اختبار الطابعة'),style='Soft.TButton',command=self.test_printer).grid(row=0,column=3,padx=5)
         ttk.Label(p,text=self.tr('Après validation','بعد تأكيد البيع')).grid(row=1,column=0,sticky="w",pady=5)
         self.print_mode_box=ttk.Combobox(p,state='readonly',width=18)
         self.print_mode_labels={self.tr('Demander','سؤال'):'ask',self.tr('Toujours imprimer','الطباعة دائماً'):'always',self.tr('Ne jamais imprimer','عدم الطباعة'):'never'}
@@ -293,6 +294,14 @@ class SettingsFrame(ttk.Frame):
         if not (self.app.customer_window and self.app.customer_window.winfo_exists()):
             self.app.toggle_customer_display()
         self.app._apply_customer_display_mode(mode)
+
+    def test_printer(self):
+        try:
+            from services.printers import test_printer
+            test_printer(self.printer.get().strip(),bool(self.thermal_raw.get()))
+            messagebox.showinfo('ToDo',self.tr('Test envoyé à l’imprimante.','تم إرسال الاختبار إلى الطابعة.'),parent=self)
+        except Exception as error:
+            messagebox.showerror('ToDo',str(error),parent=self)
 
     def refresh_printers(self):
         from services.printers import installed_printers
