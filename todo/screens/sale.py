@@ -80,12 +80,18 @@ class SaleFrame(ttk.Frame):
         control_col=ttk.Frame(body,style='Card.TFrame',padding=10)
         control_col.grid(row=0,column=2,sticky='nsew')
 
-        filters=ttk.Frame(catalog_col);filters.pack(fill='x',pady=(0,8))
+        catalog_header=tk.Frame(catalog_col,bg='#111827',height=40)
+        catalog_header.pack(fill='x',pady=(0,8));catalog_header.pack_propagate(False)
+        tk.Label(catalog_header,text=self.tr('CATALOGUE','المنتوجات'),bg='#111827',fg='#F59E0B',
+                 font=('Segoe UI',11,'bold')).pack(side='left',padx=10)
+        tk.Label(catalog_header,text=self.tr('Photos / Liste','صور / لائحة'),bg='#111827',fg='#94A3B8',
+                 font=('Segoe UI',8)).pack(side='right',padx=10)
+        filters=ttk.Frame(catalog_col);filters.pack(fill='x',pady=(0,6))
         with connect() as conn:
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        self.family_canvas=tk.Canvas(filters,height=48,highlightthickness=0)
+        self.family_canvas=tk.Canvas(filters,height=42,highlightthickness=0)
         self.family_canvas.pack(fill='x',expand=True)
         family_scroll=ttk.Scrollbar(filters,orient='horizontal',command=self.family_canvas.xview)
         family_scroll.pack(fill='x')
@@ -158,7 +164,6 @@ class SaleFrame(ttk.Frame):
         actions.columnconfigure(0,weight=1)
         actions.columnconfigure(1,weight=1)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel',font=('Segoe UI',10,'bold'),foreground='#475569');self.subtotal_label.pack(anchor='e',pady=(2,0))
-        total_color=getattr(self.app,'theme_color','#2563EB')
         total_box=tk.Frame(checkout_area,bg='#111827',padx=14,pady=10);total_box.pack(fill='x',pady=(8,6))
         tk.Label(total_box,text=self.tr('TOTAL','المجموع'),bg='#111827',fg='#F59E0B',font=('Segoe UI',13,'bold')).pack(side='left')
         self.total_label=tk.Label(total_box,text='',bg='#111827',fg='white',font=('Segoe UI',32,'bold'));self.total_label.pack(side='right')
