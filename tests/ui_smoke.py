@@ -65,8 +65,8 @@ from screens.clients import ClientEditor
 from screens.suppliers import SupplierEditor
 for Editor in (ClientEditor,SupplierEditor):
     editor=Editor(app);app.update()
-    editor.toggle_embedded_keyboard();app.update()
-    assert editor.keyboard_visible and editor.keyboard_frame.winfo_ismapped()
+    editor.toggle_embedded_keyboard();app.update_idletasks()
+    assert editor.keyboard_visible and editor.keyboard_frame.winfo_manager()=='pack'
     editor._keyboard_target=editor.first_entry
     editor._keyboard_press('a');app.update()
     assert 'a' in editor.first_entry.get()
