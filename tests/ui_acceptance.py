@@ -226,7 +226,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.show('clients');app.update()
     app.current.tree.selection_set(str(cid));button(app.current,'Règlements').invoke();app.update()
     payments=next(w for w in descendants(app) if isinstance(w,PaymentsWindow))
-    with patch('tkinter.simpledialog.askstring',side_effect=['2.00','TEST settlement']):
+    with patch('tkinter.simpledialog.askstring',side_effect=['2.00','CASH','TEST settlement']):
         button(payments,'Ajouter un règlement').invoke()
     assert get_client(cid)['balance_cents']==0
     payments.destroy()
