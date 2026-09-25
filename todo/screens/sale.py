@@ -933,7 +933,14 @@ class SaleFrame(ttk.Frame):
                 self.set_payment(self.payment)
             else:
                 paid=total
-                dialog_print=(print_ticket and mode=='always')
+                if print_ticket and mode=='ask':
+                    dialog_print=messagebox.askyesno(
+                        'ToDo',
+                        self.tr('Imprimer le ticket ?','طباعة التذكرة؟'),
+                        parent=self
+                    )
+                else:
+                    dialog_print=(print_ticket and mode=='always')
                 payments=None
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
             # The completed ticket stays visible until the first item of the next sale.
