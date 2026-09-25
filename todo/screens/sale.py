@@ -615,7 +615,7 @@ class SaleFrame(ttk.Frame):
         item_count=len(display_cart)
         self.ticket_title.config(text=self.tr(f'🧾  Ticket en cours  ·  {item_count} article(s)',f'🧾  التذكرة الحالية  ·  {item_count} منتوج'))
         self.total_label.config(text=fmt(total,self.currency))
-        self.app.update_customer_display(self.cart,total)
+        self.app.update_customer_display(display_cart,total)
 
     def update_quantity(self,index,qty):
         if not math.isfinite(float(qty)):
