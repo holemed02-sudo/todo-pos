@@ -145,10 +145,21 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(p,text=self.tr('Enregistrer impression','حفظ إعدادات الطباعة'),command=self.save).grid(row=5,column=2)
         d=ttk.LabelFrame(self,text=self.tr('Écran client','شاشة الزبون'),padding=10);d.pack(fill="x",pady=10)
         self.customer_seconds=tk.StringVar(value=get_setting("customer_slide_seconds","6"))
-        ttk.Label(d,text=self.tr('Durée de chaque image (secondes)','مدة كل صورة (ثوانٍ)')).pack(side="left")
-        ttk.Spinbox(d,from_=2,to=300,textvariable=self.customer_seconds,width=6).pack(side="left",padx=8)
-        ttk.Label(d,text=self.tr('Dossier : customer_media · images + vidéos · format conseillé 16:9','المجلد: customer_media · صور + فيديوهات · القياس المقترح 16:9'),foreground="#475569").pack(side="left",padx=12)
-        ttk.Button(d,text=self.tr('Tester écran client','اختبار شاشة الزبون'),style='Primary.TButton',command=self.test_customer).pack(side='right')
+        current_mode=get_setting('customer_display_mode','promotions')
+        self.customer_mode_labels={
+            self.tr('Promotions · photos / vidéos','العروض · صور / فيديوهات'):'promotions',
+            self.tr('Ticket · articles / prix','التذكرة · المنتجات / الأثمنة'):'prices',
+        }
+        mode_row=ttk.Frame(d);mode_row.pack(fill='x',pady=(0,8))
+        ttk.Label(mode_row,text=self.tr('Contenu affiché','المحتوى المعروض'),font=('Segoe UI',10,'bold')).pack(side='left')
+        self.customer_mode_box=ttk.Combobox(mode_row,state='readonly',width=30,values=list(self.customer_mode_labels))
+        self.customer_mode_box.set(next((label for label,value in self.customer_mode_labels.items() if value==current_mode),list(self.customer_mode_labels)[0]))
+        self.customer_mode_box.pack(side='left',padx=8)
+        ttk.Button(mode_row,text=self.tr('Tester écran client','اختبار شاشة الزبون'),style='Primary.TButton',command=self.test_customer).pack(side='right')
+        media_row=ttk.Frame(d);media_row.pack(fill='x')
+        ttk.Label(media_row,text=self.tr('Durée de chaque image (secondes)','مدة كل صورة (ثوانٍ)')).pack(side='left')
+        ttk.Spinbox(media_row,from_=2,to=300,textvariable=self.customer_seconds,width=6).pack(side='left',padx=8)
+        ttk.Label(media_row,text=self.tr('Dossier : customer_media · images + vidéos · format conseillé 16:9','المجلد: customer_media · صور + فيديوهات · القياس المقترح 16:9'),foreground="#475569").pack(side='left',padx=12)
         b=ttk.LabelFrame(self,text=self.tr('Données','البيانات'),padding=10);b.pack(fill="x",pady=10)
         ttk.Button(b,text=self.tr('Backup maintenant','نسخ احتياطي الآن'),style='Success.TButton',command=self.backup).pack(side='left',padx=4)
         self.auto_backup=tk.StringVar(value=get_setting("auto_backup_minutes","15"))
@@ -222,6 +233,10 @@ class SettingsFrame(ttk.Frame):
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 300 secondes.","مدة شاشة الزبون بين 2 و300 ثانية."),parent=self);return
         set_setting("customer_slide_seconds",str(seconds))
+        mode=self.customer_mode_labels.get(self.customer_mode_box.get(),'promotions')
+        set_setting('customer_display_mode',mode)
+        if self.app.customer_window and self.app.customer_window.winfo_exists():
+            self.app._apply_customer_display_mode()
         backup_minutes=self.auto_backup.get()
         if backup_minutes not in ('0','5','10','15','30','60'):backup_minutes='15'
         set_setting("auto_backup_minutes",backup_minutes)
