@@ -42,13 +42,14 @@ class Calculator(tk.Toplevel):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.title(self.tr('Calculatrice','الآلة الحاسبة'));self.transient(master.winfo_toplevel());self.grab_set()
         self.expression=tk.StringVar()
-        entry=ttk.Entry(self,textvariable=self.expression,font=('Segoe UI',22),justify='right')
+        entry=ttk.Entry(self,textvariable=self.expression,font=('Segoe UI',24,'bold'),justify='right',style='Search.TEntry')
         entry.grid(row=0,column=0,columnspan=4,padx=10,pady=10,sticky='ew')
         self.error=ttk.Label(self,foreground='#DC2626',wraplength=310)
         self.error.grid(row=1,column=0,columnspan=4)
         for index,key in enumerate(('7','8','9','÷','4','5','6','×','1','2','3','-','0',',','=','+','C','⌫','(',')')):
-            ttk.Button(self,text=key,command=lambda k=key:self.press(k)).grid(row=2+index//4,column=index%4,padx=3,pady=3,ipady=8,sticky='ew')
-        ttk.Button(self,text=self.tr('Fermer','إغلاق'),command=self.destroy).grid(row=7,column=0,columnspan=4,pady=8)
+            style='Danger.TButton' if key=='C' else 'Primary.TButton' if key=='=' else 'Soft.TButton'
+            ttk.Button(self,text=key,style=style,command=lambda k=key:self.press(k)).grid(row=2+index//4,column=index%4,padx=3,pady=3,ipady=8,sticky='ew')
+        ttk.Button(self,text=self.tr('Fermer','إغلاق'),style='Danger.TButton',command=self.destroy).grid(row=7,column=0,columnspan=4,padx=10,pady=8,sticky='ew')
         entry.bind('<Return>',lambda e:self.press('='));self.bind('<Escape>',lambda e:self.destroy())
         entry.focus_set()
 
@@ -68,14 +69,14 @@ class CashierLock(tk.Toplevel):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.app=app;self.failures=0;self.blocked_until=0
         self.title(self.tr('Caisse verrouillée','الصندوق مقفل'))
-        self.transient(app);self.grab_set();self.protocol('WM_DELETE_WINDOW',lambda:None)
+        self.transient(app);self.grab_set();self.protocol('WM_DELETE_WINDOW',lambda:None);self.configure(bg='#F6F7FB')
         self.pin=tk.StringVar()
         ttk.Label(self,text=app.user['display_name'],font=('Segoe UI',18,'bold')).pack(padx=28,pady=15)
         ttk.Label(self,text=self.tr('PIN pour reprendre le ticket','الرمز للرجوع للبيع')).pack(padx=20)
         entry=ttk.Entry(self,textvariable=self.pin,show='●',justify='center',font=('Segoe UI',22))
         entry.pack(padx=25,pady=12)
         self.error=ttk.Label(self,foreground='#DC2626');self.error.pack()
-        ttk.Button(self,text=self.tr('Déverrouiller','فتح'),command=self.unlock).pack(pady=15)
+        ttk.Button(self,text=self.tr('Déverrouiller','فتح'),style='Success.TButton',command=self.unlock).pack(fill='x',padx=25,pady=15,ipady=4)
         self.bind('<Return>',lambda e:self.unlock());entry.focus_set()
 
     def unlock(self):
