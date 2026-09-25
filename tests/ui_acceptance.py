@@ -91,13 +91,17 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     # Photo grid is image-driven. Staff attach images only to barcode-problem exceptions;
     # the barcode itself may be real, shared, virtual or manually entered.
     with connect() as c:
-        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Exception',400,1,'missing-test-image.jpg')")
-        photo_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_pid,'REGULAR123'))
+        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Internal',400,1,'missing-test-image.jpg')")
+        photo_internal_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_internal_pid,f'TODO-{photo_internal_pid:08d}'))
+        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Regular',500,1,'missing-test-image-2.jpg')")
+        photo_regular_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_regular_pid,'REGULAR123'))
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
-    assert 'TEST Photo Exception' in tactile_names, 'Image-assigned exceptions must appear even when they have a barcode'
+    assert 'TEST Photo Internal' in tactile_names, 'Image-only products with TODO internal barcode must remain in tactile grid'
+    assert 'TEST Photo Regular' not in tactile_names, 'Products with a real barcode must stay out of tactile grid'
     sale.query.set('TEST123');sale.confirm_search();sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
