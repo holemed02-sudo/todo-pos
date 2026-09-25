@@ -88,12 +88,16 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert VirtualKeyboard._instance and VirtualKeyboard._instance.winfo_exists()
     VirtualKeyboard._instance._close()
     assert str(pid) in sale.products.get_children(), 'Products without images must be searchable'
-    # Photo grid is image-driven. Staff attach images only to barcode-problem exceptions;
-    # the barcode itself may be real, shared, virtual or manually entered.
+    # Photo-only products saved through the real editor receive a stable TODO-* internal barcode.
+    photo_editor=ProductEditor(app)
+    photo_editor.name.set('TEST Photo Internal')
+    photo_editor.sell.set('4')
+    photo_editor.img_rel='missing-test-image.jpg'
+    button(photo_editor,'Enregistrer').invoke();app.update()
     with connect() as c:
-        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Internal',400,1,'missing-test-image.jpg')")
-        photo_internal_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_internal_pid,f'TODO-{photo_internal_pid:08d}'))
+        photo_internal_pid=c.execute("SELECT id FROM products WHERE name='TEST Photo Internal'").fetchone()[0]
+        internal_barcode=c.execute("SELECT barcode FROM product_barcodes WHERE product_id=?",(photo_internal_pid,)).fetchone()[0]
+        assert internal_barcode==f'TODO-{photo_internal_pid:08d}'
         c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Regular',500,1,'missing-test-image-2.jpg')")
         photo_regular_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_regular_pid,'REGULAR123'))
@@ -102,7 +106,12 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
     assert 'TEST Photo Internal' in tactile_names, 'Image-only products with TODO internal barcode must remain in tactile grid'
     assert 'TEST Photo Regular' not in tactile_names, 'Products with a real barcode must stay out of tactile grid'
-    sale.query.set('TEST123');sale.confirm_search();sale.change(1)
+    sale.query.set('TEST123');sale.handle_scan_input()
+    assert sale.scan_submit_job is not None, 'Known barcode typing must schedule the 500 ms auto-submit'
+    sale.confirm_search()
+    assert sale.scan_submit_job is None, 'Scanner Enter must cancel pending auto-submit to prevent double lines'
+    assert len(sale.cart)==1 and sale.cart[0]['qty']==1
+    sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
     menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
