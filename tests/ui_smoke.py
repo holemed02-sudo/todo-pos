@@ -60,4 +60,18 @@ with connect() as c:
  row=c.execute('SELECT * FROM stock_movements ORDER BY id DESC LIMIT 1').fetchone()
  assert row['old_qty']==10 and row['stock_after']==15 and row['user_id']==app.user['id']
 app.destroy();temp.cleanup()
+# Shared embedded keyboard must be usable inside grabbed client/supplier modals.
+from screens.clients import ClientEditor
+from screens.suppliers import SupplierEditor
+for Editor in (ClientEditor,SupplierEditor):
+    editor=Editor(app);app.update()
+    editor.toggle_embedded_keyboard();app.update()
+    assert editor.keyboard_visible and editor.keyboard_frame.winfo_ismapped()
+    editor._keyboard_target=editor.first_entry
+    editor._keyboard_press('a');app.update()
+    assert 'a' in editor.first_entry.get()
+    editor._keyboard_press('Fermer');app.update()
+    assert not editor.keyboard_visible
+    editor.destroy();app.update()
+
 print('UI SMOKE PASSED: login, scan, quantity, navigation, all screens, direct stock edit with ledger')
