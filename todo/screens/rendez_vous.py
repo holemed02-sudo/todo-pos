@@ -27,11 +27,11 @@ class RendezVousFrame(ttk.Frame):
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         _init_table()
         ttk.Label(self, text=self.tr('Rendez-vous','المواعيد'),
-                  font=('Segoe UI', 20, 'bold')).pack(anchor='w')
+                  style='Title.TLabel').pack(anchor='w')
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=10)
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query, width=28)
+        entry = ttk.Entry(toolbar, textvariable=self.query, width=28, style='Search.TEntry')
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
         self.show_done = tk.BooleanVar(value=False)
@@ -41,9 +41,9 @@ class RendezVousFrame(ttk.Frame):
         ttk.Button(toolbar, text=self.tr('+ Nouveau','+ جديد'),
                    style='Primary.TButton',
                    command=self.new_rdv).pack(side='right')
-        ttk.Button(toolbar, text=self.tr('Marquer fait','تحديد كمنجز'),
+        ttk.Button(toolbar, text=self.tr('Marquer fait','تحديد كمنجز'), style='Success.TButton',
                    command=self.mark_done).pack(side='right', padx=6)
-        ttk.Button(toolbar, text=self.tr('Supprimer','حذف'),
+        ttk.Button(toolbar, text=self.tr('Supprimer','حذف'), style='Danger.TButton',
                    command=self.delete_rdv).pack(side='right')
 
         cols = ('date', 'time', 'title', 'contact', 'notes', 'done')
