@@ -293,13 +293,13 @@ class SaleFrame(ttk.Frame):
                 WHERE s.session_id=? AND s.status='COMPLETED'
                 GROUP BY sp.payment_method""",(session['id'],)).fetchall()
         totals={r['payment_method']:int(r['amount']) for r in rows}
-        cash=totals.get('CASH',0)+totals.get('CREDIT',0)
+        # sale_payments stores mixed sales as their real CASH/CARD components.
+        # CREDIT is debt, not cash received, so Flash must not count it as espèces.
+        cash=totals.get('CASH',0)
         card=totals.get('CARD',0)
-        mixed=totals.get('MIXED',0)
         lines=[self.tr('VENTES DE LA CAISSE','مبيعات الصندوق'),
                self.tr('ESPÈCES : ','نقداً: ')+fmt(cash,self.currency),
                self.tr('CARTE : ','بطاقة: ')+fmt(card,self.currency)]
-        if mixed: lines.append(self.tr('MIXTE : ','مختلط: ')+fmt(mixed,self.currency))
         messagebox.showinfo('FLASH','\n'.join(lines),parent=self)
         self.focus_search()
 
