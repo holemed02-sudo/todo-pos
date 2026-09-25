@@ -19,7 +19,7 @@ class EmbeddedTouchKeyboard:
     def init_touch_keyboard(self, default_target=None):
         self._keyboard_target = default_target
         self.keyboard_default_target = default_target
-        self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=6, pady=6)
+        self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=10, pady=10)
         self.keyboard_visible = False
         self.bind_all('<FocusIn>', self._remember_keyboard_target, add='+')
         self._build_embedded_keyboard()
@@ -70,11 +70,11 @@ class EmbeddedTouchKeyboard:
             ['Espace','@','/','Effacer','Entrée','Fermer'],
         ]
         for keys in rows:
-            row=tk.Frame(self.keyboard_frame,bg='#1E293B');row.pack(fill='x',pady=2)
+            row=tk.Frame(self.keyboard_frame,bg='#1E293B');row.pack(fill='x',pady=3)
             for key in keys:
-                tk.Button(row,text=key,font=('Segoe UI',11,'bold'),bg='#334155',fg='white',
-                    activebackground='#475569',activeforeground='white',relief='flat',bd=0,
-                    padx=8,pady=7,command=lambda k=key:self._keyboard_press(k)
+                tk.Button(row,text=key,font=('Segoe UI',12,'bold'),bg=('#DC2626' if key=='Fermer' else '#2563EB' if key in ('Entrée','Effacer') else '#334155'),fg='white',
+                    activebackground=('#B91C1C' if key=='Fermer' else '#1D4ED8' if key in ('Entrée','Effacer') else '#475569'),activeforeground='white',relief='flat',bd=0,
+                    padx=10,pady=9,command=lambda k=key:self._keyboard_press(k)
                 ).pack(side='left',fill='x',expand=True,padx=2)
 
     def _keyboard_press(self,key):
