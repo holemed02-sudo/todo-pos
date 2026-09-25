@@ -156,8 +156,13 @@ class SaleFrame(ttk.Frame):
         ]
         for label,command,style in footer_actions:
             ttk.Button(footer,text=label,style=style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=3)
-        self.status=ttk.Label(self,text=self.tr('● Scanner prêt   ·   Ctrl+F Rechercher   ·   Entrée Ajouter','● الماسح جاهز   ·   Ctrl+F بحث   ·   Enter إضافة'),font=('Segoe UI',9,'bold'),foreground='#475569')
-        self.status.pack(anchor='w',pady=(8,0))
+        status_bar=tk.Frame(self,bg='#E2E8F0',padx=10,pady=6)
+        status_bar.pack(fill='x',pady=(8,0))
+        self.status=tk.Label(status_bar,text=self.tr('● Scanner prêt   ·   Ctrl+F Rechercher   ·   Entrée Ajouter','● الماسح جاهز   ·   Ctrl+F بحث   ·   Enter إضافة'),
+                             bg='#E2E8F0',fg='#334155',font=('Segoe UI',9,'bold'))
+        self.status.pack(side='left')
+        tk.Label(status_bar,text='ToDo POS',bg='#E2E8F0',fg='#64748B',
+                 font=('Segoe UI',9)).pack(side='right')
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         if get_setting('require_client_on_sale','0')=='1':commands['<F6>']=self.choose_client
         for sequence,command in commands.items():
