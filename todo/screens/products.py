@@ -14,6 +14,9 @@ try:
 except Exception:
     PIL=False
 
+def _internal_product_barcode(product_id):
+    return f"TODO-{int(product_id):08d}"
+
 class ProductEditor(tk.Toplevel):
     def __init__(self,master,product_id=None,on_saved=None):
         super().__init__(master)
@@ -329,6 +332,10 @@ class ProductEditor(tk.Toplevel):
                     apply_stock_movement(c,pid,stock-old,'ADJUSTMENT' if self.pid else 'OPENING',buy,'product',pid,self.stock_note.get().strip() or ('Correction depuis la fiche produit' if self.pid else 'Stock initial'))
                 c.execute('UPDATE products SET sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?',(self.sku.get().strip(),self.alias.get().strip(),self.supplier_code.get().strip(),int(self.fraction.get()),pid))
                 audit(c,'PRODUCT_SAVE',pid)
+                # Auto-generated internal barcode for image-driven products that have no scanned code.
+                # Stable across edits because it is derived from the product id.
+                if img and not barcodes:
+                    barcodes=[(_internal_product_barcode(pid),1.0,None)]
                 c.execute("DELETE FROM product_barcodes WHERE product_id=?",(pid,))
                 c.executemany("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier,price_override_cents) VALUES(?,?,?,?)",[(pid,code,mult,price) for code,mult,price in barcodes])
                 c.execute("DELETE FROM product_grid_prices WHERE product_id=?",(pid,))
