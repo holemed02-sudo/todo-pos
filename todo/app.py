@@ -264,7 +264,12 @@ class ToDoApp(tk.Tk):
         self.user_badge.pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
         self.apply_theme()
+        if get_setting('customer_display_enabled','0')=='1':
+            self.after(250,self._open_enabled_customer_display)
 
+    def _open_enabled_customer_display(self):
+        if get_setting('customer_display_enabled','0')=='1' and not (self.customer_window and self.customer_window.winfo_exists()):
+            self.toggle_customer_display()
     def change_language(self, language):
         if language not in ('fr','ar'): return
         set_setting('language',language)
