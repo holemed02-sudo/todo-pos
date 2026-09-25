@@ -155,9 +155,10 @@ class SaleFrame(ttk.Frame):
         ttk.Button(self.checkout_buttons,text=self.tr('✓ SOLDER avec ticket F5','✓ الأداء مع التذكرة F5'),
                    style='Success.TButton',command=lambda:self.checkout(True)).pack(
                        side='left',expand=True,fill='x',padx=(0,2),ipady=3)
-        ttk.Button(self.checkout_buttons,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),
-                   style='Primary.TButton',command=lambda:self.checkout(False)).pack(
-                       side='left',expand=True,fill='x',padx=(2,0),ipady=3)
+        if get_setting('sans_ticket_enabled','1')=='1':
+            ttk.Button(self.checkout_buttons,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),
+                       style='Primary.TButton',command=lambda:self.checkout(False)).pack(
+                           side='left',expand=True,fill='x',padx=(2,0),ipady=3)
 
         ticket_header=ttk.Frame(right,style='Card.TFrame')
         ticket_header.pack(fill='x',pady=(0,8))
