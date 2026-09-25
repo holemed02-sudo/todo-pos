@@ -40,58 +40,48 @@ class SaleFrame(ttk.Frame):
         self.busy=False
         self.last_sale_snapshot=None
         self.bindings=[]
-        top=tk.Frame(self,bg='#111827',height=42)
-        top.pack(fill='x',pady=(0,6));top.pack_propagate(False)
-        title_box=tk.Frame(top,bg='#111827')
-        title_box.pack(side='left',fill='y')
-        tk.Label(title_box,text=self.tr('VENTE','البيع'),bg='#111827',fg='white',
-                 font=('Segoe UI',12,'bold')).pack(side='left',padx=(12,8))
-        tk.Label(title_box,text=self.tr('Caisse prête','الصندوق جاهز'),bg='#111827',fg='#94A3B8',
-                 font=('Segoe UI',9)).pack(side='left')
+        top=ttk.Frame(self)
+        top.pack(fill='x',pady=(0,12))
+        title_box=ttk.Frame(top)
+        title_box.pack(side='left')
+        ttk.Label(title_box,text=self.tr('Vente','البيع'),style='Title.TLabel').pack(anchor='w')
+        ttk.Label(title_box,text=self.tr('Caisse prête pour l’encaissement','الصندوق جاهز للبيع'),
+                  foreground='#64748B',font=('Segoe UI',9)).pack(anchor='w')
+        self.payment_label=tk.Label(top,text=self.tr('Paiement : Espèces','الأداء: نقداً'),
+                                    bg='#DCFCE7',fg='#166534',font=('Segoe UI',11,'bold'),
+                                    padx=14,pady=7,bd=0)
+        self.payment_label.pack(side='right')
         self.client_button=ttk.Button(top,text=self.tr('F6 Client : passage','F6 الزبون: عابر'),command=self.choose_client)
         if get_setting('require_client_on_sale','0')=='1':
-            self.client_button.pack(side='left',padx=10,pady=4)
+            self.client_button.pack(side='left',padx=18)
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
-            self.seller_button.pack(side='left',padx=(0,8),pady=4)
-        search_shell=tk.Frame(self,bg='#F59E0B',padx=2,pady=2)
-        search_shell.pack(fill='x',pady=(0,8))
-        searchbar=ttk.Frame(search_shell,style='Card.TFrame',padding=(12,10))
-        searchbar.pack(fill='x')
-        ttk.Label(searchbar,text=self.tr('▥  CODE-BARRES / RECHERCHER','▥  الباركود / البحث'),style='CardTitle.TLabel',font=('Segoe UI',11,'bold')).pack(side='left',padx=(0,14))
+            self.seller_button.pack(side='left',padx=(0,12))
+        searchbar=ttk.Frame(self,style='Card.TFrame',padding=(14,12))
+        searchbar.pack(fill='x',pady=(0,12))
+        ttk.Label(searchbar,text=self.tr('⌕  SCANNER / RECHERCHER','⌕  مسح / بحث'),style='CardTitle.TLabel').pack(side='left',padx=(0,14))
         self.query=tk.StringVar()
-        self.scan_quantity=tk.StringVar(value='1')
         self.entry=ttk.Entry(searchbar,textvariable=self.query,style='Search.TEntry')
         self.entry.pack(side='left',fill='x',expand=True)
+        ttk.Label(searchbar,text=self.tr('QTÉ','الكمية'),style='Card.TLabel',font=('Segoe UI',10,'bold')).pack(side='left',padx=(14,6))
+        self.scan_quantity=tk.StringVar(value='1')
+        self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,style='Quantity.TEntry',justify='center')
+        self.quantity_entry.pack(side='left')
+        self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
+        ttk.Button(searchbar,text='×2',style='Soft.TButton',command=self.double_scan_quantity).pack(side='left',padx=(8,0),ipadx=8,ipady=3)
         self.entry.bind('<Return>',self.confirm_search)
         self.entry.bind('<KeyRelease>',self.schedule_search)
         self.entry.bind('<Down>',self.focus_catalog)
-        body=ttk.Frame(self)
+        body=ttk.Panedwindow(self,orient='horizontal')
         body.pack(fill='both',expand=True)
-        body.columnconfigure(0,weight=4,minsize=290)
-        body.columnconfigure(1,weight=6,minsize=400)
-        body.columnconfigure(2,weight=2,minsize=180)
-        body.rowconfigure(0,weight=1)
-
-        ticket_col=ttk.Frame(body,style='Card.TFrame',padding=12)
-        ticket_col.grid(row=0,column=0,sticky='nsew',padx=(0,6))
-        catalog_col=ttk.Frame(body,padding=(0,0,6,0))
-        catalog_col.grid(row=0,column=1,sticky='nsew')
-        control_col=ttk.Frame(body,style='Card.TFrame',padding=10)
-        control_col.grid(row=0,column=2,sticky='nsew')
-
-        catalog_header=tk.Frame(catalog_col,bg='#111827',height=40)
-        catalog_header.pack(fill='x',pady=(0,8));catalog_header.pack_propagate(False)
-        tk.Label(catalog_header,text=self.tr('CATALOGUE','المنتوجات'),bg='#111827',fg='#F59E0B',
-                 font=('Segoe UI',11,'bold')).pack(side='left',padx=10)
-        tk.Label(catalog_header,text=self.tr('Photos / Liste','صور / لائحة'),bg='#111827',fg='#94A3B8',
-                 font=('Segoe UI',8)).pack(side='right',padx=10)
-        filters=ttk.Frame(catalog_col);filters.pack(fill='x',pady=(0,6))
+        right=ttk.Frame(body,style='Card.TFrame',padding=14);body.add(right,weight=4)
+        left=ttk.Frame(body,padding=(12,0,0,0));body.add(left,weight=6)
+        filters=ttk.Frame(left);filters.pack(fill='x',pady=(0,8))
         with connect() as conn:
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        self.family_canvas=tk.Canvas(filters,height=42,highlightthickness=0)
+        self.family_canvas=tk.Canvas(filters,height=48,highlightthickness=0)
         self.family_canvas.pack(fill='x',expand=True)
         family_scroll=ttk.Scrollbar(filters,orient='horizontal',command=self.family_canvas.xview)
         family_scroll.pack(fill='x')
@@ -99,7 +89,7 @@ class SaleFrame(ttk.Frame):
         self.category_buttons=ttk.Frame(self.family_canvas)
         self.family_canvas.create_window((0,0),window=self.category_buttons,anchor='nw')
         self.category_buttons.bind('<Configure>',lambda e:self.family_canvas.configure(scrollregion=self.family_canvas.bbox('all')))
-        self.catalog_tabs=ttk.Notebook(catalog_col)
+        self.catalog_tabs=ttk.Notebook(left)
         self.list_page=ttk.Frame(self.catalog_tabs);self.photo_page=ttk.Frame(self.catalog_tabs)
         self.catalog_tabs.add(self.photo_page,text=self.tr('Photos','اختيار بالصورة'));self.catalog_tabs.add(self.list_page,text=self.tr('Liste','لائحة'))
         self.catalog_tabs.pack(fill='both',expand=True)
@@ -108,92 +98,54 @@ class SaleFrame(ttk.Frame):
         for key,label in [('price',self.tr('PRIX','الثمن')),('stock',self.tr('STOCK','المخزون'))]:
             self.products.heading(key,text=label);self.products.column(key,width=95,stretch=False,anchor='center')
         self.products.pack(fill='both',expand=True)
-        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x',pady=(4,0))
+        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
         ttk.Button(photo_nav,text=self.tr('Précédent','السابق'),command=lambda:self.photo_next(-1)).pack(side='left')
         self.photo_more=ttk.Button(photo_nav,text=self.tr('Suivant','التالي'),command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
-        self.card_canvas=tk.Canvas(self.photo_page,background='#F8FAFC',highlightthickness=0)
+        self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
         self.card_inner.bind('<Configure>',lambda e:self.card_canvas.configure(scrollregion=self.card_canvas.bbox('all')))
-        self.card_window=self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
+        self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
         self.card_canvas.configure(yscrollcommand=self.card_scroll.set)
         self.card_canvas.bind('<Configure>',self.layout_cards)
         self.card_canvas.pack(side='left',fill='both',expand=True);self.card_scroll.pack(side='right',fill='y')
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
-        ttk.Button(catalog_col,text=self.tr('＋  Ajouter le produit sélectionné  ↵','＋  إضافة المنتوج المحدد  ↵'),style='Primary.TButton',command=self.add_selected_product).pack(fill='x',pady=(8,0),ipady=4)
-        rail_header=tk.Frame(control_col,bg='#111827',height=40)
-        rail_header.pack(fill='x',pady=(0,8));rail_header.pack_propagate(False)
-        tk.Label(rail_header,text=self.tr('QUANTITÉ','الكمية'),bg='#111827',fg='#F59E0B',
-                 font=('Segoe UI',11,'bold')).pack(side='left',padx=10)
-        ttk.Button(control_col,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',
-                   command=self.functions).pack(fill='x',pady=(0,8),ipady=4)
-
-        qty_box=tk.Frame(control_col,bg='white',highlightthickness=1,highlightbackground='#CBD5E1',padx=8,pady=8)
-        qty_box.pack(fill='x',pady=(0,8))
-        self.quantity_entry=ttk.Entry(qty_box,textvariable=self.scan_quantity,style='Quantity.TEntry',
-                                      justify='center',font=('Segoe UI',18,'bold'))
-        self.quantity_entry.pack(fill='x',ipady=5)
-        self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
-        ttk.Button(qty_box,text=self.tr('×2  QUANTITÉ','×2  الكمية'),style='Primary.TButton',
-                   command=self.double_scan_quantity).pack(fill='x',pady=(6,0),ipady=3)
-
-        keypad=tk.Frame(control_col,bg='#F8FAFC',padx=3,pady=3)
-        keypad.pack(fill='x',pady=(0,8))
+        ttk.Button(left,text=self.tr('＋  Ajouter le produit sélectionné  ↵','＋  إضافة المنتوج المحدد  ↵'),style='Primary.TButton',command=self.add_selected_product).pack(fill='x',pady=(8,0),ipady=4)
+        keypad=ttk.LabelFrame(left,text=self.tr('Pavé numérique','الأرقام'),padding=5);keypad.pack(fill='x',pady=(8,0))
         for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
-            style='Danger.TButton' if key=='⌫' else 'Soft.TButton'
-            ttk.Button(keypad,text=key,style=style,command=lambda k=key:self.keypad_press(k)).grid(
-                row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=6)
-        for col in range(3):
-            keypad.columnconfigure(col,weight=1)
-        checkout_area=ttk.Frame(ticket_col,style='Card.TFrame')
+            ttk.Button(keypad,text=key,style=('Danger.TButton' if key=='⌫' else 'Soft.TButton'),command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=3,pady=3,ipady=8)
+        for col in range(3):keypad.columnconfigure(col,weight=1)
+        checkout_area=ttk.Frame(right,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
-        actions=ttk.Frame(control_col,style='Card.TFrame')
-        actions.pack(fill='x',pady=(0,8))
-        line_actions=[
-            ('−',lambda:self.change(-1),'Soft.TButton'),
-            ('+',lambda:self.change(1),'Soft.TButton'),
-            ('×2',self.double_selected,'Soft.TButton'),
-            (self.tr('Qté F8','الكمية F8'),self.set_qty,'Soft.TButton'),
-            (self.tr('Remise','تخفيض'),self.line_discount,'Soft.TButton'),
-            (self.tr('Suppr.','حذف'),self.remove,'Danger.TButton'),
-        ]
-        for index,(label,command,style) in enumerate(line_actions):
-            ttk.Button(actions,text=label,style=style,command=command).grid(
-                row=index//2,column=index%2,sticky='ew',padx=2,pady=2,ipady=3)
-        actions.columnconfigure(0,weight=1)
-        actions.columnconfigure(1,weight=1)
+        actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
+        ttk.Button(checkout_area,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',command=self.functions).pack(fill='x',pady=5)
+        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),(self.tr('Qté F8','الكمية F8'),self.set_qty),(self.tr('Remise ligne','تخفيض السطر'),self.line_discount),(self.tr('Suppr.','حذف'),self.remove)]:
+            button_style='Danger.TButton' if label==self.tr('Suppr.','حذف') else 'Soft.TButton'
+            ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel',font=('Segoe UI',10,'bold'),foreground='#475569');self.subtotal_label.pack(anchor='e',pady=(2,0))
-        total_box=tk.Frame(checkout_area,bg='#111827',padx=14,pady=10);total_box.pack(fill='x',pady=(8,6))
-        tk.Label(total_box,text=self.tr('TOTAL','المجموع'),bg='#111827',fg='#F59E0B',font=('Segoe UI',13,'bold')).pack(side='left')
-        self.total_label=tk.Label(total_box,text='',bg='#111827',fg='white',font=('Segoe UI',32,'bold'));self.total_label.pack(side='right')
-        self.payment_label=tk.Label(checkout_area,text=self.tr('Paiement : Espèces','الأداء: نقداً'),
-                                    bg='#DCFCE7',fg='#166534',font=('Segoe UI',10,'bold'),
-                                    padx=10,pady=5,bd=0,anchor='w')
-        self.payment_label.pack(fill='x',pady=(0,6))
-        payment_actions=ttk.Frame(checkout_area,style='Card.TFrame')
-        payment_actions.pack(fill='x',pady=(0,6))
-        ttk.Button(payment_actions,text=self.tr('F2  ESPÈCES','F2  نقداً'),style='Success.TButton',
-                   command=lambda:self.set_payment('CASH')).pack(side='left',expand=True,fill='x',padx=(0,3),ipady=4)
-        ttk.Button(payment_actions,text=self.tr('F3  CARTE','F3  بطاقة'),style='Primary.TButton',
-                   command=lambda:self.set_payment('CARD')).pack(side='left',expand=True,fill='x',padx=(3,0),ipady=4)
-
-        self.last_sale_box=tk.Frame(checkout_area,bg='#E0F2FE',padx=10,pady=6)
+        total_color=getattr(self.app,'theme_color','#2563EB')
+        total_box=tk.Frame(checkout_area,bg=total_color,padx=14,pady=12);total_box.pack(fill='x',pady=10)
+        tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg=total_color,fg='white',font=('Segoe UI',14,'bold')).pack(side='left')
+        self.total_label=tk.Label(total_box,text='',bg=total_color,fg='white',font=('Segoe UI',30,'bold'));self.total_label.pack(side='right')
+        self.last_sale_box=tk.Frame(checkout_area,bg='#0B45D8',padx=10,pady=6)
         self.last_sale_box.pack(fill='x',pady=(0,6))
         self.last_sale_summary=tk.Label(
             self.last_sale_box,
-            text=self.tr('DERNIÈRE VENTE  ·  —','آخر بيع  ·  —'),
-            bg='#E0F2FE',fg='#0F172A',font=('Segoe UI',10,'bold'),anchor='w'
+            text=self.tr('DERNIÈRE VENTE  ·  MODE —  ·  PAYÉ —  ·  RENDU —',
+                         'آخر بيع  ·  الأداء —  ·  المؤدى —  ·  الباقي —'),
+            bg='#0B45D8',fg='white',font=('Segoe UI',10,'bold'),anchor='w'
         )
         self.last_sale_summary.pack(fill='x')
-        ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=11,pady=(3,3))
+        ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=10,pady=(3,3))
         ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),style='Primary.TButton',command=lambda:self.checkout(False)).pack(fill='x',ipady=8)
-        ticket_header=tk.Frame(ticket_col,bg='#111827',height=44)
-        ticket_header.pack(fill='x',pady=(0,8));ticket_header.pack_propagate(False)
-        self.ticket_title=tk.Label(ticket_header,text=self.tr('🧾  TICKET EN COURS','🧾  التذكرة الحالية'),bg='#111827',fg='white',font=('Segoe UI',12,'bold'))
-        self.ticket_title.pack(side='left',padx=12)
-        tk.Label(ticket_header,text=self.tr('Touchez une ligne pour modifier','المس السطر للتعديل'),bg='#111827',fg='#CBD5E1',font=('Segoe UI',9)).pack(side='right',padx=12)
-        self.ticket=ttk.Treeview(ticket_col,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview',height=12)
+        ticket_header=ttk.Frame(right,style='Card.TFrame')
+        ticket_header.pack(fill='x',pady=(0,8))
+        self.ticket_title=ttk.Label(ticket_header,text=self.tr('🧾  Ticket en cours','🧾  التذكرة الحالية'),style='CardTitle.TLabel')
+        self.ticket_title.pack(side='left')
+        ttk.Label(ticket_header,text=self.tr('Sélectionnez une ligne pour la modifier','حدد سطراً لتعديله'),style='Card.TLabel',
+                  foreground='#64748B',font=('Segoe UI',9)).pack(side='right')
+        self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview',height=12)
         self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=190,minwidth=120)
         for key,label,width in [('qty',self.tr('QTÉ','الكمية'),55),('price',self.tr('P.U.','ثمن الوحدة'),70),('discount',self.tr('REMISE','التخفيض'),75),('total',self.tr('NET','الصافي'),85)]:
             self.ticket.heading(key,text=label);self.ticket.column(key,width=width+8,minwidth=48,anchor='center')
@@ -202,27 +154,24 @@ class SaleFrame(ttk.Frame):
         self.ticket.tag_configure('odd',background='#FFFFFF')
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
-        secondary_actions=ttk.Frame(control_col,style='Card.TFrame')
-        secondary_actions.pack(fill='x',pady=(8,0))
-        secondary_specs=[
-            (self.tr('F4 Attente','F4 انتظار'),self.hold,'Soft.TButton'),
+        footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
+        footer_actions=[
+            (self.tr('F2  ESPÈCES','F2  نقداً'),lambda:self.set_payment('CASH'),'Success.TButton'),
+            (self.tr('F3  CARTE','F3  بطاقة'),lambda:self.set_payment('CARD'),'Primary.TButton'),
+            (self.tr('F4  Attente','F4  انتظار'),self.hold,'Soft.TButton'),
             (self.tr('Liste attente','لائحة الانتظار'),self.show_held,'Soft.TButton'),
-            (self.tr('F7 Remise','F7 تخفيض'),self.discount,'Soft.TButton'),
-            (self.tr('ESC Annuler','ESC إلغاء'),self.cancel,'Danger.TButton'),
+            (self.tr('F7  Remise','F7  تخفيض'),self.discount,'Soft.TButton'),
+            (self.tr('ESC  Annuler','ESC  إلغاء'),self.cancel,'Danger.TButton'),
         ]
-        for index,(label,command,style) in enumerate(secondary_specs):
-            ttk.Button(secondary_actions,text=label,style=style,command=command).grid(
-                row=index//2,column=index%2,sticky='ew',padx=2,pady=2,ipady=3)
-        secondary_actions.columnconfigure(0,weight=1)
-        secondary_actions.columnconfigure(1,weight=1)
-        status_bar=tk.Frame(self,bg='#F8FAFC',padx=10,pady=4,
-                            highlightthickness=1,highlightbackground='#E2E8F0')
-        status_bar.pack(fill='x',pady=(6,0))
-        self.status=tk.Label(status_bar,text=self.tr('● Scanner prêt  ·  Ctrl+F recherche  ·  Entrée ajouter','● الماسح جاهز  ·  Ctrl+F بحث  ·  Enter إضافة'),
-                             bg='#F8FAFC',fg='#475569',font=('Segoe UI',8,'bold'))
+        for label,command,style in footer_actions:
+            ttk.Button(footer,text=label,style=style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=3)
+        status_bar=tk.Frame(self,bg='#E2E8F0',padx=10,pady=6)
+        status_bar.pack(fill='x',pady=(8,0))
+        self.status=tk.Label(status_bar,text=self.tr('● Scanner prêt   ·   Ctrl+F Rechercher   ·   Entrée Ajouter','● الماسح جاهز   ·   Ctrl+F بحث   ·   Enter إضافة'),
+                             bg='#E2E8F0',fg='#334155',font=('Segoe UI',9,'bold'))
         self.status.pack(side='left')
-        tk.Label(status_bar,text='ToDo POS',bg='#F8FAFC',fg='#94A3B8',
-                 font=('Segoe UI',8)).pack(side='right')
+        tk.Label(status_bar,text='ToDo POS',bg='#E2E8F0',fg='#64748B',
+                 font=('Segoe UI',9)).pack(side='right')
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         if get_setting('require_client_on_sale','0')=='1':commands['<F6>']=self.choose_client
         for sequence,command in commands.items():
@@ -278,14 +227,9 @@ class SaleFrame(ttk.Frame):
         return 'break'
 
     def layout_cards(self,event=None):
-        width=max(1,self.card_canvas.winfo_width())
-        try:self.card_canvas.itemconfigure(self.card_window,width=max(1,width-4))
-        except tk.TclError:pass
-        columns=max(1,width//182)
-        for col in range(8):
-            self.card_inner.columnconfigure(col,weight=1 if col<columns else 0,uniform='catalog')
+        columns=max(1,self.card_canvas.winfo_width()//167)
         for index,card in enumerate(self.card_inner.winfo_children()):
-            card.grid_configure(row=index//columns,column=index%columns,sticky='nsew')
+            card.grid_configure(row=index//columns,column=index%columns)
 
     def functions(self):
         window=tk.Toplevel(self);window.title(self.tr('Fonctions','الوظائف'))
@@ -480,32 +424,48 @@ class SaleFrame(ttk.Frame):
         if self.cat.get() not in self.categories:self.cat.set('Tous')
         for child in self.category_buttons.winfo_children(): child.destroy()
         category_rows=list_categories()
-        active=self.cat.get()
-        ordered=['Tous']+[r['name'] for r in category_rows if r['name']!='Tous']
-        icons={r['name']:(r['icon']+' ') if r['icon'] else '' for r in category_rows}
-        for name in ordered:
+        # Default colours for "Tous" and fallback
+        all_colors = {'Tous': ('#1e293b', '#ffffff')}
+        for cat_row in category_rows:
+            bg = cat_row['color'] or '#2563EB'
+            # compute a readable text colour (white or black) based on luminance
+            try:
+                r2,g2,b2 = int(bg[1:3],16), int(bg[3:5],16), int(bg[5:7],16)
+                lum = (0.299*r2 + 0.587*g2 + 0.114*b2)
+                fg = '#ffffff' if lum < 140 else '#1e293b'
+            except Exception:
+                fg = '#ffffff'
+            all_colors[cat_row['name']] = (bg, fg)
+        active = self.cat.get()
+        for name, (bg, fg) in all_colors.items():
             if name not in self.categories:
                 continue
-            is_active=(name==active)
-            bg='#F59E0B' if is_active else '#F1F5F9'
-            fg='#111827' if is_active else '#334155'
-            btn=tk.Button(
+            icon = ''
+            for cat_row in category_rows:
+                if cat_row['name'] == name:
+                    icon = (cat_row['icon'] + ' ') if cat_row['icon'] else ''
+                    break
+            label = icon + name
+            is_active = (name == active)
+            border  = '#f59e0b' if is_active else bg
+            relief  = 'solid'   if is_active else 'flat'
+            btn = tk.Button(
                 self.category_buttons,
-                text=icons.get(name,'')+name,
-                bg=bg,fg=fg,
-                activebackground='#FBBF24' if is_active else '#E2E8F0',
-                activeforeground='#111827',
-                relief='flat',bd=0,
-                font=('Segoe UI',9,'bold' if is_active else 'normal'),
-                padx=12,pady=6,cursor='hand2',
-                command=lambda n=name:self.choose_category(n)
+                text=label,
+                bg=bg, fg=fg,
+                activebackground=bg, activeforeground=fg,
+                relief=relief, bd=2 if is_active else 0,
+                highlightbackground=border,
+                font=('Segoe UI', 9, 'bold' if is_active else 'normal'),
+                padx=10, pady=6, cursor='hand2',
+                command=lambda n=name: self.choose_category(n)
             )
-            btn.pack(side='left',padx=3,pady=2)
+            btn.pack(side='left', padx=3, pady=2)
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
-        columns=max(1,self.card_canvas.winfo_width()//182)
+        columns=max(1,self.card_canvas.winfo_width()//167)
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
         photo_filter=(self.query.get(),self.categories[self.cat.get()])
@@ -516,12 +476,12 @@ class SaleFrame(ttk.Frame):
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
-            card=tk.Frame(self.card_inner,bg='white',bd=0,relief='flat',highlightthickness=1,highlightbackground='#CBD5E1',width=170,height=184,cursor='hand2')
-            card.grid(row=index//columns,column=index%columns,padx=5,pady=5,sticky='nsew');card.grid_propagate(False)
-            thumb=self.thumbnail(row,104)
-            picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',28));picture.pack(fill='both',expand=True,padx=4,pady=(4,0))
-            tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=154,pady=4).pack(fill='x',padx=5)
-            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#F59E0B',fg='#111827',font=('Segoe UI',11,'bold'),pady=4).pack(fill='x')
+            card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',highlightthickness=1,highlightbackground='#E2E8F0',width=155,height=168,cursor='hand2')
+            card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
+            thumb=self.thumbnail(row,90)
+            picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
+            tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=140,pady=2).pack()
+            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#2563EB',fg='white',font=('Segoe UI',11,'bold'),pady=3).pack(fill='x')
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
@@ -854,8 +814,8 @@ class SaleFrame(ttk.Frame):
             labels={'CASH':self.tr('ESPÈCES','نقداً'),'CARD':self.tr('CARTE','بطاقة'),
                     'CREDIT':self.tr('CRÉDIT','دين'),'MIXED':self.tr('MIXTE','مختلط')}
             self.last_sale_summary.config(text=self.tr(
-                f"DERNIÈRE VENTE  ·  {labels.get(self.payment,self.payment)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}",
-                f"آخر بيع  ·  {labels.get(self.payment,self.payment)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}"
+                f"DERNIÈRE VENTE  ·  MODE {labels.get(self.payment,self.payment)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}",
+                f"آخر بيع  ·  الأداء {labels.get(self.payment,self.payment)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}"
             ))
             try:
                 if print_ticket and mode!='never' and (mode=='always' or dialog_print):
