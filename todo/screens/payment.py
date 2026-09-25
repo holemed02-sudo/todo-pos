@@ -18,6 +18,8 @@ class PaymentDialog(tk.Toplevel):
         self.geometry(f'620x{min(700,self.winfo_screenheight()-90)}')
         self.configure(bg='#F6F7FB')
         self.transient(master.winfo_toplevel())
+        credit_allowed=get_setting('credit_enabled','1')=='1' and client_name is not None
+        if method=='CREDIT' and not credit_allowed:method='CASH'
         self.method = tk.StringVar(value=method)
         self.amount = tk.StringVar(value=f'{total / 100:.2f}')
         self.card_amount = tk.StringVar(value='0.00')
@@ -37,7 +39,7 @@ class PaymentDialog(tk.Toplevel):
         modes = ttk.Frame(body)
         modes.pack(fill='x', pady=(0, 12))
         choices=[(self.tr('F2 Espèces','F2 نقداً'),'CASH'),(self.tr('F3 Carte','F3 بطاقة'),'CARD'),(self.tr('Mixte','مختلط'),'MIXED')]
-        if client_name:choices.append((self.tr('Crédit','دين'),'CREDIT'))
+        if client_name and get_setting('credit_enabled','1')=='1':choices.append((self.tr('Crédit','دين'),'CREDIT'))
         if client_name:ttk.Label(body,text=self.tr('Client : ','الزبون: ')+client_name).pack(anchor='w')
         for label, value in choices:
             ttk.Radiobutton(modes, text=label, variable=self.method, value=value,
