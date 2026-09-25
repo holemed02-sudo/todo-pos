@@ -134,9 +134,9 @@ class SaleFrame(ttk.Frame):
             ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel',font=('Segoe UI',10,'bold'),foreground='#475569');self.subtotal_label.pack(anchor='e',pady=(2,0))
         total_color=getattr(self.app,'theme_color','#2563EB')
-        total_box=tk.Frame(checkout_area,bg=total_color,padx=14,pady=12);total_box.pack(fill='x',pady=10)
-        tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg=total_color,fg='white',font=('Segoe UI',14,'bold')).pack(side='left')
-        self.total_label=tk.Label(total_box,text='',bg=total_color,fg='white',font=('Segoe UI',30,'bold'));self.total_label.pack(side='right')
+        total_box=tk.Frame(checkout_area,bg='#111827',padx=14,pady=10);total_box.pack(fill='x',pady=(8,6))
+        tk.Label(total_box,text=self.tr('TOTAL','المجموع'),bg='#111827',fg='#F59E0B',font=('Segoe UI',13,'bold')).pack(side='left')
+        self.total_label=tk.Label(total_box,text='',bg='#111827',fg='white',font=('Segoe UI',32,'bold'));self.total_label.pack(side='right')
         self.payment_label=tk.Label(checkout_area,text=self.tr('Paiement : Espèces','الأداء: نقداً'),
                                     bg='#DCFCE7',fg='#166534',font=('Segoe UI',10,'bold'),
                                     padx=10,pady=5,bd=0,anchor='w')
@@ -148,23 +148,21 @@ class SaleFrame(ttk.Frame):
         ttk.Button(payment_actions,text=self.tr('F3  CARTE','F3  بطاقة'),style='Primary.TButton',
                    command=lambda:self.set_payment('CARD')).pack(side='left',expand=True,fill='x',padx=(3,0),ipady=4)
 
-        self.last_sale_box=tk.Frame(checkout_area,bg='#0B45D8',padx=10,pady=6)
+        self.last_sale_box=tk.Frame(checkout_area,bg='#E0F2FE',padx=10,pady=6)
         self.last_sale_box.pack(fill='x',pady=(0,6))
         self.last_sale_summary=tk.Label(
             self.last_sale_box,
-            text=self.tr('DERNIÈRE VENTE  ·  MODE —  ·  PAYÉ —  ·  RENDU —',
-                         'آخر بيع  ·  الأداء —  ·  المؤدى —  ·  الباقي —'),
-            bg='#0B45D8',fg='white',font=('Segoe UI',10,'bold'),anchor='w'
+            text=self.tr('DERNIÈRE VENTE  ·  —','آخر بيع  ·  —'),
+            bg='#E0F2FE',fg='#0F172A',font=('Segoe UI',10,'bold'),anchor='w'
         )
         self.last_sale_summary.pack(fill='x')
-        ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=10,pady=(3,3))
+        ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=11,pady=(3,3))
         ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),style='Primary.TButton',command=lambda:self.checkout(False)).pack(fill='x',ipady=8)
-        ticket_header=ttk.Frame(ticket_col,style='Card.TFrame')
-        ticket_header.pack(fill='x',pady=(0,8))
-        self.ticket_title=ttk.Label(ticket_header,text=self.tr('🧾  Ticket en cours','🧾  التذكرة الحالية'),style='CardTitle.TLabel')
-        self.ticket_title.pack(side='left')
-        ttk.Label(ticket_header,text=self.tr('Sélectionnez une ligne pour la modifier','حدد سطراً لتعديله'),style='Card.TLabel',
-                  foreground='#64748B',font=('Segoe UI',9)).pack(side='right')
+        ticket_header=tk.Frame(ticket_col,bg='#111827',height=44)
+        ticket_header.pack(fill='x',pady=(0,8));ticket_header.pack_propagate(False)
+        self.ticket_title=tk.Label(ticket_header,text=self.tr('🧾  TICKET EN COURS','🧾  التذكرة الحالية'),bg='#111827',fg='white',font=('Segoe UI',12,'bold'))
+        self.ticket_title.pack(side='left',padx=12)
+        tk.Label(ticket_header,text=self.tr('Touchez une ligne pour modifier','المس السطر للتعديل'),bg='#111827',fg='#CBD5E1',font=('Segoe UI',9)).pack(side='right',padx=12)
         self.ticket=ttk.Treeview(ticket_col,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview',height=12)
         self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=190,minwidth=120)
         for key,label,width in [('qty',self.tr('QTÉ','الكمية'),55),('price',self.tr('P.U.','ثمن الوحدة'),70),('discount',self.tr('REMISE','التخفيض'),75),('total',self.tr('NET','الصافي'),85)]:
@@ -820,8 +818,8 @@ class SaleFrame(ttk.Frame):
             labels={'CASH':self.tr('ESPÈCES','نقداً'),'CARD':self.tr('CARTE','بطاقة'),
                     'CREDIT':self.tr('CRÉDIT','دين'),'MIXED':self.tr('MIXTE','مختلط')}
             self.last_sale_summary.config(text=self.tr(
-                f"DERNIÈRE VENTE  ·  MODE {labels.get(self.payment,self.payment)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}",
-                f"آخر بيع  ·  الأداء {labels.get(self.payment,self.payment)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}"
+                f"DERNIÈRE VENTE  ·  {labels.get(self.payment,self.payment)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}",
+                f"آخر بيع  ·  {labels.get(self.payment,self.payment)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}"
             ))
             try:
                 if print_ticket and mode!='never' and (mode=='always' or dialog_print):
