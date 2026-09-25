@@ -7,6 +7,27 @@ from services.security import hash_pin, require_admin, audit
 
 
 
+def _sync_windows_startup(enabled):
+    """Register/unregister ToDo for the current Windows user."""
+    if os.name != 'nt':
+        return
+    import winreg
+    key_path=r'Software\Microsoft\Windows\CurrentVersion\Run'
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER,key_path,0,winreg.KEY_SET_VALUE) as key:
+        if enabled:
+            if getattr(sys,'frozen',False):
+                command=f'"{sys.executable}"'
+            else:
+                root=Path(__file__).resolve().parents[2]
+                py=Path(sys.executable)
+                pythonw=py.with_name('pythonw.exe')
+                launcher=pythonw if pythonw.exists() else py
+                command=f'"{launcher}" "{root / "ToDo.pyw"}"'
+            winreg.SetValueEx(key,'ToDoPOS',0,winreg.REG_SZ,command)
+        else:
+            try:winreg.DeleteValue(key,'ToDoPOS')
+            except FileNotFoundError:pass
+
 class CategoryEditor(tk.Toplevel):
     """Edit or create a category — name, color, icon."""
     PALETTE = [
@@ -97,6 +118,7 @@ class SettingsFrame(ttk.Frame):
         self.block_insufficient=tk.BooleanVar(value=get_setting('block_insufficient_stock','0')=='1')
         self.require_client=tk.BooleanVar(value=get_setting('require_client_on_sale','0')=='1')
         self.choose_seller=tk.BooleanVar(value=get_setting('choose_seller_on_sale','0')=='1')
+        self.start_with_windows=tk.BooleanVar(value=get_setting('start_with_windows','0')=='1')
         self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
         self.language=tk.StringVar(value=get_setting("language","fr"))
         ttk.Label(f,text=self.tr('Nom magasin','اسم المتجر')).grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
@@ -106,9 +128,10 @@ class SettingsFrame(ttk.Frame):
         ttk.Checkbutton(f,text=self.tr('Bloquer vente si stock insuffisant','منع البيع عند نقص المخزون'),variable=self.block_insufficient,command=self.sync_stock_options).grid(row=3,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Afficher le choix du client pendant la vente','إظهار اختيار الزبون أثناء البيع'),variable=self.require_client).grid(row=4,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Choix du vendeur pendant la vente','اختيار البائع أثناء البيع'),variable=self.choose_seller).grid(row=5,column=0,columnspan=2,sticky="w")
-        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=6,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=6,column=1,padx=8)
-        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=7,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=7,column=1,sticky="w",padx=8)
-        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=8,column=0,pady=8,sticky='ew')
+        ttk.Checkbutton(f,text=self.tr('Lancer ToDo au démarrage de Windows','تشغيل ToDo مع بدء Windows'),variable=self.start_with_windows,command=self.toggle_windows_startup).grid(row=6,column=0,columnspan=3,sticky="w",pady=(3,0))
+        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=7,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=7,column=1,padx=8)
+        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=8,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=8,column=1,sticky="w",padx=8)
+        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=9,column=0,pady=8,sticky='ew')
         pg=ttk.LabelFrame(self,text=self.tr('Grilles de prix','لوائح الأثمان'),padding=10);pg.pack(fill="x",pady=10)
         ttk.Label(pg,text=self.tr('Créez les grilles ici, puis définissez le prix de chaque article dans sa fiche.','أنشئ لوائح الأثمان هنا، ثم حدد ثمن كل منتوج في بطاقته.')).pack(anchor="w")
         self.price_grids_frame=ttk.Frame(pg);self.price_grids_frame.pack(fill="x",pady=6)
@@ -174,6 +197,15 @@ class SettingsFrame(ttk.Frame):
         ttk.Button(u,text=self.tr('Changer mon PIN','تغيير PIN'),command=self.change_pin).pack(side="left",padx=8)
         ttk.Button(u,text=self.tr('Journal des actions','سجل العمليات'),command=self.audit_log).pack(side="left",padx=8)
         ttk.Label(u,text=self.tr('Admin initial: admin / PIN 1234 — changez-le.','المدير الأولي: admin / PIN 1234 — غيّره.')).pack(side="left",padx=15)
+    def toggle_windows_startup(self):
+        enabled=bool(self.start_with_windows.get())
+        try:
+            _sync_windows_startup(enabled)
+            set_setting('start_with_windows','1' if enabled else '0')
+        except Exception as error:
+            self.start_with_windows.set(not enabled)
+            messagebox.showerror('ToDo',self.tr(f"Impossible de modifier le démarrage Windows: {error}",f"تعذر تعديل تشغيل Windows: {error}"),parent=self)
+
     def sync_stock_options(self):
         if self.block_insufficient.get(): self.neg.set(False)
         elif self.neg.get(): self.block_insufficient.set(False)
