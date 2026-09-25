@@ -37,6 +37,7 @@ class SaleFrame(ttk.Frame):
         self.currency=get_setting('currency','DH')
         self.images={}
         self.search_job=None
+        self.scan_submit_job=None
         self.busy=False
         self.last_sale_snapshot=None
         self.bindings=[]
@@ -70,7 +71,7 @@ class SaleFrame(ttk.Frame):
         self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
         ttk.Button(searchbar,text='×2',style='Soft.TButton',command=self.double_scan_quantity).pack(side='left',padx=(8,0),ipadx=8,ipady=3)
         self.entry.bind('<Return>',self.confirm_search)
-        self.entry.bind('<KeyRelease>',self.schedule_search)
+        self.entry.bind('<KeyRelease>',self.handle_scan_input)
         self.entry.bind('<Down>',self.focus_catalog)
         body=ttk.Panedwindow(self,orient='horizontal')
         body.pack(fill='both',expand=True)
@@ -480,6 +481,28 @@ class SaleFrame(ttk.Frame):
         window.bind('<Escape>',lambda e:window.destroy())
         if rows:tree.selection_set(str(rows[0]['id']));tree.focus_set()
 
+    def handle_scan_input(self,event=None):
+        if event and event.keysym in ('Return','Down','Up','Escape'):
+            return
+        self.schedule_search(event)
+        if self.scan_submit_job:
+            try:self.after_cancel(self.scan_submit_job)
+            except Exception:pass
+            self.scan_submit_job=None
+        code=self.query.get().strip()
+        if len(code)<4 or any(ch.isspace() for ch in code):
+            return
+        # Auto-submit only exact known barcodes. Normal text searches stay manual.
+        self.scan_submit_job=self.after(500,self.auto_submit_barcode)
+
+    def auto_submit_barcode(self):
+        self.scan_submit_job=None
+        code=self.query.get().strip()
+        if not code:return
+        rows=scan_barcode(code)
+        if not rows:return
+        self.confirm_search()
+
     def schedule_search(self,event=None):
         if event and event.keysym in ('Return','Down','Up','Escape'):return
         if self.search_job:self.after_cancel(self.search_job)
@@ -575,6 +598,10 @@ class SaleFrame(ttk.Frame):
         self.render_products()
 
     def confirm_search(self,event=None):
+        if self.scan_submit_job:
+            try:self.after_cancel(self.scan_submit_job)
+            except Exception:pass
+            self.scan_submit_job=None
         if self.search_job:
             self.after_cancel(self.search_job);self.search_job=None
         code=self.query.get().strip()
