@@ -166,6 +166,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     app.after(150,finish_payment)
     button(sale,'SOLDER avec').invoke();app.update()
     assert not sale.cart
+    assert sale.last_sale_snapshot and sale.ticket.get_children()
     receipt=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
     visible(button(receipt,'PDF'))
     with connect() as c:
@@ -177,6 +178,11 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         button(receipt,'PDF').invoke()
     assert output.read_bytes().startswith(b'%PDF-')
     receipt.destroy()
+    # Logica-compatible behavior: completed ticket remains visible until the next article.
+    sale.query.set('TEST123');sale.confirm_search();app.update()
+    assert sale.cart and sale.last_sale_snapshot is None
+    assert len(sale.ticket.get_children())==1
+    sale.clear()
     sale.cash_tools();app.update()
     cash_window=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
     with patch('tkinter.simpledialog.askstring',return_value='TEST expense'), patch('tkinter.simpledialog.askfloat',return_value=1):
