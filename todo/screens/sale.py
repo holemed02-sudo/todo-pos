@@ -128,6 +128,16 @@ class SaleFrame(ttk.Frame):
         total_box=tk.Frame(checkout_area,bg=total_color,padx=14,pady=12);total_box.pack(fill='x',pady=10)
         tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg=total_color,fg='white',font=('Segoe UI',14,'bold')).pack(side='left')
         self.total_label=tk.Label(total_box,text='',bg=total_color,fg='white',font=('Segoe UI',30,'bold'));self.total_label.pack(side='right')
+        self.last_sale_box=tk.Frame(checkout_area,bg='#0B45D8',padx=12,pady=8)
+        self.last_sale_box.pack(fill='x',pady=(0,10))
+        self.last_sale_title=tk.Label(self.last_sale_box,text=self.tr('DERNIÈRE VENTE','آخر عملية بيع'),bg='#0B45D8',fg='white',font=('Segoe UI',11,'bold'))
+        self.last_sale_title.pack(anchor='w')
+        self.last_sale_mode=tk.Label(self.last_sale_box,text=self.tr('MODE : —','طريقة الأداء: —'),bg='#0B45D8',fg='white',font=('Segoe UI',11,'bold'))
+        self.last_sale_mode.pack(anchor='w',pady=(4,0))
+        self.last_sale_paid=tk.Label(self.last_sale_box,text=self.tr('PAYÉ : —','المؤدى: —'),bg='#0B45D8',fg='white',font=('Segoe UI',11,'bold'))
+        self.last_sale_paid.pack(anchor='w')
+        self.last_sale_change=tk.Label(self.last_sale_box,text=self.tr('RENDU : —','الباقي: —'),bg='#0B45D8',fg='white',font=('Segoe UI',11,'bold'))
+        self.last_sale_change.pack(anchor='w')
         ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=10,pady=(3,3))
         ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),style='Primary.TButton',command=lambda:self.checkout(False)).pack(fill='x',ipady=8)
         ticket_header=ttk.Frame(right,style='Card.TFrame')
@@ -206,7 +216,9 @@ class SaleFrame(ttk.Frame):
         super().destroy()
 
     def focus_search(self):
-        self.entry.focus_set();self.entry.selection_range(0,'end')
+        if self.entry.winfo_exists():
+            self.entry.focus_force()
+            self.entry.selection_range(0,'end')
 
     def focus_catalog(self,event=None):
         self.catalog_tabs.select(self.list_page)
@@ -800,11 +812,16 @@ class SaleFrame(ttk.Frame):
             self.last_sale_snapshot=[dict(line) for line in self.cart]
             self.clear(preserve_last_sale=True)
             self.status.config(text=self.tr(f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}",f"آخر بيع: {fmt(total,self.currency)} · المستلم: {fmt(paid,self.currency)} · الباقي: {fmt(result['change_cents'],self.currency)} · {result['sale_no']}"))
+            labels={'CASH':self.tr('ESPÈCES','نقداً'),'CARD':self.tr('CARTE','بطاقة'),
+                    'CREDIT':self.tr('CRÉDIT','دين'),'MIXED':self.tr('MIXTE','مختلط')}
+            self.last_sale_mode.config(text=self.tr('MODE : ','طريقة الأداء: ')+labels.get(self.payment,self.payment))
+            self.last_sale_paid.config(text=self.tr('PAYÉ : ','المؤدى: ')+fmt(paid,self.currency))
+            self.last_sale_change.config(text=self.tr('RENDU : ','الباقي: ')+fmt(result['change_cents'],self.currency))
             try:
-                if print_ticket:
-                    self.show_receipt(result)
-                if print_ticket and mode!='never' and (mode=='always' or dialog_print):print_receipt_windows(result['id'])
-            except Exception as e:messagebox.showwarning('ToDo',self.tr(f"Vente enregistrée : {result['sale_no']}\nTicket indisponible : {e}",f"تم تسجيل البيع: {result['sale_no']}\nالتذكرة غير متاحة: {e}"),parent=self)
+                if print_ticket and mode!='never' and (mode=='always' or dialog_print):
+                    print_receipt_windows(result['id'])
+            except Exception as e:
+                self.status.config(text=self.tr(f"Vente enregistrée · Impression indisponible : {e}",f"تم تسجيل البيع · الطباعة غير متاحة: {e}"))
             self.render_products()
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
         finally:self.busy=False;self.focus_search()
