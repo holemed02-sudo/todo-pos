@@ -135,12 +135,15 @@ class PaymentsWindow(tk.Toplevel):
         if sel:
             sale_id = int(sel[0])
         amount_str = simpledialog.askstring(
-            self.tr('Règlement','التسديد'), self.tr('Montant reçu en espèces (DH) :','المبلغ المقبوض نقداً (DH):'), parent=self)
+            self.tr('Règlement','التسديد'), self.tr('Montant reçu (DH) :','المبلغ المقبوض (DH):'), parent=self)
         if amount_str is None: return
+        method=simpledialog.askstring(self.tr('Mode de paiement','طريقة الأداء'),self.tr('CASH ou CARD :','CASH أو CARD:'),initialvalue='CASH',parent=self)
+        if method is None:return
+        method=method.strip().upper()
         note = simpledialog.askstring(self.tr('Règlement','التسديد'), self.tr('Note (facultatif) :','ملاحظة (اختيارية):'), parent=self) or ''
         try:
             from services.money import to_cents
-            add_payment(self.client['id'], to_cents(amount_str), note, sale_id)
+            add_payment(self.client['id'], to_cents(amount_str), note, sale_id, method)
             self._refresh()
         except (ValueError, PermissionError) as e:
             messagebox.showerror(self.tr('Règlement','التسديد'), str(e), parent=self)
