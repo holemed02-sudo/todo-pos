@@ -18,7 +18,8 @@ class CashFrame(ttk.Frame):
         ttk.Button(b,text=self.tr('Dépense','مصروف'),style='Danger.TButton',command=self.expense).pack(side='left',padx=4)
         ttk.Button(b,text=self.tr('Cash IN','إدخال نقدي'),style='Soft.TButton',command=lambda:self.cashmove('IN')).pack(side='left',padx=4)
         ttk.Button(b,text=self.tr('Cash OUT','إخراج نقدي'),style='Soft.TButton',command=lambda:self.cashmove('OUT')).pack(side='left',padx=4)
-        ttk.Button(b,text=self.tr('Clôturer','إغلاق الصندوق'),style='Primary.TButton',command=self.close).pack(side='left',padx=4)
+        if get_setting('closure_enabled','1')=='1':
+            ttk.Button(b,text=self.tr('Clôturer','إغلاق الصندوق'),style='Primary.TButton',command=self.close).pack(side='left',padx=4)
         ttk.Button(b,text=self.tr('Historique clôtures','سجل الإغلاقات'),style='Soft.TButton',command=self.history).pack(side='left',padx=4)
         self.details=tk.Text(self,height=16,font=("Consolas",11));self.details.pack(fill="x",pady=15);self.refresh()
     def refresh(self):
@@ -114,6 +115,8 @@ Cash OUT       : {fmt(t['cash_out'])}
         return None if result['value'] is None else result['value']/100
 
     def close(self):
+        if get_setting('closure_enabled','1')!='1':
+            messagebox.showinfo('ToDo',self.tr('La clôture est désactivée dans les paramètres.','إغلاق الصندوق معطل من الإعدادات.'),parent=self);return
         s=get_open_session()
         if not s:return
         with connect() as c:t=session_totals(c,s["id"])
