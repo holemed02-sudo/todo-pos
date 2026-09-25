@@ -89,25 +89,23 @@ Cash OUT       : {fmt(t['cash_out'])}
         w=tk.Toplevel(self);w.title(self.tr('Comptage caisse','عدّ الصندوق'));w.transient(self.winfo_toplevel());w.grab_set();w.geometry('560x520')
         ttk.Label(w,text=self.tr('Cash attendu','النقد المتوقع'),font=('Segoe UI',11)).pack(pady=(16,2))
         ttk.Label(w,text=fmt(expected),font=('Segoe UI',24,'bold')).pack()
-        counts={};total=tk.IntVar(value=0);result={'value':None}
+        counts={};result={'value':None}
         summary=ttk.Label(w,text='',font=('Segoe UI',10));summary.pack(pady=6)
         total_label=ttk.Label(w,text=fmt(0),font=('Segoe UI',22,'bold'));total_label.pack(pady=4)
         grid=ttk.Frame(w);grid.pack(fill='x',padx=16,pady=8)
         values=(200,100,50,20,10,5,2,1,0.5)
         def refresh():
-            cents=sum(to_cents(str(v))*n for v,n in counts.items());total.set(cents)
-            total_label.config(text=fmt(cents))
-            parts=[f'{v:g}×{n}' for v,n in counts.items() if n]
-            summary.config(text=' · '.join(parts))
-        def add(v,delta=1):
-            counts[v]=max(0,counts.get(v,0)+delta);refresh()
+            cents=sum(to_cents(str(v))*n for v,n in counts.items());total_label.config(text=fmt(cents))
+            summary.config(text=' · '.join(f'{v:g}×{n}' for v,n in counts.items() if n))
+            return cents
+        def add(v,delta=1):counts[v]=max(0,counts.get(v,0)+delta);refresh()
         for i,v in enumerate(values):
             box=ttk.Frame(grid);box.grid(row=i//3,column=i%3,sticky='nsew',padx=4,pady=4)
             ttk.Button(box,text=f'+ {v:g} DH',command=lambda x=v:add(x),width=13).pack(fill='x')
             ttk.Button(box,text=self.tr('Retirer','نقص')+f' {v:g}',command=lambda x=v:add(x,-1),width=13).pack(fill='x',pady=(2,0))
         for c in range(3):grid.columnconfigure(c,weight=1)
         def clear():counts.clear();refresh()
-        def validate():result['value']=total.get();w.destroy()
+        def validate():result['value']=refresh();w.destroy()
         buttons=ttk.Frame(w);buttons.pack(side='bottom',fill='x',padx=16,pady=16)
         ttk.Button(buttons,text=self.tr('Effacer','مسح'),command=clear).pack(side='left')
         ttk.Button(buttons,text=self.tr('Annuler','إلغاء'),command=w.destroy).pack(side='right',padx=6)
