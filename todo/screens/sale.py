@@ -40,19 +40,20 @@ class SaleFrame(ttk.Frame):
         self.busy=False
         self.last_sale_snapshot=None
         self.bindings=[]
-        top=ttk.Frame(self)
-        top.pack(fill='x',pady=(0,8))
-        title_box=ttk.Frame(top)
-        title_box.pack(side='left')
-        ttk.Label(title_box,text=self.tr('Vente','البيع'),style='Title.TLabel',font=('Segoe UI',18,'bold')).pack(anchor='w')
-        ttk.Label(title_box,text=self.tr('Caisse prête pour l’encaissement','الصندوق جاهز للبيع'),
-                  foreground='#64748B',font=('Segoe UI',9)).pack(anchor='w')
+        top=tk.Frame(self,bg='#111827',height=42)
+        top.pack(fill='x',pady=(0,6));top.pack_propagate(False)
+        title_box=tk.Frame(top,bg='#111827')
+        title_box.pack(side='left',fill='y')
+        tk.Label(title_box,text=self.tr('VENTE','البيع'),bg='#111827',fg='white',
+                 font=('Segoe UI',12,'bold')).pack(side='left',padx=(12,8))
+        tk.Label(title_box,text=self.tr('Caisse prête','الصندوق جاهز'),bg='#111827',fg='#94A3B8',
+                 font=('Segoe UI',9)).pack(side='left')
         self.client_button=ttk.Button(top,text=self.tr('F6 Client : passage','F6 الزبون: عابر'),command=self.choose_client)
         if get_setting('require_client_on_sale','0')=='1':
-            self.client_button.pack(side='left',padx=18)
+            self.client_button.pack(side='left',padx=10,pady=4)
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
-            self.seller_button.pack(side='left',padx=(0,12))
+            self.seller_button.pack(side='left',padx=(0,8),pady=4)
         search_shell=tk.Frame(self,bg='#F59E0B',padx=2,pady=2)
         search_shell.pack(fill='x',pady=(0,8))
         searchbar=ttk.Frame(search_shell,style='Card.TFrame',padding=(12,10))
@@ -209,13 +210,14 @@ class SaleFrame(ttk.Frame):
                 row=index//2,column=index%2,sticky='ew',padx=2,pady=2,ipady=3)
         secondary_actions.columnconfigure(0,weight=1)
         secondary_actions.columnconfigure(1,weight=1)
-        status_bar=tk.Frame(self,bg='#E2E8F0',padx=10,pady=6)
-        status_bar.pack(fill='x',pady=(8,0))
-        self.status=tk.Label(status_bar,text=self.tr('● Scanner prêt   ·   Ctrl+F Rechercher   ·   Entrée Ajouter','● الماسح جاهز   ·   Ctrl+F بحث   ·   Enter إضافة'),
-                             bg='#E2E8F0',fg='#334155',font=('Segoe UI',9,'bold'))
+        status_bar=tk.Frame(self,bg='#F8FAFC',padx=10,pady=4,
+                            highlightthickness=1,highlightbackground='#E2E8F0')
+        status_bar.pack(fill='x',pady=(6,0))
+        self.status=tk.Label(status_bar,text=self.tr('● Scanner prêt  ·  Ctrl+F recherche  ·  Entrée ajouter','● الماسح جاهز  ·  Ctrl+F بحث  ·  Enter إضافة'),
+                             bg='#F8FAFC',fg='#475569',font=('Segoe UI',8,'bold'))
         self.status.pack(side='left')
-        tk.Label(status_bar,text='ToDo POS',bg='#E2E8F0',fg='#64748B',
-                 font=('Segoe UI',9)).pack(side='right')
+        tk.Label(status_bar,text='ToDo POS',bg='#F8FAFC',fg='#94A3B8',
+                 font=('Segoe UI',8)).pack(side='right')
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         if get_setting('require_client_on_sale','0')=='1':commands['<F6>']=self.choose_client
         for sequence,command in commands.items():
