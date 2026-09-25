@@ -51,15 +51,15 @@ class SaleFrame(ttk.Frame):
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
             self.seller_button.pack(side='left',padx=(0,12))
-        searchbar=ttk.Frame(self,style='Card.TFrame',padding=12)
+        searchbar=ttk.Frame(self,style='Card.TFrame',padding=(14,12))
         searchbar.pack(fill='x',pady=(0,12))
-        ttk.Label(searchbar,text=self.tr('⌕  Scanner ou rechercher','⌕  مسح أو بحث'),style='Card.TLabel').pack(side='left',padx=(0,12))
+        ttk.Label(searchbar,text=self.tr('⌕  SCANNER / RECHERCHER','⌕  مسح / بحث'),style='CardTitle.TLabel').pack(side='left',padx=(0,14))
         self.query=tk.StringVar()
-        self.entry=ttk.Entry(searchbar,textvariable=self.query,font=('Segoe UI',16))
+        self.entry=ttk.Entry(searchbar,textvariable=self.query,style='Search.TEntry')
         self.entry.pack(side='left',fill='x',expand=True)
-        ttk.Label(searchbar,text=self.tr('Qté','الكمية')).pack(side='left',padx=(12,4))
+        ttk.Label(searchbar,text=self.tr('QTÉ','الكمية'),style='Card.TLabel',font=('Segoe UI',10,'bold')).pack(side='left',padx=(14,6))
         self.scan_quantity=tk.StringVar(value='1')
-        self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))
+        self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,style='Quantity.TEntry',justify='center')
         self.quantity_entry.pack(side='left')
         self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
         ttk.Button(searchbar,text='×2',style='Soft.TButton',command=self.double_scan_quantity).pack(side='left',padx=(8,0),ipadx=8,ipady=3)
@@ -75,7 +75,7 @@ class SaleFrame(ttk.Frame):
             categories=conn.execute('SELECT id,name FROM categories WHERE active=1 ORDER BY sort_order,name').fetchall()
         self.categories={'Tous':None,**{r['name']:r['id'] for r in categories}}
         self.cat=tk.StringVar(value='Tous')
-        self.family_canvas=tk.Canvas(filters,height=42,highlightthickness=0)
+        self.family_canvas=tk.Canvas(filters,height=48,highlightthickness=0)
         self.family_canvas.pack(fill='x',expand=True)
         family_scroll=ttk.Scrollbar(filters,orient='horizontal',command=self.family_canvas.xview)
         family_scroll.pack(fill='x')
@@ -118,9 +118,10 @@ class SaleFrame(ttk.Frame):
             button_style='Danger.TButton' if label==self.tr('Suppr.','حذف') else 'Soft.TButton'
             ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
-        total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
-        tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
-        self.total_label=tk.Label(total_box,text='',bg='#2563EB',fg='white',font=('Segoe UI',25,'bold'));self.total_label.pack(side='right')
+        total_color=getattr(self.app,'theme_color','#2563EB')
+        total_box=tk.Frame(checkout_area,bg=total_color,padx=14,pady=12);total_box.pack(fill='x',pady=10)
+        tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg=total_color,fg='white',font=('Segoe UI',14,'bold')).pack(side='left')
+        self.total_label=tk.Label(total_box,text='',bg=total_color,fg='white',font=('Segoe UI',30,'bold'));self.total_label.pack(side='right')
         ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=10,pady=(3,3))
         ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),style='Primary.TButton',command=lambda:self.checkout(False)).pack(fill='x',ipady=8)
         ttk.Label(right,text=self.tr('Ticket en cours','التذكرة الحالية'),style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
@@ -144,7 +145,7 @@ class SaleFrame(ttk.Frame):
         ]
         for label,command,style in footer_actions:
             ttk.Button(footer,text=label,style=style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=3)
-        self.status=ttk.Label(self,text=self.tr('Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter','الماسح جاهز · Ctrl+F بحث · Enter إضافة'))
+        self.status=ttk.Label(self,text=self.tr('● Scanner prêt   ·   Ctrl+F Rechercher   ·   Entrée Ajouter','● الماسح جاهز   ·   Ctrl+F بحث   ·   Enter إضافة'),font=('Segoe UI',9,'bold'),foreground='#475569')
         self.status.pack(anchor='w',pady=(8,0))
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
         if get_setting('require_client_on_sale','0')=='1':commands['<F6>']=self.choose_client
@@ -206,6 +207,18 @@ class SaleFrame(ttk.Frame):
     def functions(self):
         window=tk.Toplevel(self);window.title(self.tr('Fonctions','الوظائف'))
         window.transient(self.winfo_toplevel());window.grab_set()
+        window.configure(bg='#F6F7FB')
+        window.geometry('820x590')
+        window.minsize(720,520)
+        header=tk.Frame(window,bg='#0F172A',height=62)
+        header.pack(fill='x');header.pack_propagate(False)
+        tk.Label(header,text=self.tr('☰  Fonctions de caisse','☰  وظائف الصندوق'),bg='#0F172A',fg='white',
+                 font=('Segoe UI',17,'bold')).pack(side='left',padx=18)
+        tk.Button(header,text='✕',bg='#DC2626',fg='white',activebackground='#B91C1C',activeforeground='white',
+                  relief='flat',bd=0,font=('Segoe UI',14,'bold'),width=4,cursor='hand2',
+                  command=window.destroy).pack(side='right',fill='y')
+        body=ttk.Frame(window,padding=16)
+        body.pack(fill='both',expand=True)
         def run(command):
             window.destroy();command()
         commands=[(self.tr('Duplicata','نسخة التذكرة'),self.duplicate_receipt),
@@ -214,7 +227,7 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Modifier quantité','تعديل الكمية'),self.set_qty),
                   (self.tr('Modifier prix','تعديل الثمن'),self.set_price),
                   (self.tr('Remise ticket','تخفيض التذكرة'),self.discount),
-                  ('Remise ligne',self.line_discount),
+                  (self.tr('Remise ligne','تخفيض السطر'),self.line_discount),
                   (self.tr('Supprimer ligne','حذف السطر'),self.remove),
                   (self.tr('Grille de prix','لائحة الأثمان'),self.choose_price_grid),
                   (self.tr('Compter la caisse','حساب الصندوق'),self.cash_tools),
@@ -229,10 +242,21 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Tiroir','درج النقود'),self.open_drawer),
                   (self.tr('Attente','انتظار'),self.hold),
                   (self.tr("Liste d’attente",'المعلقات'),self.show_held)]
+        danger_labels={self.tr('Supprimer ligne','حذف السطر'),self.tr('Clôture','إغلاق الصندوق')}
         for index,(label,command) in enumerate(commands):
-            ttk.Button(window,text=label,command=lambda c=command:run(c)).grid(row=index//3,column=index%3,padx=6,pady=6,ipadx=4,ipady=10,sticky='ew')
-        ttk.Button(window,text=self.tr('Fermer','رجوع'),command=lambda:run(self.focus_search)).grid(row=(len(commands)+2)//3,column=0,columnspan=3,pady=12)
+            style='Danger.TButton' if label in danger_labels else 'Soft.TButton'
+            ttk.Button(body,text=label,style=style,command=lambda c=command:run(c)).grid(
+                row=index//3,column=index%3,padx=6,pady=6,ipady=8,sticky='nsew')
+        for col in range(3):body.columnconfigure(col,weight=1)
+        for row in range((len(commands)+2)//3):body.rowconfigure(row,weight=1)
+        ttk.Button(window,text=self.tr('Fermer','رجوع'),style='Primary.TButton',
+                   command=lambda:run(self.focus_search)).pack(fill='x',padx=16,pady=(0,16),ipady=5)
         window.bind('<Escape>',lambda e:run(self.focus_search))
+        window.update_idletasks()
+        parent=window.master.winfo_toplevel()
+        x=max(0,parent.winfo_rootx()+(parent.winfo_width()-window.winfo_width())//2)
+        y=max(0,parent.winfo_rooty()+(parent.winfo_height()-window.winfo_height())//2)
+        window.geometry(f'+{x}+{y}')
 
     def choose_price_grid(self):
         with connect() as conn:
