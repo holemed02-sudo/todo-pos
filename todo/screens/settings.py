@@ -174,12 +174,14 @@ class SettingsFrame(ttk.Frame):
         ttk.Combobox(p,textvariable=self.drawer_pin,values=['0','1'],state='readonly',width=5).grid(row=5,column=1,sticky='w',padx=8)
         ttk.Button(p,text=self.tr('Enregistrer impression','حفظ إعدادات الطباعة'),command=self.save).grid(row=5,column=2)
         d=ttk.LabelFrame(self,text=self.tr('Écran client','شاشة الزبون'),padding=10);d.pack(fill="x",pady=10)
+        self.customer_enabled=tk.BooleanVar(value=get_setting('customer_display_enabled','0')=='1')
         self.customer_seconds=tk.StringVar(value=get_setting("customer_slide_seconds","6"))
         current_mode=get_setting('customer_display_mode','promotions')
         self.customer_mode_labels={
             self.tr('Promotions · photos / vidéos','العروض · صور / فيديوهات'):'promotions',
             self.tr('Ticket · articles / prix','التذكرة · المنتجات / الأثمنة'):'prices',
         }
+        ttk.Checkbutton(d,text=self.tr('Afficher écran client / publicitaire','إظهار شاشة الزبون / الإعلانات'),variable=self.customer_enabled,command=self.toggle_customer_enabled).pack(anchor='w',pady=(0,8))
         mode_row=ttk.Frame(d);mode_row.pack(fill='x',pady=(0,8))
         ttk.Label(mode_row,text=self.tr('Contenu affiché','المحتوى المعروض'),font=('Segoe UI',10,'bold')).pack(side='left')
         self.customer_mode_box=ttk.Combobox(mode_row,state='readonly',width=30,values=list(self.customer_mode_labels))
@@ -289,6 +291,15 @@ class SettingsFrame(ttk.Frame):
         set_setting("auto_backup_minutes",backup_minutes)
         self.app.schedule_auto_backup()
         messagebox.showinfo("ToDo",self.tr("Paramètres enregistrés.","تم حفظ الإعدادات."),parent=self)
+    def toggle_customer_enabled(self):
+        enabled=bool(self.customer_enabled.get())
+        set_setting('customer_display_enabled','1' if enabled else '0')
+        opened=bool(self.app.customer_window and self.app.customer_window.winfo_exists())
+        if enabled and not opened:
+            self.app.toggle_customer_display()
+        elif not enabled and opened:
+            self.app.toggle_customer_display()
+
     def test_customer(self):
         mode=self.customer_mode_labels.get(self.customer_mode_box.get(),'promotions')
         if not (self.app.customer_window and self.app.customer_window.winfo_exists()):
