@@ -119,6 +119,7 @@ class SettingsFrame(ttk.Frame):
         self.require_client=tk.BooleanVar(value=get_setting('require_client_on_sale','0')=='1')
         self.choose_seller=tk.BooleanVar(value=get_setting('choose_seller_on_sale','0')=='1')
         self.start_with_windows=tk.BooleanVar(value=get_setting('start_with_windows','0')=='1')
+        self.windows_mode=tk.BooleanVar(value=get_setting('windows_mode','1')=='1')
         self.search_limit=tk.StringVar(value=get_setting("search_limit","60"))
         self.language=tk.StringVar(value=get_setting("language","fr"))
         ttk.Label(f,text=self.tr('Nom magasin','اسم المتجر')).grid(row=0,column=0,sticky="w");ttk.Entry(f,textvariable=self.shop,width=30).grid(row=0,column=1,padx=8)
@@ -129,9 +130,10 @@ class SettingsFrame(ttk.Frame):
         ttk.Checkbutton(f,text=self.tr('Afficher le choix du client pendant la vente','إظهار اختيار الزبون أثناء البيع'),variable=self.require_client).grid(row=4,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Choix du vendeur pendant la vente','اختيار البائع أثناء البيع'),variable=self.choose_seller).grid(row=5,column=0,columnspan=2,sticky="w")
         ttk.Checkbutton(f,text=self.tr('Lancer ToDo au démarrage de Windows','تشغيل ToDo مع بدء Windows'),variable=self.start_with_windows,command=self.toggle_windows_startup).grid(row=6,column=0,columnspan=3,sticky="w",pady=(3,0))
-        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=7,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=7,column=1,padx=8)
-        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=8,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=8,column=1,sticky="w",padx=8)
-        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=9,column=0,pady=8,sticky='ew')
+        ttk.Checkbutton(f,text=self.tr('Mode Windows (fenêtre)','وضع Windows (نافذة)'),variable=self.windows_mode,command=self.toggle_windows_mode).grid(row=7,column=0,columnspan=3,sticky="w",pady=(3,0))
+        ttk.Label(f,text=self.tr('Message bas du ticket','رسالة أسفل التذكرة')).grid(row=8,column=0,sticky="w",pady=5);ttk.Entry(f,textvariable=self.footer,width=34).grid(row=8,column=1,padx=8)
+        ttk.Label(f,text=self.tr('Limite résultats recherche','حد نتائج البحث')).grid(row=9,column=0,sticky="w");ttk.Entry(f,textvariable=self.search_limit,width=10).grid(row=9,column=1,sticky="w",padx=8)
+        ttk.Button(f,text=self.tr('Enregistrer','حفظ'),style='Primary.TButton',command=self.save).grid(row=10,column=0,pady=8,sticky='ew')
         pg=ttk.LabelFrame(self,text=self.tr('Grilles de prix','لوائح الأثمان'),padding=10);pg.pack(fill="x",pady=10)
         ttk.Label(pg,text=self.tr('Créez les grilles ici, puis définissez le prix de chaque article dans sa fiche.','أنشئ لوائح الأثمان هنا، ثم حدد ثمن كل منتوج في بطاقته.')).pack(anchor="w")
         self.price_grids_frame=ttk.Frame(pg);self.price_grids_frame.pack(fill="x",pady=6)
@@ -205,6 +207,14 @@ class SettingsFrame(ttk.Frame):
         except Exception as error:
             self.start_with_windows.set(not enabled)
             messagebox.showerror('ToDo',self.tr(f"Impossible de modifier le démarrage Windows: {error}",f"تعذر تعديل تشغيل Windows: {error}"),parent=self)
+
+    def toggle_windows_mode(self):
+        enabled=bool(self.windows_mode.get())
+        set_setting('windows_mode','1' if enabled else '0')
+        try:self.app.apply_window_mode(enabled)
+        except Exception as error:
+            messagebox.showerror('ToDo',self.tr(f'Impossible de changer le mode fenêtre: {error}',f'تعذر تغيير وضع النافذة: {error}'),parent=self)
+
 
     def sync_stock_options(self):
         if self.block_insufficient.get(): self.neg.set(False)
