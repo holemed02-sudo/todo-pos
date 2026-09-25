@@ -53,9 +53,11 @@ class SaleFrame(ttk.Frame):
         self.seller_button=ttk.Button(top,text=self.tr('Vendeur : aucun','البائع: لا أحد'),command=self.choose_seller)
         if get_setting('choose_seller_on_sale','0')=='1':
             self.seller_button.pack(side='left',padx=(0,12))
-        searchbar=ttk.Frame(self,style='Card.TFrame',padding=(14,12))
-        searchbar.pack(fill='x',pady=(0,8))
-        ttk.Label(searchbar,text=self.tr('⌕  SCANNER / RECHERCHER','⌕  مسح / بحث'),style='CardTitle.TLabel').pack(side='left',padx=(0,14))
+        search_shell=tk.Frame(self,bg='#F59E0B',padx=2,pady=2)
+        search_shell.pack(fill='x',pady=(0,8))
+        searchbar=ttk.Frame(search_shell,style='Card.TFrame',padding=(12,10))
+        searchbar.pack(fill='x')
+        ttk.Label(searchbar,text=self.tr('▥  CODE-BARRES / RECHERCHER','▥  الباركود / البحث'),style='CardTitle.TLabel',font=('Segoe UI',11,'bold')).pack(side='left',padx=(0,14))
         self.query=tk.StringVar()
         self.scan_quantity=tk.StringVar(value='1')
         self.entry=ttk.Entry(searchbar,textvariable=self.query,style='Search.TEntry')
@@ -102,7 +104,7 @@ class SaleFrame(ttk.Frame):
         photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
         ttk.Button(photo_nav,text=self.tr('Précédent','السابق'),command=lambda:self.photo_next(-1)).pack(side='left')
         self.photo_more=ttk.Button(photo_nav,text=self.tr('Suivant','التالي'),command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
-        self.card_canvas=tk.Canvas(self.photo_page,background='#F6F7FB',highlightthickness=0)
+        self.card_canvas=tk.Canvas(self.photo_page,background='#F8FAFC',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
         self.card_inner.bind('<Configure>',lambda e:self.card_canvas.configure(scrollregion=self.card_canvas.bbox('all')))
@@ -444,43 +446,27 @@ class SaleFrame(ttk.Frame):
         if self.cat.get() not in self.categories:self.cat.set('Tous')
         for child in self.category_buttons.winfo_children(): child.destroy()
         category_rows=list_categories()
-        # Default colours for "Tous" and fallback
-        all_colors = {'Tous': ('#1e293b', '#ffffff')}
-        for cat_row in category_rows:
-            bg = cat_row['color'] or '#2563EB'
-            # compute a readable text colour (white or black) based on luminance
-            try:
-                r2,g2,b2 = int(bg[1:3],16), int(bg[3:5],16), int(bg[5:7],16)
-                lum = (0.299*r2 + 0.587*g2 + 0.114*b2)
-                fg = '#ffffff' if lum < 140 else '#1e293b'
-            except Exception:
-                fg = '#ffffff'
-            all_colors[cat_row['name']] = (bg, fg)
-        active = self.cat.get()
-        for name, (bg, fg) in all_colors.items():
+        active=self.cat.get()
+        ordered=['Tous']+[r['name'] for r in category_rows if r['name']!='Tous']
+        icons={r['name']:(r['icon']+' ') if r['icon'] else '' for r in category_rows}
+        for name in ordered:
             if name not in self.categories:
                 continue
-            icon = ''
-            for cat_row in category_rows:
-                if cat_row['name'] == name:
-                    icon = (cat_row['icon'] + ' ') if cat_row['icon'] else ''
-                    break
-            label = icon + name
-            is_active = (name == active)
-            border  = '#f59e0b' if is_active else bg
-            relief  = 'solid'   if is_active else 'flat'
-            btn = tk.Button(
+            is_active=(name==active)
+            bg='#F59E0B' if is_active else '#F1F5F9'
+            fg='#111827' if is_active else '#334155'
+            btn=tk.Button(
                 self.category_buttons,
-                text=label,
-                bg=bg, fg=fg,
-                activebackground=bg, activeforeground=fg,
-                relief=relief, bd=2 if is_active else 0,
-                highlightbackground=border,
-                font=('Segoe UI', 9, 'bold' if is_active else 'normal'),
-                padx=10, pady=6, cursor='hand2',
-                command=lambda n=name: self.choose_category(n)
+                text=icons.get(name,'')+name,
+                bg=bg,fg=fg,
+                activebackground='#FBBF24' if is_active else '#E2E8F0',
+                activeforeground='#111827',
+                relief='flat',bd=0,
+                font=('Segoe UI',9,'bold' if is_active else 'normal'),
+                padx=12,pady=6,cursor='hand2',
+                command=lambda n=name:self.choose_category(n)
             )
-            btn.pack(side='left', padx=3, pady=2)
+            btn.pack(side='left',padx=3,pady=2)
         rows=search_products(self.query.get(),self.categories[self.cat.get()])
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
@@ -496,12 +482,12 @@ class SaleFrame(ttk.Frame):
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
-            card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',highlightthickness=1,highlightbackground='#E2E8F0',width=155,height=168,cursor='hand2')
+            card=tk.Frame(self.card_inner,bg='white',bd=0,relief='flat',highlightthickness=1,highlightbackground='#CBD5E1',width=155,height=168,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
             thumb=self.thumbnail(row,90)
             picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
             tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=140,pady=2).pack()
-            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#2563EB',fg='white',font=('Segoe UI',11,'bold'),pady=3).pack(fill='x')
+            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#F59E0B',fg='#111827',font=('Segoe UI',11,'bold'),pady=4).pack(fill='x')
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
