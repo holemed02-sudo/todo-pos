@@ -12,7 +12,7 @@ class StockFrame(ttk.Frame):
         ttk.Label(self,text=self.tr('Quantités, mouvements et inventaire — nom, prix et photo restent dans Articles.','الكميات والحركات والجرد — تعديل الاسم والثمن والصورة يبقى في المنتجات.'),foreground="#475569").pack(anchor="w",pady=(0,8))
         ttk.Button(top,text=self.tr('Ajustement','تسوية المخزون'),style="Primary.TButton",command=self.adjust).pack(side="right")
         self.q=tk.StringVar();self.filter=tk.StringVar(value=self.tr('Tous','الكل'))
-        search=ttk.Entry(top,textvariable=self.q,width=26,style="Search.TEntry");search.pack(side="left",padx=(20,8));search.bind("<KeyRelease>",lambda e:self.refresh())
+        self.search_entry=ttk.Entry(top,textvariable=self.q,width=26,style="Search.TEntry");self.search_entry.pack(side="left",padx=(20,8));self.search_entry.bind("<KeyRelease>",lambda e:self.refresh())
         box=ttk.Combobox(top,textvariable=self.filter,values=[self.tr('Tous','الكل'),self.tr('Alertes stock','تنبيهات المخزون'),self.tr('Stock négatif','مخزون سالب')],state="readonly",width=15);box.pack(side="left");box.bind("<<ComboboxSelected>>",lambda e:self.refresh())
         ttk.Button(top,text=self.tr('Historique','السجل'),style="Soft.TButton",command=self.ledger).pack(side="right",padx=8)
         if app is not None:
@@ -27,6 +27,7 @@ class StockFrame(ttk.Frame):
             card=tk.Frame(self.kpi,bg=bg,height=62);card.pack(side="left",fill="x",expand=True,padx=3);card.pack_propagate(False)
             value=tk.Label(card,text="0",bg=bg,fg="white",font=("Segoe UI",15,"bold"));value.pack(anchor="w",padx=10,pady=(5,0));tk.Label(card,text=title,bg=bg,fg="white").pack(anchor="w",padx=10);self.kpi_values.append(value)
         self.refresh()
+        self.after_idle(lambda: self.search_entry.focus_force() if self.search_entry.winfo_exists() else None)
     def _movement_label(self, value):
         labels={'ADJUSTMENT':self.tr('Ajustement','تسوية'),'OPENING':self.tr('Ouverture','رصيد افتتاحي'),'INVENTORY':self.tr('Inventaire','جرد'),'PURCHASE':self.tr('Réception','استلام'),'SALE':self.tr('Vente','بيع'),'RETURN':self.tr('Retour','إرجاع'),'OUT':self.tr('Sortie','إخراج')}
         return labels.get(value, value or '')
