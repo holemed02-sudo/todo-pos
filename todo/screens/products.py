@@ -346,23 +346,23 @@ class ProductEditor(tk.Toplevel):
 
 class ProductsFrame(ttk.Frame):
     def __init__(self,master):
-        super().__init__(master,padding=10)
+        super().__init__(master,padding=16)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         self.page=0
         top=ttk.Frame(self);top.pack(fill="x",pady=(0,8))
-        ttk.Label(top,text=self.tr('Articles','المنتجات'),font=("Segoe UI",20,"bold")).pack(side="left")
+        ttk.Label(top,text=self.tr('Articles','المنتجات'),style='Title.TLabel').pack(side='left')
         ttk.Label(self,text=self.tr('Fiche article, codes-barres, images, prix et offres.','بطاقة المنتوج، الباركودات، الصور، الأثمنة والعروض.'),foreground="#475569").pack(anchor="w",pady=(0,8))
-        self.q=tk.StringVar();e=ttk.Entry(top,textvariable=self.q,width=28);e.pack(side="left",padx=15);e.bind("<KeyRelease>",lambda x:self.go_page(0))
-        self.filter=tk.StringVar(value="Tous")
-        ttk.Combobox(top,textvariable=self.filter,values=["Tous","Alertes stock","Stock négatif","Promotions"],state="readonly",width=16).pack(side="left",padx=4)
+        self.q=tk.StringVar();e=ttk.Entry(top,textvariable=self.q,width=30,style='Search.TEntry');e.pack(side='left',padx=15);e.bind('<KeyRelease>',lambda x:self.go_page(0))
+        self.filter=tk.StringVar(value=self.tr('Tous','الكل'))
+        ttk.Combobox(top,textvariable=self.filter,values=[self.tr('Tous','الكل'),self.tr('Alertes stock','تنبيهات المخزون'),self.tr('Stock négatif','مخزون سالب'),self.tr('Promotions','العروض')],state='readonly',width=18).pack(side='left',padx=4)
         self.filter.trace_add("write",lambda *_:self.go_page(0))
-        ttk.Button(top,text=self.tr('+ Nouveau','+ جديد'),command=self.new).pack(side="right",padx=3)
-        ttk.Button(top,text=self.tr('Importer Excel','استيراد Excel'),command=self.import_excel).pack(side="right",padx=3)
-        ttk.Button(top,text=self.tr('Exporter catalogue','تصدير الكتالوج'),command=self.export_catalogue).pack(side="right",padx=3)
-        ttk.Button(top,text=self.tr('Étiquette PDF','ملصق PDF'),command=self.label_pdf).pack(side="right",padx=3)
-        ttk.Button(top,text=self.tr('Modifier','تعديل'),command=self.edit).pack(side="right",padx=3)
+        ttk.Button(top,text=self.tr('+ Nouveau','+ جديد'),style='Primary.TButton',command=self.new).pack(side='right',padx=3)
+        ttk.Button(top,text=self.tr('Importer Excel','استيراد Excel'),style='Soft.TButton',command=self.import_excel).pack(side='right',padx=3)
+        ttk.Button(top,text=self.tr('Exporter catalogue','تصدير الكتالوج'),style='Soft.TButton',command=self.export_catalogue).pack(side='right',padx=3)
+        ttk.Button(top,text=self.tr('Étiquette PDF','ملصق PDF'),style='Soft.TButton',command=self.label_pdf).pack(side='right',padx=3)
+        ttk.Button(top,text=self.tr('Modifier','تعديل'),style='Soft.TButton',command=self.edit).pack(side='right',padx=3)
         cols=("id","barcode","name","cat","buy","sell","stock","alert","img")
-        self.t=ttk.Treeview(self,columns=cols,show="headings")
+        self.t=ttk.Treeview(self,columns=cols,show='headings',height=14)
         cfg=[("id","ID",50),("barcode",self.tr("Barcode","الباركود"),145),("name",self.tr("Article","المنتوج"),260),("cat",self.tr("Famille","العائلة"),130),("buy",self.tr("Achat","الشراء"),85),("sell",self.tr("Vente","البيع"),85),("stock",self.tr("Stock","المخزون"),80),("alert",self.tr("Alerte","التنبيه"),80),("img",self.tr("Img","صورة"),45)]
         for c,h,w in cfg:self.t.heading(c,text=h);self.t.column(c,width=w,anchor="center")
         self.t.pack(fill="both",expand=True);self.t.bind("<Double-1>",lambda e:self.edit())
