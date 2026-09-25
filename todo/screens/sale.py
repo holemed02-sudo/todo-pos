@@ -101,14 +101,14 @@ class SaleFrame(ttk.Frame):
         for key,label in [('price',self.tr('PRIX','الثمن')),('stock',self.tr('STOCK','المخزون'))]:
             self.products.heading(key,text=label);self.products.column(key,width=95,stretch=False,anchor='center')
         self.products.pack(fill='both',expand=True)
-        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x')
+        photo_nav=ttk.Frame(self.photo_page);photo_nav.pack(side='bottom',fill='x',pady=(4,0))
         ttk.Button(photo_nav,text=self.tr('Précédent','السابق'),command=lambda:self.photo_next(-1)).pack(side='left')
         self.photo_more=ttk.Button(photo_nav,text=self.tr('Suivant','التالي'),command=lambda:self.photo_next(1));self.photo_more.pack(side='right')
         self.card_canvas=tk.Canvas(self.photo_page,background='#F8FAFC',highlightthickness=0)
         self.card_scroll=ttk.Scrollbar(self.photo_page,orient='vertical',command=self.card_canvas.yview)
         self.card_inner=ttk.Frame(self.card_canvas)
         self.card_inner.bind('<Configure>',lambda e:self.card_canvas.configure(scrollregion=self.card_canvas.bbox('all')))
-        self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
+        self.card_window=self.card_canvas.create_window((0,0),window=self.card_inner,anchor='nw')
         self.card_canvas.configure(yscrollcommand=self.card_scroll.set)
         self.card_canvas.bind('<Configure>',self.layout_cards)
         self.card_canvas.pack(side='left',fill='both',expand=True);self.card_scroll.pack(side='right',fill='y')
@@ -271,9 +271,14 @@ class SaleFrame(ttk.Frame):
         return 'break'
 
     def layout_cards(self,event=None):
-        columns=max(1,self.card_canvas.winfo_width()//167)
+        width=max(1,self.card_canvas.winfo_width())
+        try:self.card_canvas.itemconfigure(self.card_window,width=max(1,width-4))
+        except tk.TclError:pass
+        columns=max(1,width//182)
+        for col in range(8):
+            self.card_inner.columnconfigure(col,weight=1 if col<columns else 0,uniform='catalog')
         for index,card in enumerate(self.card_inner.winfo_children()):
-            card.grid_configure(row=index//columns,column=index%columns)
+            card.grid_configure(row=index//columns,column=index%columns,sticky='nsew')
 
     def functions(self):
         window=tk.Toplevel(self);window.title(self.tr('Fonctions','الوظائف'))
@@ -493,7 +498,7 @@ class SaleFrame(ttk.Frame):
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
-        columns=max(1,self.card_canvas.winfo_width()//167)
+        columns=max(1,self.card_canvas.winfo_width()//182)
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
         photo_filter=(self.query.get(),self.categories[self.cat.get()])
@@ -504,11 +509,11 @@ class SaleFrame(ttk.Frame):
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
         for index,row in enumerate(photo_rows):
-            card=tk.Frame(self.card_inner,bg='white',bd=0,relief='flat',highlightthickness=1,highlightbackground='#CBD5E1',width=155,height=168,cursor='hand2')
-            card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
-            thumb=self.thumbnail(row,90)
-            picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
-            tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=140,pady=2).pack()
+            card=tk.Frame(self.card_inner,bg='white',bd=0,relief='flat',highlightthickness=1,highlightbackground='#CBD5E1',width=170,height=184,cursor='hand2')
+            card.grid(row=index//columns,column=index%columns,padx=5,pady=5,sticky='nsew');card.grid_propagate(False)
+            thumb=self.thumbnail(row,104)
+            picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',28));picture.pack(fill='both',expand=True,padx=4,pady=(4,0))
+            tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=154,pady=4).pack(fill='x',padx=5)
             tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#F59E0B',fg='#111827',font=('Segoe UI',11,'bold'),pady=4).pack(fill='x')
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
