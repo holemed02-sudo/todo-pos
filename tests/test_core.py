@@ -241,6 +241,15 @@ class CoreTests(unittest.TestCase):
    with db.connect() as c:apply_stock_movement(c,self.pid,1,'ADJUSTMENT',note='Test')
  def test_purchase(self):
   receive_purchase(None,'INV-1',[dict(product_id=self.pid,qty=3,unit_cost_cents=400)]);self.assertEqual(self.stock(),23)
+ def test_purchase_rejects_duplicate_supplier_invoice_atomically(self):
+  with db.connect() as c:sid=c.execute("INSERT INTO suppliers(name) VALUES('Grossiste')").lastrowid
+  receive_purchase(sid,' FAC-77 ',[dict(product_id=self.pid,qty=2,unit_cost_cents=400)])
+  stock=self.stock()
+  with self.assertRaises(ValueError):receive_purchase(sid,'fac-77',[dict(product_id=self.pid,qty=5,unit_cost_cents=900)])
+  self.assertEqual(self.stock(),stock)
+  with db.connect() as c:
+   self.assertEqual(c.execute("SELECT COUNT(*) FROM purchases WHERE supplier_id=?",(sid,)).fetchone()[0],1)
+   self.assertEqual(c.execute("SELECT purchase_price_cents FROM products WHERE id=?",(self.pid,)).fetchone()[0],400)
  def test_purchase_validates_products_and_fractional_quantity_before_writes(self):
   with self.assertRaises(ValueError):receive_purchase(None,'BAD-FRAC',[dict(product_id=self.pid,qty=1.5,unit_cost_cents=400)])
   with self.assertRaises(ValueError):receive_purchase(None,'BAD-PRODUCT',[dict(product_id=999999,qty=1,unit_cost_cents=400)])
