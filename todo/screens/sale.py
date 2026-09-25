@@ -62,7 +62,7 @@ class SaleFrame(ttk.Frame):
         self.quantity_entry=ttk.Entry(searchbar,textvariable=self.scan_quantity,width=6,font=('Segoe UI',16))
         self.quantity_entry.pack(side='left')
         self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
-        ttk.Button(searchbar,text='×2',command=self.double_scan_quantity).pack(side='left',padx=(5,0),ipadx=5)
+        ttk.Button(searchbar,text='×2',style='Soft.TButton',command=self.double_scan_quantity).pack(side='left',padx=(8,0),ipadx=8,ipady=3)
         self.entry.bind('<Return>',self.confirm_search)
         self.entry.bind('<KeyRelease>',self.schedule_search)
         self.entry.bind('<Down>',self.focus_catalog)
@@ -108,20 +108,21 @@ class SaleFrame(ttk.Frame):
         ttk.Button(left,text=self.tr('Ajouter le produit sélectionné  ↵','إضافة المنتوج المحدد  ↵'),command=self.add_selected_product).pack(fill='x',pady=(8,0))
         keypad=ttk.LabelFrame(left,text=self.tr('Pavé numérique','الأرقام'),padding=5);keypad.pack(fill='x',pady=(8,0))
         for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
-            ttk.Button(keypad,text=key,command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=5)
+            ttk.Button(keypad,text=key,style=('Danger.TButton' if key=='⌫' else 'Soft.TButton'),command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=3,pady=3,ipady=8)
         for col in range(3):keypad.columnconfigure(col,weight=1)
         checkout_area=ttk.Frame(right,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
         actions=ttk.Frame(checkout_area,style='Card.TFrame');actions.pack(fill='x',pady=8)
-        ttk.Button(checkout_area,text=self.tr('Fonctions','الوظائف'),command=self.functions).pack(fill='x',pady=4)
+        ttk.Button(checkout_area,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',command=self.functions).pack(fill='x',pady=5)
         for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),(self.tr('Qté F8','الكمية F8'),self.set_qty),(self.tr('Remise ligne','تخفيض السطر'),self.line_discount),(self.tr('Suppr.','حذف'),self.remove)]:
-            ttk.Button(actions,text=label,command=command).pack(side='left',expand=True,fill='x',padx=2)
+            button_style='Danger.TButton' if label==self.tr('Suppr.','حذف') else 'Soft.TButton'
+            ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel');self.subtotal_label.pack(anchor='e')
         total_box=tk.Frame(checkout_area,bg='#2563EB',padx=12,pady=8);total_box.pack(fill='x',pady=8)
         tk.Label(total_box,text=self.tr('TOTAL NET','المجموع الصافي'),bg='#2563EB',fg='white',font=('Segoe UI',13,'bold')).pack(side='left')
         self.total_label=tk.Label(total_box,text='',bg='#2563EB',fg='white',font=('Segoe UI',25,'bold'));self.total_label.pack(side='right')
-        ttk.Button(checkout_area,text=self.tr('SOLDER avec ticket  F5','الأداء مع التذكرة  F5'),style='Primary.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=8,pady=(2,2))
-        ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),command=lambda:self.checkout(False)).pack(fill='x',ipady=6)
+        ttk.Button(checkout_area,text=self.tr('✓  SOLDER avec ticket  F5','✓  الأداء مع التذكرة  F5'),style='Success.TButton',command=lambda:self.checkout(True)).pack(fill='x',ipady=10,pady=(3,3))
+        ttk.Button(checkout_area,text=self.tr('SOLDER sans ticket','الأداء بدون تذكرة'),style='Primary.TButton',command=lambda:self.checkout(False)).pack(fill='x',ipady=8)
         ttk.Label(right,text=self.tr('Ticket en cours','التذكرة الحالية'),style='CardTitle.TLabel').pack(anchor='w',pady=(0,8))
         self.ticket=ttk.Treeview(right,columns=('qty','price','discount','total'),show='tree headings',selectmode='browse',style='Cart.Treeview')
         self.ticket.heading('#0',text=self.tr('ARTICLE','المنتوج'));self.ticket.column('#0',width=170,minwidth=100)
@@ -133,8 +134,16 @@ class SaleFrame(ttk.Frame):
         self.ticket.pack(fill='both',expand=True)
         self.ticket.bind('<Delete>',lambda e:self.remove())
         footer=ttk.Frame(self);footer.pack(fill='x',pady=(12,0))
-        for label,command in [(self.tr('F2 Espèces','F2 نقداً'),lambda:self.set_payment('CASH')),(self.tr('F3 Carte','F3 بطاقة'),lambda:self.set_payment('CARD')),(self.tr('F4 Attente','F4 انتظار'),self.hold),(self.tr('Liste attente','لائحة الانتظار'),self.show_held),(self.tr('F7 Remise','F7 تخفيض'),self.discount),(self.tr('ESC Annuler','ESC إلغاء'),self.cancel)]:
-            ttk.Button(footer,text=label,command=command).pack(side='left',padx=3)
+        footer_actions=[
+            (self.tr('F2  ESPÈCES','F2  نقداً'),lambda:self.set_payment('CASH'),'Success.TButton'),
+            (self.tr('F3  CARTE','F3  بطاقة'),lambda:self.set_payment('CARD'),'Primary.TButton'),
+            (self.tr('F4  Attente','F4  انتظار'),self.hold,'Soft.TButton'),
+            (self.tr('Liste attente','لائحة الانتظار'),self.show_held,'Soft.TButton'),
+            (self.tr('F7  Remise','F7  تخفيض'),self.discount,'Soft.TButton'),
+            (self.tr('ESC  Annuler','ESC  إلغاء'),self.cancel,'Danger.TButton'),
+        ]
+        for label,command,style in footer_actions:
+            ttk.Button(footer,text=label,style=style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=3)
         self.status=ttk.Label(self,text=self.tr('Scanner prêt · Ctrl+F Rechercher · Entrée Ajouter','الماسح جاهز · Ctrl+F بحث · Enter إضافة'))
         self.status.pack(anchor='w',pady=(8,0))
         commands={'<F2>':lambda:self.set_payment('CASH'),'<F3>':lambda:self.set_payment('CARD'),'<F4>':self.hold,'<F5>':lambda:self.checkout(True),'<F7>':self.discount,'<F8>':self.set_qty,'<Escape>':self.cancel,'<Control-f>':self.focus_search}
