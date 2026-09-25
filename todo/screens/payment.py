@@ -15,7 +15,7 @@ class PaymentDialog(tk.Toplevel):
         self.currency = currency
         self.result = None
         self.title(self.tr('Encaissement','الخلاص'))
-        self.geometry(f'580x{min(650,self.winfo_screenheight()-90)}')
+        self.geometry(f'620x{min(700,self.winfo_screenheight()-90)}')
         self.configure(bg='#F6F7FB')
         self.transient(master.winfo_toplevel())
         self.method = tk.StringVar(value=method)
@@ -26,9 +26,9 @@ class PaymentDialog(tk.Toplevel):
         self.cash_count_started = False
         self._cash_internal_update = False
         self.cash_tendered_cents = total
-        tk.Label(self, text=self.tr('TOTAL À PAYER','المجموع'), bg='#2563EB', fg='white',
+        tk.Label(self, text=self.tr('TOTAL À PAYER','المجموع'), bg='#0F172A', fg='#BFDBFE',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
-        tk.Label(self, text=fmt(total, currency), bg='#2563EB', fg='white',
+        tk.Label(self, text=fmt(total, currency), bg='#0F172A', fg='white',
                  font=('Segoe UI', 34, 'bold')).pack(fill='x', ipady=12)
         controls = ttk.Frame(self, padding=8)
         controls.pack(side='bottom',fill='x')
@@ -44,20 +44,20 @@ class PaymentDialog(tk.Toplevel):
                             command=self.update_amount).pack(side='left', expand=True, padx=8)
         self.method.trace_add('write', self.method_changed)
         ttk.Label(body, text=self.tr('Montant reçu','المبلغ المدفوع')).pack(anchor='w')
-        self.entry = ttk.Entry(body, textvariable=self.amount, font=('Segoe UI', 24), justify='right')
+        self.entry = ttk.Entry(body, textvariable=self.amount, font=('Segoe UI', 24, 'bold'), justify='right', style='Search.TEntry')
         self.entry.pack(fill='x', pady=8)
         ttk.Label(body, text=self.tr('Billets / pièces reçus','النقد المستلم')).pack(anchor='w', pady=(4, 0))
         denominations = ttk.Frame(body)
         denominations.pack(fill='x', pady=6)
         for index, value in enumerate((200, 100, 50, 20, 10, 5, 2, 1, 0.5)):
-            ttk.Button(denominations, text=f'{value:g} DH', command=lambda n=value: self.add_cash(n)).grid(
+            ttk.Button(denominations, text=f'{value:g} DH', style='Soft.TButton', command=lambda n=value: self.add_cash(n)).grid(
                 row=index//5, column=index%5, sticky='nsew', padx=3, pady=3, ipady=5)
         self.cash_breakdown = ttk.Label(body, text='')
         self.cash_breakdown.pack(fill='x', pady=(0,4))
         for column in range(5):
             denominations.columnconfigure(column, weight=1)
-        ttk.Button(body, text=self.tr('Effacer espèces','مسح النقد'), command=self.clear_cash).pack(fill='x', pady=(0, 4))
-        ttk.Button(body, text=self.tr('Montant exact','المبلغ بالضبط'), command=self.exact).pack(fill='x', pady=4)
+        ttk.Button(body, text=self.tr('Effacer espèces','مسح النقد'), style='Danger.TButton', command=self.clear_cash).pack(fill='x', pady=(0, 4))
+        ttk.Button(body, text=self.tr('Montant exact','المبلغ بالضبط'), style='Success.TButton', command=self.exact).pack(fill='x', pady=4)
         ttk.Label(body, text=self.tr('Part carte (mode mixte)','جزء البطاقة في الدفع المختلط')).pack(anchor='w', pady=(8,0))
         self.card_entry = ttk.Entry(body, textvariable=self.card_amount, font=('Segoe UI', 18), justify='right')
         self.card_entry.pack(fill='x', pady=4)
@@ -66,9 +66,9 @@ class PaymentDialog(tk.Toplevel):
         self.error = ttk.Label(body, foreground='#DC2626', wraplength=500)
         self.error.pack(fill='x')
         ttk.Checkbutton(body, text=self.tr('Imprimer le ticket','طباعة التذكرة'), variable=self.print_ticket).pack(anchor='w', pady=12)
-        self.confirm_button = ttk.Button(controls, text=self.tr('VALIDER  Entrée','تأكيد  Enter'), style='Primary.TButton', command=self.confirm)
+        self.confirm_button = ttk.Button(controls, text=self.tr('✓  VALIDER  Entrée','✓  تأكيد  Enter'), style='Success.TButton', command=self.confirm)
         self.confirm_button.pack(fill='x', ipady=12, pady=8)
-        ttk.Button(controls, text=self.tr('Retour au ticket  Esc','رجوع  Esc'), command=self.destroy).pack(fill='x', ipady=6)
+        ttk.Button(controls, text=self.tr('Retour au ticket  Esc','رجوع  Esc'), style='Soft.TButton', command=self.destroy).pack(fill='x', ipady=6)
         self.amount.trace_add('write', self.amount_changed)
         self.card_amount.trace_add('write', self.amount_changed)
         self.bind('<Return>', lambda e: self.confirm())
