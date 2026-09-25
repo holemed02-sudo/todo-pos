@@ -61,8 +61,16 @@ class PaymentDialog(tk.Toplevel):
         ttk.Label(body, text=self.tr('Part carte (mode mixte)','جزء البطاقة في الدفع المختلط')).pack(anchor='w', pady=(8,0))
         self.card_entry = ttk.Entry(body, textvariable=self.card_amount, font=('Segoe UI', 18), justify='right')
         self.card_entry.pack(fill='x', pady=4)
-        self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=14)
-        self.change.pack(fill='x', pady=14)
+        summary=ttk.Frame(body)
+        summary.pack(fill='x',pady=(10,4))
+        self.summary_total=tk.Label(summary,bg='#E2E8F0',fg='#0F172A',font=('Segoe UI',11,'bold'),padx=8,pady=8)
+        self.summary_total.pack(side='left',expand=True,fill='x',padx=(0,3))
+        self.summary_paid=tk.Label(summary,bg='#DBEAFE',fg='#1D4ED8',font=('Segoe UI',11,'bold'),padx=8,pady=8)
+        self.summary_paid.pack(side='left',expand=True,fill='x',padx=3)
+        self.summary_diff=tk.Label(summary,bg='#DCFCE7',fg='#166534',font=('Segoe UI',11,'bold'),padx=8,pady=8)
+        self.summary_diff.pack(side='left',expand=True,fill='x',padx=(3,0))
+        self.change = tk.Label(body, bg='white', fg='#166534', font=('Segoe UI', 23, 'bold'), pady=10)
+        self.change.pack(fill='x', pady=(4,10))
         self.error = ttk.Label(body, foreground='#DC2626', wraplength=500)
         self.error.pack(fill='x')
         ttk.Checkbutton(body, text=self.tr('Imprimer le ticket','طباعة التذكرة'), variable=self.print_ticket).pack(anchor='w', pady=12)
@@ -184,10 +192,19 @@ class PaymentDialog(tk.Toplevel):
             difference = paid - self.total
             credit=method=='CREDIT' and self.client_name is not None
             valid=(0<=paid<=self.total) if credit else (difference>=0 if method=='CASH' else difference==0)
+            self.summary_total.configure(text=self.tr('FACTURE\n','الفاتورة\n')+fmt(self.total,self.currency))
+            self.summary_paid.configure(text=self.tr('REÇU\n','المستلم\n')+fmt(paid,self.currency))
+            self.summary_diff.configure(
+                text=self.tr('DIFFÉRENCE\n','الفرق\n')+fmt(abs(difference),self.currency),
+                bg='#FEE2E2' if difference<0 else '#DCFCE7',
+                fg='#B91C1C' if difference<0 else '#166534')
             self.change.configure(text=(self.tr('Reste à payer : ','الباقي للأداء: ') if difference < 0 else self.tr('Monnaie : ','الصرف: ')) + fmt(abs(difference), self.currency), fg='#DC2626' if difference < 0 else '#166534')
             self.confirm_button.configure(state='normal' if valid else 'disabled')
             self.error.configure(text=self.tr('Reste enregistré en dette client. Acompte en espèces.','تم تسجيل الباقي كدين على الزبون. التسبيق نقدي.') if credit and valid else ('' if valid else self.tr('Le paiement mixte doit couvrir exactement le ticket.','يجب أن يغطي الأداء المختلط مبلغ التذكرة بالكامل.') if mixed else self.tr('Montant reçu invalide ou insuffisant.','المبلغ المدفوع غير صالح أو غير كافٍ.')))
         except Exception:
+            self.summary_total.configure(text=self.tr('FACTURE\n','الفاتورة\n')+fmt(self.total,self.currency))
+            self.summary_paid.configure(text=self.tr('REÇU\n—','المستلم\n—'))
+            self.summary_diff.configure(text=self.tr('DIFFÉRENCE\n—','الفرق\n—'),bg='#FEE2E2',fg='#B91C1C')
             self.change.configure(text='—'); self.error.configure(text=self.tr('Saisissez un montant valide','أدخل مبلغا صحيحا')); self.confirm_button.configure(state='disabled')
 
     def confirm(self):
