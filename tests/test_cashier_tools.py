@@ -49,7 +49,7 @@ class CashierToolsTest(unittest.TestCase):
                 database.DB_PATH=Path(tmp)/'db.sqlite';database.init_db();ensure_defaults()
                 with database.connect() as conn:
                     uid=conn.execute('SELECT id FROM users').fetchone()[0]
-                    pid=conn.execute("SELECT id FROM products WHERE is_misc=1").fetchone()[0]
+                    pid=conn.execute("INSERT INTO products(name,sale_price_cents,purchase_price_cents,stock_qty,active,is_misc,allow_fraction) VALUES('Divers Flash',0,0,0,1,1,1)").lastrowid
                     cid=conn.execute("INSERT INTO clients(name,active) VALUES('Flash credit',1)").lastrowid
                 current_user.set(uid);session=open_session(uid,0)
                 for method,price,paid,client in [('CASH',1000,1000,None),('CARD',2000,2000,None),('CREDIT',3000,0,cid)]:
