@@ -8,10 +8,10 @@ from screens.suppliers import SupplierEditor
 
 class PurchasesFrame(ttk.Frame):
     def __init__(self,master):
-        super().__init__(master,padding=10);self.lines=[]
+        super().__init__(master,padding=16);self.lines=[]
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         top=ttk.Frame(self);top.pack(fill="x")
-        ttk.Label(top,text=self.tr('Réceptions','المشتريات'),font=("Segoe UI",22,"bold")).pack(side="left")
+        ttk.Label(top,text=self.tr('Réceptions','المشتريات'),style='Title.TLabel').pack(side='left')
         self.supplier=tk.StringVar();self.invoice=tk.StringVar()
         self.supplier_choice=ttk.Combobox(top,textvariable=self.supplier,width=22)
         self.supplier_choice.pack(side="left",padx=(20,5))
@@ -24,18 +24,18 @@ class PurchasesFrame(ttk.Frame):
         ttk.Entry(top,textvariable=self.invoice,width=18).pack(side="left",padx=(20,5));ttk.Label(top,text=self.tr('Facture','الفاتورة')).pack(side="left")
         body=ttk.Panedwindow(self,orient="horizontal");body.pack(fill="both",expand=True,pady=8)
         p=ttk.Frame(body);body.add(p,weight=2)
-        self.q=tk.StringVar();e=ttk.Entry(p,textvariable=self.q);e.pack(fill="x",pady=4);e.bind("<KeyRelease>",lambda x:self.search())
+        self.q=tk.StringVar();e=ttk.Entry(p,textvariable=self.q,style='Search.TEntry');e.pack(fill='x',pady=4);e.bind("<KeyRelease>",lambda x:self.search())
         self.prod=ttk.Treeview(p,columns=("id","name","stock","cost"),show="headings")
         for c,h,w in [("id","ID",50),("name",self.tr("Article","المنتوج"),240),("stock",self.tr("Stock","المخزون"),80),("cost",self.tr("Achat","الشراء"),80)]:self.prod.heading(c,text=h);self.prod.column(c,width=w,anchor="center")
         self.prod.pack(fill="both",expand=True);self.prod.bind("<Double-1>",lambda e:self.addline());self.prod.bind("<Return>",lambda e:self.addline());self.search()
         r=ttk.Frame(body);body.add(r,weight=3)
-        ttk.Button(r,text=self.tr('VALIDER réception','تأكيد المشتريات'),style="Primary.TButton",command=self.save).pack(side="bottom",fill="x",pady=6)
+        ttk.Button(r,text=self.tr('✓  VALIDER réception','✓  تأكيد المشتريات'),style='Success.TButton',command=self.save).pack(side='bottom',fill='x',pady=6,ipady=6)
         self.lines_t=ttk.Treeview(r,columns=("name","qty","cost","total"),show="headings")
         for c,h,w in [("name",self.tr("Article","المنتوج"),230),("qty",self.tr("Qté","الكمية"),80),("cost",self.tr("Coût","التكلفة"),90),("total",self.tr("Total","المجموع"),100)]:self.lines_t.heading(c,text=h);self.lines_t.column(c,width=w,anchor="center")
         self.lines_t.pack(fill="both",expand=True)
         line_actions=ttk.Frame(r);line_actions.pack(fill="x",pady=4)
         ttk.Button(line_actions,text=self.tr('Modifier ligne','تعديل السطر'),command=self.edit_line).pack(side="left")
-        ttk.Button(line_actions,text=self.tr('Supprimer ligne','حذف السطر'),command=self.remove_line).pack(side="left",padx=6)
+        ttk.Button(line_actions,text=self.tr('Supprimer ligne','حذف السطر'),style='Danger.TButton',command=self.remove_line).pack(side='left',padx=6)
         self.total_label=ttk.Label(line_actions,text=self.tr("Total : 0.00 DH","المجموع: 0.00 DH"),font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
         self.paid=tk.StringVar(value="0")
         ttk.Entry(line_actions,textvariable=self.paid,width=10).pack(side="right",padx=5)
