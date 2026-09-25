@@ -883,6 +883,8 @@ class SaleFrame(ttk.Frame):
         ttk.Button(w,text=self.tr('Reprendre','استئناف'),command=resume).pack(pady=8)
 
     def checkout(self, print_ticket=True):
+        if not print_ticket and get_setting('sans_ticket_enabled','1')!='1':
+            messagebox.showinfo('ToDo',self.tr('Le paiement sans ticket est désactivé dans les paramètres.','الأداء بدون تذكرة معطل من الإعدادات.'),parent=self);return
         if not self.cart or self.busy:return
         session=get_open_session()
         if not session:
