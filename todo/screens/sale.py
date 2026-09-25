@@ -332,16 +332,79 @@ class SaleFrame(ttk.Frame):
 
     def add_misc(self):
         from services.misc import misc_line
-        name=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Libellé :','اسم المنتوج أو المبلغ:'),parent=self)
-        if name is None:return
-        price=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Prix unitaire (DH) :','الثمن للوحدة (DH):'),parent=self)
-        if price is None:return
-        quantity=simpledialog.askstring(self.tr('Divers','منتوج إضافي'),self.tr('Quantité :','الكمية:'),initialvalue='1',parent=self)
-        if quantity is None:return
-        try:
-            self.cart.append(misc_line(name,price,quantity));self.refresh(len(self.cart)-1)
-        except (ValueError,ArithmeticError) as error:messagebox.showerror(self.tr('Divers','منتوج إضافي'),str(error),parent=self)
-        self.focus_search()
+        window=tk.Toplevel(self)
+        window.title(self.tr('Divers','منتوج إضافي'))
+        window.transient(self.winfo_toplevel())
+        window.grab_set()
+        window.geometry('560x360')
+        window.resizable(False,False)
+
+        root=ttk.Frame(window,padding=14);root.pack(fill='both',expand=True)
+        form=ttk.Frame(root);form.pack(side='left',fill='both',expand=True,padx=(0,12))
+        keypad=ttk.Frame(root);keypad.pack(side='right',fill='y')
+
+        name_var=tk.StringVar()
+        price_var=tk.StringVar()
+        qty_var=tk.StringVar(value='1')
+
+        ttk.Label(form,text=self.tr('Prix (DH)','الثمن (درهم)'),font=('Segoe UI',11,'bold')).pack(anchor='w')
+        price_entry=ttk.Entry(form,textvariable=price_var,font=('Segoe UI',22,'bold'),justify='right',style='Search.TEntry')
+        price_entry.pack(fill='x',pady=(4,12),ipady=5)
+
+        ttk.Label(form,text=self.tr('Nom (facultatif)','الاسم (اختياري)')).pack(anchor='w')
+        name_entry=ttk.Entry(form,textvariable=name_var)
+        name_entry.pack(fill='x',pady=(4,12),ipady=3)
+
+        ttk.Label(form,text=self.tr('Quantité','الكمية')).pack(anchor='w')
+        qty_entry=ttk.Entry(form,textvariable=qty_var,font=('Segoe UI',16,'bold'),justify='right')
+        qty_entry.pack(fill='x',pady=(4,14),ipady=3)
+
+        target={'entry':price_entry}
+        for entry in (price_entry,qty_entry):
+            entry.bind('<FocusIn>',lambda e,w=entry:target.__setitem__('entry',w))
+
+        def keypress(key):
+            entry=target['entry']
+            if key=='⌫':
+                try:
+                    pos=entry.index(tk.INSERT)
+                    if pos>0:entry.delete(pos-1,pos)
+                except tk.TclError:pass
+            elif key=='C':
+                entry.delete(0,tk.END)
+            else:
+                entry.insert(tk.INSERT,key)
+            entry.focus_set()
+
+        for index,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
+            ttk.Button(keypad,text=key,style=('Danger.TButton' if key=='⌫' else 'Soft.TButton'),
+                       command=lambda k=key:keypress(k)).grid(row=index//3,column=index%3,sticky='nsew',padx=2,pady=2,ipadx=8,ipady=8)
+        ttk.Button(keypad,text='C',style='Danger.TButton',command=lambda:keypress('C')).grid(
+            row=4,column=0,columnspan=3,sticky='nsew',padx=2,pady=(4,2),ipady=6)
+        for col in range(3):keypad.columnconfigure(col,weight=1)
+
+        buttons=ttk.Frame(form);buttons.pack(fill='x',side='bottom')
+        def close():
+            window.destroy();self.focus_search()
+        def save():
+            try:
+                label=name_var.get().strip() or self.tr('Divers','متنوع')
+                line=misc_line(label,price_var.get(),qty_var.get())
+                self.cart.append(line);self.refresh(len(self.cart)-1)
+                window.destroy();self.focus_search()
+            except (ValueError,ArithmeticError) as error:
+                messagebox.showerror(self.tr('Divers','منتوج إضافي'),str(error),parent=window)
+                price_entry.focus_set();price_entry.selection_range(0,'end')
+        ttk.Button(buttons,text=self.tr('✓ Valider','✓ تأكيد'),style='Success.TButton',command=save).pack(side='left',expand=True,fill='x',padx=(0,4),ipady=8)
+        ttk.Button(buttons,text=self.tr('Annuler','إلغاء'),style='Soft.TButton',command=close).pack(side='left',expand=True,fill='x',padx=(4,0),ipady=8)
+
+        window.bind('<Return>',lambda e:save())
+        window.bind('<Escape>',lambda e:close())
+        window.protocol('WM_DELETE_WINDOW',close)
+        window.after_idle(lambda:(price_entry.focus_force(),price_entry.selection_range(0,'end')))
+        # Test hooks and touch workflow state.
+        window.misc_name_var=name_var;window.misc_price_var=price_var;window.misc_qty_var=qty_var
+        window.misc_confirm=buttons.winfo_children()[0]
 
     def flash_summary(self):
         session=get_open_session()
