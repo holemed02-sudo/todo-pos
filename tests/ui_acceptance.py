@@ -253,6 +253,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         dialog.confirm_button.invoke()
     app.after(150,credit_payment)
     button(sale,'SOLDER sans').invoke();app.update()
+    credit_summary=sale.last_sale_summary.cget('text')
+    assert ('CRÉDIT' in credit_summary or 'دين' in credit_summary), 'Completed credit sale must preserve CREDIT in the last-sale summary'
     assert get_client(cid)['balance_cents']==200 and sale.client_id is None
     app.show('clients');app.update()
     app.current.tree.selection_set(str(cid));button(app.current,'Règlements').invoke();app.update()
