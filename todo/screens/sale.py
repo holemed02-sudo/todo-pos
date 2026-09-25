@@ -200,6 +200,7 @@ class SaleFrame(ttk.Frame):
             window.destroy();command()
         commands=[(self.tr('Duplicata','نسخة التذكرة'),self.duplicate_receipt),
                   (self.tr('Divers','منتوج أو مبلغ إضافي'),self.add_misc),
+                  (self.tr('Flash','فلاش'),self.flash_summary),
                   (self.tr('Modifier quantité','تعديل الكمية'),self.set_qty),
                   (self.tr('Modifier prix','تعديل الثمن'),self.set_price),
                   (self.tr('Remise ticket','تخفيض التذكرة'),self.discount),
@@ -279,6 +280,26 @@ class SaleFrame(ttk.Frame):
         try:
             self.cart.append(misc_line(name,price,quantity));self.refresh(len(self.cart)-1)
         except (ValueError,ArithmeticError) as error:messagebox.showerror(self.tr('Divers','منتوج إضافي'),str(error),parent=self)
+        self.focus_search()
+
+    def flash_summary(self):
+        session=get_open_session()
+        if not session:
+            messagebox.showinfo('ToDo',self.tr('Aucune caisse ouverte.','لا يوجد صندوق مفتوح.'),parent=self);return
+        with connect() as conn:
+            rows=conn.execute("""SELECT sp.payment_method,COALESCE(SUM(sp.amount_cents),0) amount
+                FROM sale_payments sp JOIN sales s ON s.id=sp.sale_id
+                WHERE s.session_id=? AND s.status='COMPLETED'
+                GROUP BY sp.payment_method""",(session['id'],)).fetchall()
+        totals={r['payment_method']:int(r['amount']) for r in rows}
+        cash=totals.get('CASH',0)+totals.get('CREDIT',0)
+        card=totals.get('CARD',0)
+        mixed=totals.get('MIXED',0)
+        lines=[self.tr('VENTES DE LA CAISSE','مبيعات الصندوق'),
+               self.tr('ESPÈCES : ','نقداً: ')+fmt(cash,self.currency),
+               self.tr('CARTE : ','بطاقة: ')+fmt(card,self.currency)]
+        if mixed: lines.append(self.tr('MIXTE : ','مختلط: ')+fmt(mixed,self.currency))
+        messagebox.showinfo('FLASH','\n'.join(lines),parent=self)
         self.focus_search()
 
     def cash_tools(self,action=None):
@@ -484,6 +505,8 @@ class SaleFrame(ttk.Frame):
 
     def add_product(self,pid,barcode_id=None,qty=1,barcode=''):
         try:
+            if not self.cart and self.last_sale_snapshot is not None:
+                self.last_sale_snapshot=None;self.refresh()
             qty=float(qty)*float(self.scan_quantity.get().replace(',','.'))
             if not math.isfinite(float(qty)) or float(qty)<=0:
                 raise ValueError(self.tr('Quantité invalide','الكمية غير صالحة'))
@@ -694,6 +717,7 @@ class SaleFrame(ttk.Frame):
         if not session:
             messagebox.showinfo('ToDo',self.tr('Ouvrez la caisse avant de vendre.','افتح الصندوق قبل البيع.'),parent=self);return
         self.busy=True
+        self.last_sale_snapshot=None
         try:
             total=self.totals()[1]
             from services.clients import get_client
@@ -706,8 +730,10 @@ class SaleFrame(ttk.Frame):
             self.payment,paid,dialog_print,payments=dialog.result
             self.set_payment(self.payment)
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
-            # Clear immediately after commit, before receipt/UI work, to prevent a duplicate sale on display failure.
-            self.clear()
+            # The completed ticket stays visible until the first item of the next sale.
+            # Business cart state is cleared immediately so the completed sale cannot be submitted twice.
+            self.last_sale_snapshot=[dict(line) for line in self.cart]
+            self.clear(preserve_last_sale=True)
             self.status.config(text=self.tr(f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}",f"آخر بيع: {fmt(total,self.currency)} · المستلم: {fmt(paid,self.currency)} · الباقي: {fmt(result['change_cents'],self.currency)} · {result['sale_no']}"))
             try:
                 if print_ticket:
