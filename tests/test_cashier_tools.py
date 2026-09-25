@@ -41,3 +41,24 @@ class CashierToolsTest(unittest.TestCase):
                     self.assertEqual(conn.execute('SELECT COUNT(*) FROM stock_movements').fetchone()[0],0)
                     self.assertEqual(conn.execute('SELECT stock_qty FROM products WHERE is_misc=1').fetchone()[0],0)
             finally:database.DB_PATH=old;current_user.reset(token)
+
+    def test_flash_payment_sources_separate_cash_card_and_credit(self):
+        old=database.DB_PATH;token=current_user.set(None)
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                database.DB_PATH=Path(tmp)/'db.sqlite';database.init_db();ensure_defaults()
+                with database.connect() as conn:
+                    uid=conn.execute('SELECT id FROM users').fetchone()[0]
+                    pid=conn.execute("SELECT id FROM products WHERE is_misc=1").fetchone()[0]
+                    cid=conn.execute("INSERT INTO clients(name,active) VALUES('Flash credit',1)").lastrowid
+                current_user.set(uid);session=open_session(uid,0)
+                for method,price,paid,client in [('CASH',1000,1000,None),('CARD',2000,2000,None),('CREDIT',3000,0,cid)]:
+                    line=dict(product_id=pid,name=method+' item',qty=1,unit_price_cents=price,discount_cents=0)
+                    complete_sale(session,uid,[line],method,paid,client_id=client)
+                with database.connect() as conn:
+                    totals={row['payment_method']:row['amount'] for row in conn.execute(
+                        "SELECT payment_method,SUM(amount_cents) amount FROM sale_payments GROUP BY payment_method")}
+                self.assertEqual(totals.get('CASH'),1000)
+                self.assertEqual(totals.get('CARD'),2000)
+                self.assertEqual(totals.get('CREDIT'),0)
+            finally:database.DB_PATH=old;current_user.reset(token)
