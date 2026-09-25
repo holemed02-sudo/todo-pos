@@ -83,7 +83,8 @@ class ClientWorkflowTests(unittest.TestCase):
         sale=self.sale()
         add_payment(self.cid,1000,'card settlement',sale['id'],'CARD')
         self.assertEqual(get_client(self.cid)['balance_cents'],0)
-        totals=session_totals(database.connect().__enter__(),self.session)
+        with database.connect() as conn:
+            totals=session_totals(conn,self.session)
         self.assertEqual(totals['cash_in'],0)
         self.assertEqual(close_session(self.session,0)[:2],(0,0))
 
