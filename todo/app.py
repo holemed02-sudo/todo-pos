@@ -121,25 +121,59 @@ class ToDoApp(tk.Tk):
 
     def show_login(self):
         self.clear_root()
-        self.geometry('460x460')
+        self.geometry('520x560')
         self.resizable(False,False)
-        outer=ttk.Frame(self,padding=32)
-        outer.pack(fill='both',expand=True)
-        ttk.Label(outer,text='ToDo',font=('Segoe UI',34,'bold'),foreground='#2563EB').pack(pady=(8,0))
-        ttk.Label(outer,text=('تجارتك بكل بساطة.' if get_setting('language','fr')=='ar' else 'Votre commerce. En toute simplicité.')).pack(pady=(0,18))
+        self.configure(bg='#0F172A')
+
+        shell=tk.Frame(self,bg='#0F172A')
+        shell.pack(fill='both',expand=True)
+
+        top=tk.Frame(shell,bg='#0F172A',height=120)
+        top.pack(fill='x')
+        top.pack_propagate(False)
+        tk.Label(top,text='ToDo',bg='#0F172A',fg='white',
+                 font=('Segoe UI',36,'bold')).pack(pady=(22,0))
+        tk.Label(top,text=('نظام نقاط البيع' if get_setting('language','fr')=='ar' else 'Point de vente'),
+                 bg='#0F172A',fg='#94A3B8',font=('Segoe UI',11,'bold')).pack()
+
+        card=tk.Frame(shell,bg='white',padx=32,pady=28)
+        card.pack(fill='both',expand=True,padx=28,pady=(0,28))
+
+        tk.Label(card,text=('تجارتك بكل بساطة.' if get_setting('language','fr')=='ar' else 'Votre commerce. En toute simplicité.'),
+                 bg='white',fg='#64748B',font=('Segoe UI',10)).pack(pady=(0,18))
+
         with connect() as conn:
             self.login_users=[dict(r) for r in conn.execute('SELECT * FROM users WHERE active=1 ORDER BY id')]
-        self.avatar=ttk.Label(outer,text='●',font=('Segoe UI',28),foreground='#2563EB')
-        self.avatar.pack()
+
+        avatar=tk.Label(card,text='●',bg='#DBEAFE',fg='#2563EB',
+                        font=('Segoe UI',28,'bold'),width=3,height=1)
+        avatar.pack(pady=(0,12))
+        self.avatar=avatar
+
+        tk.Label(card,text=('المستخدم' if get_setting('language','fr')=='ar' else 'Utilisateur'),
+                 bg='white',fg='#334155',font=('Segoe UI',10,'bold')).pack(anchor='w')
+
         names=[u['display_name']+' · '+u['username'] for u in self.login_users]
-        self.user_choice=ttk.Combobox(outer,values=names,state='readonly',font=('Segoe UI',12))
-        self.user_choice.pack(fill='x',pady=8)
+        self.user_choice=ttk.Combobox(card,values=names,state='readonly',font=('Segoe UI',12))
+        self.user_choice.pack(fill='x',pady=(6,14),ipady=4)
         if names:self.user_choice.current(0)
+
         self.login_pin=tk.StringVar()
-        ttk.Label(outer,text=('الرمز السري' if get_setting('language','fr')=='ar' else 'PIN')).pack(anchor='w',pady=(8,4))
-        pin=ttk.Entry(outer,textvariable=self.login_pin,show='●',font=('Segoe UI',20),justify='center')
-        pin.pack(fill='x',ipady=5);pin.bind('<Return>',lambda e:self.login())
-        ttk.Button(outer,text=('الدخول' if get_setting('language','fr')=='ar' else 'Entrer'),style='Primary.TButton',command=self.login).pack(fill='x',pady=16)
+        tk.Label(card,text=('الرمز السري' if get_setting('language','fr')=='ar' else 'PIN'),
+                 bg='white',fg='#334155',font=('Segoe UI',10,'bold')).pack(anchor='w')
+        pin=ttk.Entry(card,textvariable=self.login_pin,show='●',font=('Segoe UI',20),justify='center')
+        pin.pack(fill='x',ipady=8,pady=(6,10))
+        pin.bind('<Return>',lambda e:self.login())
+
+        tk.Label(card,text=('أدخل الرمز ثم اضغط الدخول' if get_setting('language','fr')=='ar' else 'Saisissez le code puis validez'),
+                 bg='white',fg='#94A3B8',font=('Segoe UI',9)).pack(anchor='w',pady=(0,14))
+
+        ttk.Button(card,text=('الدخول' if get_setting('language','fr')=='ar' else 'Entrer'),
+                   style='Primary.TButton',command=self.login).pack(fill='x',ipady=7)
+
+        tk.Label(card,text='ToDo POS',bg='white',fg='#CBD5E1',
+                 font=('Segoe UI',9)).pack(side='bottom',pady=(18,0))
+
         self.after(100,lambda: pin.focus_set() if pin.winfo_exists() else None)
 
     def login(self):
