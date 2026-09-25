@@ -69,11 +69,11 @@ class ProductEditor(tk.Toplevel):
         ttk.Button(left,text=self.tr("+ Ajouter une offre","+ إضافة عرض"),command=self.add_offer_row).grid(row=13,column=0,columnspan=2,sticky="w",pady=4)
         ttk.Label(left,text=self.tr("Prix/unité : dès la quantité indiquée.\nLot : groupes complets, reste au prix normal.\nSi plusieurs offres : le plus grand seuil atteint s'applique.","ثمن الوحدة: ابتداءً من الكمية المحددة.\nالحزمة: مجموعات كاملة والباقي بالثمن العادي.\nعند تعدد العروض يطبق أكبر حد تم بلوغه."),wraplength=440).grid(row=14,column=0,columnspan=2,sticky="w",pady=6)
         b=ttk.Frame(left);b.grid(row=15,column=0,columnspan=2,sticky="e",pady=16)
-        ttk.Button(b,text=self.tr("Enregistrer","حفظ"),command=self.save).pack(side="left",padx=4)
-        ttk.Button(b,text=self.tr("Annuler","إلغاء"),command=self.destroy).pack(side="left")
-        ttk.Button(b,text=self.tr("⌨ Clavier","⌨ لوحة المفاتيح"),command=self.toggle_embedded_keyboard).pack(side="left",padx=(10,0))
+        ttk.Button(b,text=self.tr('Enregistrer','حفظ'),style='Success.TButton',command=self.save).pack(side='left',padx=4,ipadx=8)
+        ttk.Button(b,text=self.tr('Annuler','إلغاء'),style='Danger.TButton',command=self.destroy).pack(side='left',padx=4)
+        ttk.Button(b,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),style='Primary.TButton',command=self.toggle_embedded_keyboard).pack(side='left',padx=(10,0))
         self.preview=tk.Label(right,text=self.tr("Aucune image","لا توجد صورة"),bg="white",relief="groove",width=25,height=13);self.preview.pack()
-        ttk.Button(right,text=self.tr("Choisir image","اختيار صورة"),command=self.choose_image).pack(fill="x",pady=8)
+        ttk.Button(right,text=self.tr('Choisir image','اختيار صورة'),style='Soft.TButton',command=self.choose_image).pack(fill='x',pady=8)
         fields=ttk.LabelFrame(right,text=self.tr('Recherche','معلومات إضافية'),padding=8);fields.pack(fill='x',pady=10)
         for label,variable in [(self.tr('Référence','المرجع'),self.sku),(self.tr('Code fournisseur','رمز المورد'),self.supplier_code),(self.tr('Alias','اسم بديل'),self.alias)]:
             ttk.Label(fields,text=label).pack(anchor='w')
@@ -85,7 +85,7 @@ class ProductEditor(tk.Toplevel):
             self.load()
 
         # Embedded touch keyboard: same ProductEditor window, hidden by default.
-        self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=6, pady=6)
+        self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=10, pady=10)
         self.keyboard_visible = False
         self._build_embedded_keyboard()
         self.after(100,lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
@@ -127,13 +127,13 @@ class ProductEditor(tk.Toplevel):
         ]
         for keys in rows:
             row = tk.Frame(self.keyboard_frame, bg='#1E293B')
-            row.pack(fill='x', pady=2)
+            row.pack(fill='x', pady=3)
             for key in keys:
                 tk.Button(
-                    row, text=key, font=('Segoe UI', 11, 'bold'),
+                    row, text=key, font=('Segoe UI', 12, 'bold'),
                     bg='#334155', fg='white', activebackground='#475569',
                     activeforeground='white', relief='flat', bd=0,
-                    padx=8, pady=7,
+                    padx=10, pady=9,
                     command=lambda k=key: self._keyboard_press(k)
                 ).pack(side='left', fill='x', expand=True, padx=2)
 
