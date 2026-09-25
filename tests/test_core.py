@@ -180,6 +180,23 @@ class CoreTests(unittest.TestCase):
    try:self.assertEqual(copy.execute("SELECT value FROM settings WHERE key='marker'").fetchone()[0],'present')
    finally:copy.close()
   finally:keeper.close()
+ def test_full_backup_restores_database_and_media_for_device_migration(self):
+  backup.BASE=Path(self.temp.name)
+  products=backup.BASE/'assets'/'products';products.mkdir(parents=True)
+  media=backup.BASE/'customer_media';media.mkdir()
+  (products/'photo.jpg').write_bytes(b'original-photo');(media/'promo.mp4').write_bytes(b'original-video')
+  with db.connect() as c:c.execute("UPDATE products SET name='Before migration' WHERE id=?",(self.pid,))
+  archive=backup.create_full_backup()
+  self.assertTrue(archive.exists())
+  with db.connect() as c:c.execute("UPDATE products SET name='Changed locally' WHERE id=?",(self.pid,))
+  (products/'photo.jpg').write_bytes(b'changed');(media/'extra.txt').write_text('remove me')
+  safety=backup.restore_full_backup(archive)
+  self.assertTrue(safety.exists())
+  with db.connect() as c:self.assertEqual(c.execute('SELECT name FROM products WHERE id=?',(self.pid,)).fetchone()[0],'Before migration')
+  self.assertEqual((products/'photo.jpg').read_bytes(),b'original-photo')
+  self.assertEqual((media/'promo.mp4').read_bytes(),b'original-video')
+  self.assertFalse((media/'extra.txt').exists())
+
  def test_restore_and_invalid_backup(self):
   saved=backup.create_backup();self.sell();backup.restore_backup(saved);self.assertEqual(self.stock(),20)
   invalid=Path(self.temp.name)/'bad.db';invalid.write_bytes(b'not sqlite')
