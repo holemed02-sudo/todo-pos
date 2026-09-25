@@ -200,6 +200,20 @@ class ToDoApp(tk.Tk):
             audit(conn,'LOGIN',row['id'])
         self.build_shell();self.show('home')
 
+    def apply_window_mode(self, windowed=None):
+        if windowed is None:
+            windowed=get_setting('windows_mode','1')=='1'
+        # Windowed is the safe default. POS/kiosk mode uses borderless fullscreen.
+        if windowed:
+            try:self.attributes('-fullscreen',False)
+            except tk.TclError:pass
+            self.overrideredirect(False)
+            self.resizable(True,True)
+        else:
+            self.overrideredirect(False)
+            try:self.attributes('-fullscreen',True)
+            except tk.TclError:pass
+
     def build_shell(self):
         self.clear_root()
         self.resizable(True, True)
