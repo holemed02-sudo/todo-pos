@@ -82,7 +82,16 @@ def restore_full_backup(source):
             raise ValueError('Sauvegarde ToDo complète invalide.') from exc
         with z:
             names=z.namelist()
-            if 'todo.db' not in names: raise ValueError('Sauvegarde ToDo complète invalide.')
+            if 'todo.db' not in names or 'manifest.json' not in names:
+                raise ValueError('Sauvegarde ToDo complète invalide.')
+            try:
+                manifest=json.loads(z.read('manifest.json').decode('utf-8'))
+            except (UnicodeDecodeError,json.JSONDecodeError) as exc:
+                raise ValueError('Manifest de sauvegarde invalide.') from exc
+            if manifest.get('format')!='todo-full-backup':
+                raise ValueError('Format de sauvegarde ToDo invalide.')
+            if manifest.get('version')!=1:
+                raise ValueError('Version de sauvegarde ToDo non prise en charge.')
             for info in z.infolist():
                 p=Path(info.filename)
                 if p.is_absolute() or '..' in p.parts: raise ValueError('Archive de sauvegarde invalide.')
