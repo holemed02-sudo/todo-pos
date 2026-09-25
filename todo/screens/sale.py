@@ -942,6 +942,7 @@ class SaleFrame(ttk.Frame):
                 else:
                     dialog_print=(print_ticket and mode=='always')
                 payments=None
+            completed_payment=self.payment
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
             # The completed ticket stays visible until the first item of the next sale.
             # Business cart state is cleared immediately so the completed sale cannot be submitted twice.
@@ -951,8 +952,8 @@ class SaleFrame(ttk.Frame):
             labels={'CASH':self.tr('ESPÈCES','نقداً'),'CARD':self.tr('CARTE','بطاقة'),
                     'CREDIT':self.tr('CRÉDIT','دين'),'MIXED':self.tr('MIXTE','مختلط')}
             self.last_sale_summary.config(text=self.tr(
-                f"DERNIÈRE VENTE  ·  FACTURE {fmt(total,self.currency)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}  ·  {labels.get(self.payment,self.payment)}",
-                f"آخر بيع  ·  الفاتورة {fmt(total,self.currency)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}  ·  {labels.get(self.payment,self.payment)}"
+                f"DERNIÈRE VENTE  ·  FACTURE {fmt(total,self.currency)}  ·  PAYÉ {fmt(paid,self.currency)}  ·  RENDU {fmt(result['change_cents'],self.currency)}  ·  {labels.get(completed_payment,completed_payment)}",
+                f"آخر بيع  ·  الفاتورة {fmt(total,self.currency)}  ·  المؤدى {fmt(paid,self.currency)}  ·  الباقي {fmt(result['change_cents'],self.currency)}  ·  {labels.get(completed_payment,completed_payment)}"
             ))
             try:
                 if print_ticket and mode!='never' and (mode=='always' or dialog_print):
