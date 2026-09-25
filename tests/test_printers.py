@@ -28,6 +28,20 @@ class PrinterTests(unittest.TestCase):
         api.WritePrinter.assert_called_once_with(99,bytes([27,112,0,50,250]))
         api.EndDocPrinter.assert_called_once_with(99);api.ClosePrinter.assert_called_once_with(99)
         with database.connect() as c:self.assertEqual(c.execute("SELECT COUNT(*) FROM audit_log WHERE action='DRAWER_OPEN'").fetchone()[0],1)
+    def test_raw_printer_test_job(self):
+        api=Mock()
+        api.OpenPrinter.return_value=41
+        payload=b'\x1b@\x1ba\x01ToDo POS\nTEST IMPRIMANTE\nOK\n\n\x1dV\x00'
+        api.WritePrinter.return_value=len(payload)
+        with patch.dict(sys.modules,win32print=api),patch.object(printers.os,'name','nt'):
+            self.assertEqual(printers.test_printer('Receipt Test',True),41)
+        api.OpenPrinter.assert_called_once_with('Receipt Test')
+        api.WritePrinter.assert_called_once_with(41,payload)
+        api.EndDocPrinter.assert_called_once_with(41)
+        api.ClosePrinter.assert_called_once_with(41)
+        with database.connect() as c:
+            self.assertEqual(c.execute("SELECT COUNT(*) FROM audit_log WHERE action='PRINTER_TEST'").fetchone()[0],1)
+
     def test_escpos_receipt_contains_init_cut_and_optional_drawer(self):
         with database.connect() as c:
             c.execute("INSERT INTO cash_sessions(user_id,opening_cash_cents,status) VALUES(?,0,'OPEN')",(current_user.get(),))
