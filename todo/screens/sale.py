@@ -130,7 +130,7 @@ class SaleFrame(ttk.Frame):
         checkout_area=ttk.Frame(ticket_col,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
         actions=ttk.Frame(control_col,style='Card.TFrame');actions.pack(fill='x',pady=(0,8))
-        ttk.Button(control_col,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',command=self.functions).pack(fill='x',pady=(4,0),ipady=4)
+        ttk.Button(control_col,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',command=self.functions).pack(fill='x',pady=(0,8),ipady=4,before=keypad)
         for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),(self.tr('Qté F8','الكمية F8'),self.set_qty),(self.tr('Remise ligne','تخفيض السطر'),self.line_discount),(self.tr('Suppr.','حذف'),self.remove)]:
             button_style='Danger.TButton' if label==self.tr('Suppr.','حذف') else 'Soft.TButton'
             ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
