@@ -214,7 +214,8 @@ class ToDoApp(tk.Tk):
         bar=tk.Frame(self.shell,bg="#0878C9",height=64)
         self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
-        tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",18,"bold")).pack(side="left",padx=(18,14))
+        self.shop_label=tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",18,"bold"))
+        self.shop_label.pack(side="left",padx=(18,14))
         lang=get_setting("language","fr")
         nav_fr=[("🛒 Vente","sale"),("📦 Stock","stock"),("📋 Journal","journal"),("🗂 Gestion","management"),("⚙ Paramètres","settings"),("📊 Statistiques","statistics")]
         nav_ar=[("🛒 البيع","sale"),("📦 المخزون","stock"),("📋 السجل","journal"),("🗂 الإدارة","management"),("⚙ الإعدادات","settings"),("📊 الإحصائيات","statistics")]
@@ -322,7 +323,7 @@ class ToDoApp(tk.Tk):
             for button in getattr(self,'nav_buttons',{}).values():
                 if button.winfo_exists():
                     button.configure(bg=self.theme_color,activebackground=self.theme_active)
-            for widget_name in ('customer_button','user_badge'):
+            for widget_name in ('shop_label','customer_button','user_badge'):
                 widget=getattr(self,widget_name,None)
                 if widget is not None and widget.winfo_exists():
                     widget.configure(bg=self.theme_color)
@@ -335,13 +336,13 @@ class ToDoApp(tk.Tk):
         lang=get_setting('language','fr')
         tr=lambda fr,ar: ar if lang=='ar' else fr
         window=tk.Toplevel(self);window.title(tr('Thème','الألوان'));window.transient(self);window.grab_set()
-        ttk.Label(window,text=tr('Couleur principale','اللون الرئيسي')).pack(padx=25,pady=15)
+        ttk.Label(window,text=tr('Couleur principale','اللون الرئيسي'),style='Title.TLabel').pack(padx=25,pady=(18,8))
         def choose(name):
             set_setting('theme',name);self.apply_theme();window.destroy()
         themes=[('Bleu','أزرق','#2563EB'),('Vert','أخضر','#15803D'),('Violet','بنفسجي','#7C3AED')]
         for fr,ar,color in themes:
             tk.Button(window,text=tr(fr,ar),bg=color,fg='white',command=lambda n=fr:choose(n)).pack(fill='x',padx=25,pady=6,ipady=10)
-        ttk.Button(window,text=tr('Fermer','إغلاق'),command=window.destroy).pack(pady=12)
+        ttk.Button(window,text=tr('Fermer','إغلاق'),style='Danger.TButton',command=window.destroy).pack(fill='x',padx=25,pady=14)
 
     def _is_text_input(self, widget):
         try:
