@@ -404,8 +404,11 @@ class ToDoApp(tk.Tk):
         table_header=tk.Frame(self.customer_sale_frame,bg='#E2E8F0',height=48)
         table_header.pack(fill='x');table_header.pack_propagate(False)
         headers=(('المنتوج','الكمية','الثمن','المجموع') if lang=='ar' else ('ARTICLE','QTÉ','PRIX','TOTAL'))
-        for text,width,anchor in [(headers[0],5,'w'),(headers[1],1,'center'),(headers[2],2,'e'),(headers[3],2,'e')]:
-            tk.Label(table_header,text=text,bg='#E2E8F0',fg='#334155',font=('Segoe UI',13,'bold'),anchor=anchor).pack(side='left',fill='both',expand=True,padx=12)
+        for col,weight in enumerate((5,1,2,2)):
+            table_header.columnconfigure(col,weight=weight)
+        for col,(text,anchor) in enumerate(zip(headers,('w','center','e','e'))):
+            tk.Label(table_header,text=text,bg='#E2E8F0',fg='#334155',font=('Segoe UI',13,'bold'),anchor=anchor).grid(
+                row=0,column=col,sticky='nsew',padx=12)
 
         self.customer_sale_rows=tk.Frame(self.customer_sale_frame,bg='#F8FAFC')
         self.customer_sale_rows.pack(fill='both',expand=True,padx=22,pady=12)
@@ -486,11 +489,19 @@ class ToDoApp(tk.Tk):
                 row.pack(fill='x',pady=2);row.pack_propagate(False)
                 qty=Decimal(str(item.get('qty',0)))
                 unit=Decimal(str(item.get('unit_price_cents',0)))
-                values=(str(item.get('name','')),f"{float(qty):g}",f"{float(unit)/100:.2f} {currency}",f"{line_cents/100:.2f} {currency}")
+                step=Decimal(str(item.get('qty_multiplier',1) or 1))
+                display_qty=(qty/step) if step else qty
+                display_price=(unit*step) if step else unit
+                name=str(item.get('name',''))
+                if step != 1:
+                    name+=f" · pack ×{float(step):g}"
+                values=(name,f"{float(display_qty):g}",f"{float(display_price)/100:.2f} {currency}",f"{line_cents/100:.2f} {currency}")
                 anchors=('w','center','e','e')
-                for value,anchor in zip(values,anchors):
+                for col,weight in enumerate((5,1,2,2)):
+                    row.columnconfigure(col,weight=weight)
+                for col,(value,anchor) in enumerate(zip(values,anchors)):
                     tk.Label(row,text=value,bg=bg,fg='#0F172A',font=('Segoe UI',14,'bold' if anchor=='e' else 'normal'),
-                             anchor=anchor).pack(side='left',fill='both',expand=True,padx=12)
+                             anchor=anchor).grid(row=0,column=col,sticky='nsew',padx=12)
             if len(cart)>10:
                 tk.Label(self.customer_sale_rows,text=(f"+ {len(cart)-10} منتجات" if lang=='ar' else f"+ {len(cart)-10} article(s)"),
                          bg='#F8FAFC',fg='#64748B',font=('Segoe UI',11,'bold')).pack(anchor='e',padx=12,pady=4)
