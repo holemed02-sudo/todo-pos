@@ -59,7 +59,7 @@ with connect() as c:
  assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==15
  row=c.execute('SELECT * FROM stock_movements ORDER BY id DESC LIMIT 1').fetchone()
  assert row['old_qty']==10 and row['stock_after']==15 and row['user_id']==app.user['id']
-app.destroy();temp.cleanup()
+
 # Shared embedded keyboard must be usable inside grabbed client/supplier modals.
 from screens.clients import ClientEditor
 from screens.suppliers import SupplierEditor
@@ -74,4 +74,5 @@ for Editor in (ClientEditor,SupplierEditor):
     assert not editor.keyboard_visible
     editor.destroy();app.update()
 
+app.destroy();temp.cleanup()
 print('UI SMOKE PASSED: login, scan, quantity, navigation, all screens, direct stock edit with ledger')
