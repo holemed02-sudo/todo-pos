@@ -183,11 +183,17 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         button(cash_window,'Dépense').invoke()
     with connect() as c:
         assert c.execute('SELECT amount_cents FROM expenses').fetchone()[0]==100
-    with patch('tkinter.simpledialog.askfloat',return_value=104):
-        button(cash_window,'Clôturer').invoke()
+    # Closing uses the real denomination counter instead of askfloat.
+    def finish_cash_count():
+        counter=next(w for w in descendants(app) if w.winfo_class()=='Toplevel' and 'Comptage' in str(w.title()))
+        for value,count in ((100,1),(2,2)):
+            for _ in range(count):button(counter,f'+ {value:g} DH').invoke()
+        button(counter,'Valider le comptage').invoke()
+    app.after(150,finish_cash_count)
+    button(cash_window,'Clôturer').invoke()
     with connect() as c:
         closing=c.execute('SELECT * FROM cash_sessions').fetchone()
-        assert closing['status']=='CLOSED' and closing['difference_cents']==0
+        assert closing['status']=='CLOSED' and closing['actual_cash_cents']==10400 and closing['difference_cents']==0
     cash_window.destroy()
     app.show('journal');app.update()
     # Complete a customer credit sale and settlement through actual Tk controls.
