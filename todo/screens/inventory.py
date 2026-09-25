@@ -15,18 +15,18 @@ class InventaireFrame(ttk.Frame):
         super().__init__(master, padding=16)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         ttk.Label(self, text=self.tr('📝  Inventaire','📝  الجرد'),
-                  font=('Segoe UI', 20, 'bold')).pack(anchor='w')
+                  style='Title.TLabel').pack(anchor='w')
         ttk.Label(self, text=self.tr('Saisissez la quantité réelle comptée. Validez pour ajuster le stock.','أدخل الكمية الحقيقية المحسوبة ثم أكد لتعديل المخزون.'),
                   foreground='#475569').pack(anchor='w', pady=(0, 10))
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=(0, 8))
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query, width=32)
+        entry = ttk.Entry(toolbar, textvariable=self.query, width=32, style='Search.TEntry')
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
         ttk.Button(toolbar, text=self.tr('✔  Valider les écarts','✔  تأكيد الفروقات'),
                    style='Primary.TButton', command=self.apply_all).pack(side='right')
-        ttk.Button(toolbar, text=self.tr('↺ Actualiser','↺ تحديث'), command=self.refresh).pack(side='right', padx=8)
+        ttk.Button(toolbar, text=self.tr('↺ Actualiser','↺ تحديث'), style='Soft.TButton', command=self.refresh).pack(side='right', padx=8)
 
         cols = ('id', 'name', 'theory', 'counted', 'diff')
         self.tree = ttk.Treeview(self, columns=cols, show='headings')
@@ -130,17 +130,17 @@ class SortiesFrame(ttk.Frame):
         super().__init__(master, padding=16)
         self.lang=get_setting('language','fr');self.tr=lambda fr,ar: ar if self.lang=='ar' else fr
         ttk.Label(self, text=self.tr('📤  Sorties de stock','📤  إخراج المخزون'),
-                  font=('Segoe UI', 20, 'bold')).pack(anchor='w')
+                  style='Title.TLabel').pack(anchor='w')
         ttk.Label(self, text=self.tr('Casse, perte, don, consommation interne.','كسر، ضياع، تبرع، استهلاك داخلي.'),
                   foreground='#475569').pack(anchor='w', pady=(0, 10))
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=(0, 8))
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query, width=32)
+        entry = ttk.Entry(toolbar, textvariable=self.query, width=32, style='Search.TEntry')
         entry.pack(side='left')
         entry.bind('<KeyRelease>', lambda e: self.refresh())
         ttk.Button(toolbar, text=self.tr('📤 Enregistrer une sortie','📤 تسجيل إخراج'),
-                   style='Primary.TButton', command=self.add_exit).pack(side='right')
+                   style='Danger.TButton', command=self.add_exit).pack(side='right')
 
         cols = ('id', 'name', 'stock', 'last_exit')
         self.tree = ttk.Treeview(self, columns=cols, show='headings')
