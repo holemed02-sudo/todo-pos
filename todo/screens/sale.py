@@ -542,9 +542,13 @@ class SaleFrame(ttk.Frame):
         if index is None:index=self.selected()
         self.ticket.delete(*self.ticket.get_children())
         sub,total=self.totals()
-        weights=[line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in self.cart]
+        display_cart=self.cart if self.cart else (self.last_sale_snapshot or [])
+        if not self.cart and self.last_sale_snapshot:
+            sub=sum(line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in display_cart)
+            total=max(0,sub-self.ticket_discount_cents)
+        weights=[line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in display_cart]
         nets=allocate(total,weights)
-        for i,(x,net) in enumerate(zip(self.cart,nets)):
+        for i,(x,net) in enumerate(zip(display_cart,nets)):
             gross=line_total(x['unit_price_cents'],x['qty'])
             offer=Decimal(str(x['unit_price_cents']))<x.get('base_price_cents',0) or gross>net
             thumb=self.thumbnail({'id':x['product_id'],'image_path':x.get('image_path','')})
@@ -675,8 +679,10 @@ class SaleFrame(ttk.Frame):
     def set_payment(self,method):
         self.payment=method;labels={'CASH':self.tr('Espèces','نقداً'),'CARD':self.tr('Carte','بطاقة'),'CREDIT':self.tr('Crédit','دين'),'MIXED':self.tr('Mixte','مختلط')};self.payment_label.config(text=self.tr('Paiement : ','الأداء: ')+labels.get(method,method));self.focus_search()
 
-    def clear(self):
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : CASH','الأداء: نقداً'));self.update_client_label();self.update_seller_label();self.refresh();self.focus_search()
+    def clear(self,preserve_last_sale=False):
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : CASH','الأداء: نقداً'));self.update_client_label();self.update_seller_label()
+        if not preserve_last_sale:self.last_sale_snapshot=None
+        self.refresh();self.focus_search()
 
     def cancel(self):
         if self.cart and not messagebox.askyesno(self.tr('Annuler','إلغاء'),self.tr('Vider le ticket en cours ? Un ticket en attente reste sauvegardé.','إفراغ التذكرة الحالية؟ التذكرة الموضوعة في الانتظار تبقى محفوظة.'),parent=self):return
