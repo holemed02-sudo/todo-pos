@@ -31,10 +31,11 @@ class PrinterTests(unittest.TestCase):
     def test_raw_printer_test_job(self):
         api=Mock()
         api.OpenPrinter.return_value=41
+        api.StartDocPrinter.return_value=7
         payload=b'\x1b@\x1ba\x01ToDo POS\nTEST IMPRIMANTE\nOK\n\n\x1dV\x00'
         api.WritePrinter.return_value=len(payload)
         with patch.dict(sys.modules,win32print=api),patch.object(printers.os,'name','nt'):
-            self.assertEqual(printers.test_printer('Receipt Test',True),41)
+            self.assertEqual(printers.test_printer('Receipt Test',True),7)
         api.OpenPrinter.assert_called_once_with('Receipt Test')
         api.WritePrinter.assert_called_once_with(41,payload)
         api.EndDocPrinter.assert_called_once_with(41)
