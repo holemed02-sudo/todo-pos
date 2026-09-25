@@ -181,7 +181,7 @@ class StatisticsFrame(ttk.Frame):
         header = ttk.Frame(self)
         header.pack(fill='x', pady=(0, 14))
         ttk.Label(header, text=self.tr('Statistiques','الإحصائيات'),
-                  font=('Segoe UI', 20, 'bold')).pack(side='left')
+                  style='Title.TLabel').pack(side='left')
         ttk.Label(header, text=self.tr('Évolution ventes · Top articles · Top caissiers · Familles','تطور المبيعات · أفضل المنتجات · أفضل الكاشيرات · الفئات'),
                   foreground='#475569').pack(side='left', padx=16)
 
@@ -210,7 +210,7 @@ class StatisticsFrame(ttk.Frame):
         ttk.Entry(custom,textvariable=self._date_from,width=11).pack(side='left',padx=(8,3))
         ttk.Label(custom,text='→').pack(side='left')
         ttk.Entry(custom,textvariable=self._date_to,width=11).pack(side='left',padx=3)
-        ttk.Button(custom,text=self.tr('Résumé','ملخص'),command=self._custom_summary).pack(side='left',padx=6)
+        ttk.Button(custom,text=self.tr('Résumé','ملخص'),style='Soft.TButton',command=self._custom_summary).pack(side='left',padx=6)
 
         # ── KPI cards row ─────────────────────────────────────────────────────
         self.kpi_frame = ttk.Frame(self)
