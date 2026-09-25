@@ -285,6 +285,7 @@ class SettingsFrame(ttk.Frame):
             if seconds<2 or seconds>300:raise ValueError()
         except ValueError:
             messagebox.showerror("ToDo",self.tr("Durée écran client entre 2 et 300 secondes.","مدة شاشة الزبون بين 2 و300 ثانية."),parent=self);return
+        set_setting('customer_display_enabled','1' if self.customer_enabled.get() else '0')
         set_setting("customer_slide_seconds",str(seconds))
         mode=self.customer_mode_labels.get(self.customer_mode_box.get(),'promotions')
         set_setting('customer_display_mode',mode)
