@@ -115,23 +115,47 @@ class SaleFrame(ttk.Frame):
         self.products.bind('<Double-1>',self.add_selected_product)
         self.products.bind('<Return>',self.add_selected_product)
         ttk.Button(catalog_col,text=self.tr('＋  Ajouter le produit sélectionné  ↵','＋  إضافة المنتوج المحدد  ↵'),style='Primary.TButton',command=self.add_selected_product).pack(fill='x',pady=(8,0),ipady=4)
-        ttk.Label(control_col,text=self.tr('QUANTITÉ','الكمية'),style='CardTitle.TLabel').pack(anchor='w',pady=(0,6))
-        qty_box=ttk.Frame(control_col,style='Card.TFrame');qty_box.pack(fill='x',pady=(0,8))
-        self.quantity_entry=ttk.Entry(qty_box,textvariable=self.scan_quantity,style='Quantity.TEntry',justify='center')
+        rail_header=tk.Frame(control_col,bg='#111827',height=40)
+        rail_header.pack(fill='x',pady=(0,8));rail_header.pack_propagate(False)
+        tk.Label(rail_header,text=self.tr('QUANTITÉ','الكمية'),bg='#111827',fg='#F59E0B',
+                 font=('Segoe UI',11,'bold')).pack(side='left',padx=10)
+        ttk.Button(control_col,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',
+                   command=self.functions).pack(fill='x',pady=(0,8),ipady=4)
+
+        qty_box=tk.Frame(control_col,bg='white',highlightthickness=1,highlightbackground='#CBD5E1',padx=8,pady=8)
+        qty_box.pack(fill='x',pady=(0,8))
+        self.quantity_entry=ttk.Entry(qty_box,textvariable=self.scan_quantity,style='Quantity.TEntry',
+                                      justify='center',font=('Segoe UI',18,'bold'))
         self.quantity_entry.pack(fill='x',ipady=5)
         self.quantity_entry.bind('<Return>',lambda e:self.focus_search())
-        ttk.Button(qty_box,text='×2',style='Primary.TButton',command=self.double_scan_quantity).pack(fill='x',pady=(6,0))
-        keypad=ttk.LabelFrame(control_col,text=self.tr('Pavé numérique','الأرقام'),padding=5);keypad.pack(fill='x',pady=(0,8))
+        ttk.Button(qty_box,text=self.tr('×2  QUANTITÉ','×2  الكمية'),style='Primary.TButton',
+                   command=self.double_scan_quantity).pack(fill='x',pady=(6,0),ipady=3)
+
+        keypad=tk.Frame(control_col,bg='#F8FAFC',padx=3,pady=3)
+        keypad.pack(fill='x',pady=(0,8))
         for pos,key in enumerate(['7','8','9','4','5','6','1','2','3','0','.','⌫']):
-            ttk.Button(keypad,text=key,style=('Danger.TButton' if key=='⌫' else 'Soft.TButton'),command=lambda k=key:self.keypad_press(k)).grid(row=pos//3,column=pos%3,sticky='nsew',padx=3,pady=3,ipady=8)
-        for col in range(3):keypad.columnconfigure(col,weight=1)
+            style='Danger.TButton' if key=='⌫' else 'Soft.TButton'
+            ttk.Button(keypad,text=key,style=style,command=lambda k=key:self.keypad_press(k)).grid(
+                row=pos//3,column=pos%3,sticky='nsew',padx=2,pady=2,ipady=6)
+        for col in range(3):
+            keypad.columnconfigure(col,weight=1)
         checkout_area=ttk.Frame(ticket_col,style='Card.TFrame')
         checkout_area.pack(side='bottom',fill='x')
-        actions=ttk.Frame(control_col,style='Card.TFrame');actions.pack(fill='x',pady=(0,8))
-        ttk.Button(control_col,text=self.tr('☰  Fonctions','☰  الوظائف'),style='Soft.TButton',command=self.functions).pack(fill='x',pady=(0,8),ipady=4,before=keypad)
-        for label,command in [('−',lambda:self.change(-1)),('+',lambda:self.change(1)),('×2',self.double_selected),(self.tr('Qté F8','الكمية F8'),self.set_qty),(self.tr('Remise ligne','تخفيض السطر'),self.line_discount),(self.tr('Suppr.','حذف'),self.remove)]:
-            button_style='Danger.TButton' if label==self.tr('Suppr.','حذف') else 'Soft.TButton'
-            ttk.Button(actions,text=label,style=button_style,command=command).pack(side='left',expand=True,fill='x',padx=3,ipady=2)
+        actions=ttk.Frame(control_col,style='Card.TFrame')
+        actions.pack(fill='x',pady=(0,8))
+        line_actions=[
+            ('−',lambda:self.change(-1),'Soft.TButton'),
+            ('+',lambda:self.change(1),'Soft.TButton'),
+            ('×2',self.double_selected,'Soft.TButton'),
+            (self.tr('Qté F8','الكمية F8'),self.set_qty,'Soft.TButton'),
+            (self.tr('Remise','تخفيض'),self.line_discount,'Soft.TButton'),
+            (self.tr('Suppr.','حذف'),self.remove,'Danger.TButton'),
+        ]
+        for index,(label,command,style) in enumerate(line_actions):
+            ttk.Button(actions,text=label,style=style,command=command).grid(
+                row=index//2,column=index%2,sticky='ew',padx=2,pady=2,ipady=3)
+        actions.columnconfigure(0,weight=1)
+        actions.columnconfigure(1,weight=1)
         self.subtotal_label=ttk.Label(checkout_area,text='',style='Card.TLabel',font=('Segoe UI',10,'bold'),foreground='#475569');self.subtotal_label.pack(anchor='e',pady=(2,0))
         total_color=getattr(self.app,'theme_color','#2563EB')
         total_box=tk.Frame(checkout_area,bg='#111827',padx=14,pady=10);total_box.pack(fill='x',pady=(8,6))
