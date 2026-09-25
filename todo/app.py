@@ -80,6 +80,8 @@ class ToDoApp(tk.Tk):
         st.configure('Card.TFrame',background='white')
         st.configure('Card.TLabel',background='white')
         st.configure('CardTitle.TLabel',background='white',font=('Segoe UI',15,'bold'))
+        st.configure('Search.TEntry',font=('Segoe UI',17),padding=(10,8),fieldbackground='white',foreground='#0F172A')
+        st.configure('Quantity.TEntry',font=('Segoe UI',17,'bold'),padding=(8,8),fieldbackground='#F8FAFC',foreground='#0F172A')
         st.configure('Title.TLabel',font=('Segoe UI',23,'bold'))
         st.configure('Accent.TLabel',foreground='#2563EB',font=('Segoe UI',12,'bold'))
         st.configure('Total.TLabel',background='white',foreground='#2563EB',font=('Segoe UI',28,'bold'))
@@ -185,22 +187,27 @@ class ToDoApp(tk.Tk):
             b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
             b.pack(side="left",fill="y");self.nav_buttons[key]=b
         # Touch-friendly controls: explicit, large and high-contrast on POS tablets.
-        tk.Button(bar,text="✕",bg="#DC2626",fg="white",activebackground="#B91C1C",activeforeground="white",
+        self.close_button=tk.Button(bar,text="✕",bg="#DC2626",fg="white",activebackground="#B91C1C",activeforeground="white",
                   relief="flat",bd=0,font=("Segoe UI",15,"bold"),width=4,cursor="hand2",
-                  command=self.on_close).pack(side="right",fill="y")
-        tk.Button(bar,text="—",bg="#0F5F9A",fg="white",activebackground="#0B4F80",activeforeground="white",
+                  command=self.on_close)
+        self.close_button.pack(side="right",fill="y")
+        self.minimize_button=tk.Button(bar,text="—",bg="#0F5F9A",fg="white",activebackground="#0B4F80",activeforeground="white",
                   relief="flat",bd=0,font=("Segoe UI",16,"bold"),width=4,cursor="hand2",
-                  command=self.iconify).pack(side="right",fill="y")
-        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ Clavier"),bg="#F59E0B",fg="#111827",
+                  command=self.iconify)
+        self.minimize_button.pack(side="right",fill="y")
+        self.keyboard_button=tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ Clavier"),bg="#F59E0B",fg="#111827",
                   activebackground="#D97706",activeforeground="white",relief="flat",bd=0,
                   font=("Segoe UI",10,"bold"),padx=14,cursor="hand2",
-                  command=self.toggle_keyboard).pack(side="right",fill="y",padx=(6,4))
-        tk.Button(bar,text=("شاشة الزبون" if lang=="ar" else "Écran client"),bg="#0878C9",fg="white",
+                  command=self.toggle_keyboard)
+        self.keyboard_button.pack(side="right",fill="y",padx=(6,4))
+        self.customer_button=tk.Button(bar,text=("شاشة الزبون" if lang=="ar" else "Écran client"),bg="#0878C9",fg="white",
                   activebackground="#075B96",activeforeground="white",relief="flat",bd=0,
                   font=("Segoe UI",9,"bold"),padx=10,cursor="hand2",
-                  command=self.toggle_customer_display).pack(side="right",fill="y",padx=4)
-        tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",
-                 font=("Segoe UI",9,"bold")).pack(side="right",padx=8)
+                  command=self.toggle_customer_display)
+        self.customer_button.pack(side="right",fill="y",padx=4)
+        self.user_badge=tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",
+                 font=("Segoe UI",9,"bold"))
+        self.user_badge.pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
         self.apply_theme()
 
@@ -274,9 +281,16 @@ class ToDoApp(tk.Tk):
         bar=getattr(self,'nav_bar',None)
         if bar is not None and bar.winfo_exists():
             bar.configure(bg=self.theme_color)
-            for child in bar.winfo_children():
-                child.configure(bg=self.theme_color)
-                if isinstance(child,tk.Button):child.configure(activebackground=self.theme_active)
+            for button in getattr(self,'nav_buttons',{}).values():
+                if button.winfo_exists():
+                    button.configure(bg=self.theme_color,activebackground=self.theme_active)
+            for widget_name in ('customer_button','user_badge'):
+                widget=getattr(self,widget_name,None)
+                if widget is not None and widget.winfo_exists():
+                    widget.configure(bg=self.theme_color)
+                    if isinstance(widget,tk.Button):
+                        widget.configure(activebackground=self.theme_active)
+            # Close/minimize/keyboard keep their dedicated high-contrast colors.
             self._mark_nav(getattr(self,'current_key','home'))
 
     def choose_theme(self):
