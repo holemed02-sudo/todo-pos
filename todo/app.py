@@ -459,18 +459,36 @@ class ToDoApp(tk.Tk):
             tk.Label(self.customer_sale_rows,text=('شكراً لزيارتكم' if lang=='ar' else 'Merci pour votre visite'),
                      bg='#F8FAFC',fg='#64748B',font=('Segoe UI',26,'bold')).pack(expand=True)
         else:
-            visible=cart[-10:]
-            for index,item in enumerate(visible):
+            raw_weights=[]
+            for item in cart:
+                qty=Decimal(str(item.get('qty',0)))
+                unit=Decimal(str(item.get('unit_price_cents',0)))
+                gross=int((qty*unit).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+                raw_weights.append(max(0,gross-int(item.get('discount_cents',0) or 0)))
+            subtotal=sum(raw_weights)
+            if subtotal>0:
+                exact=[Decimal(self.customer_total)*Decimal(w)/Decimal(subtotal) for w in raw_weights]
+                line_totals=[int(v.to_integral_value(rounding=ROUND_HALF_UP)) for v in exact]
+                diff=self.customer_total-sum(line_totals)
+                if diff:
+                    order=sorted(range(len(exact)),key=lambda i:(exact[i]-Decimal(line_totals[i])),reverse=(diff>0))
+                    for i in order[:abs(diff)]:
+                        line_totals[i]+=1 if diff>0 else -1
+            else:
+                line_totals=[0]*len(cart)
+
+            start_index=max(0,len(cart)-10)
+            visible=cart[start_index:]
+            visible_totals=line_totals[start_index:]
+            for index,(item,line_cents) in enumerate(zip(visible,visible_totals)):
                 bg='white' if index%2==0 else '#F1F5F9'
-                row=tk.Frame(self.customer_sale_rows,bg=bg,height=48)
+                row=tk.Frame(self.customer_sale_rows,bg=bg,height=50)
                 row.pack(fill='x',pady=2);row.pack_propagate(False)
                 qty=Decimal(str(item.get('qty',0)))
                 unit=Decimal(str(item.get('unit_price_cents',0)))
-                line_cents=int((qty*unit).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
                 values=(str(item.get('name','')),f"{float(qty):g}",f"{float(unit)/100:.2f} {currency}",f"{line_cents/100:.2f} {currency}")
                 anchors=('w','center','e','e')
-                weights=(5,1,2,2)
-                for value,anchor,weight in zip(values,anchors,weights):
+                for value,anchor in zip(values,anchors):
                     tk.Label(row,text=value,bg=bg,fg='#0F172A',font=('Segoe UI',14,'bold' if anchor=='e' else 'normal'),
                              anchor=anchor).pack(side='left',fill='both',expand=True,padx=12)
             if len(cart)>10:
