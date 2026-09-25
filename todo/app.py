@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
+from decimal import Decimal, ROUND_HALF_UP
 
 from database import init_db, get_setting, set_setting
 from services.bootstrap import ensure_defaults
@@ -371,7 +372,7 @@ class ToDoApp(tk.Tk):
                 except Exception:pass
             self.customer_after_id=None
             if self.customer_video is not None:self.customer_video.release();self.customer_video=None
-            self.customer_window.destroy();self.customer_window=None;self.customer_label=None;return
+            self.customer_window.destroy();self.customer_window=None;self.customer_label=None;self.customer_sale_frame=None;self.customer_sale_rows=None;self.customer_sale_total=None;self.customer_sale_status=None;return
         w=tk.Toplevel(self);self.customer_window=w;lang=get_setting('language','fr');w.title('ToDo — '+('شاشة الزبون' if lang=='ar' else 'Écran client'));w.configure(bg="#0F172A")
         screens=[]
         try:
@@ -391,10 +392,92 @@ class ToDoApp(tk.Tk):
             w.geometry("1280x720")
         w.bind("<Escape>",lambda e:self.toggle_customer_display())
         self.customer_label=tk.Label(w,text=('العروض والإعلانات' if lang=='ar' else 'Offres & promotions'),bg="#0F172A",fg="white",font=("Segoe UI",30,"bold"),justify="center",bd=0,highlightthickness=0)
-        self.customer_label.pack(fill="both",expand=True)
         self.customer_label.bind("<Configure>",lambda e:self._render_customer_slide() if self.customer_video is None else None)
+
+        self.customer_sale_frame=tk.Frame(w,bg="#F8FAFC")
+        sale_header=tk.Frame(self.customer_sale_frame,bg="#0F172A",height=86)
+        sale_header.pack(fill='x');sale_header.pack_propagate(False)
+        tk.Label(sale_header,text=get_setting('shop_name','ToDo'),bg='#0F172A',fg='white',font=('Segoe UI',28,'bold')).pack(side='left',padx=28)
+        self.customer_sale_status=tk.Label(sale_header,text=('تذكرتكم' if lang=='ar' else 'Votre ticket'),bg='#0F172A',fg='#BFDBFE',font=('Segoe UI',16,'bold'))
+        self.customer_sale_status.pack(side='right',padx=28)
+
+        table_header=tk.Frame(self.customer_sale_frame,bg='#E2E8F0',height=48)
+        table_header.pack(fill='x');table_header.pack_propagate(False)
+        headers=(('المنتوج','الكمية','الثمن','المجموع') if lang=='ar' else ('ARTICLE','QTÉ','PRIX','TOTAL'))
+        for text,width,anchor in [(headers[0],5,'w'),(headers[1],1,'center'),(headers[2],2,'e'),(headers[3],2,'e')]:
+            tk.Label(table_header,text=text,bg='#E2E8F0',fg='#334155',font=('Segoe UI',13,'bold'),anchor=anchor).pack(side='left',fill='both',expand=True,padx=12)
+
+        self.customer_sale_rows=tk.Frame(self.customer_sale_frame,bg='#F8FAFC')
+        self.customer_sale_rows.pack(fill='both',expand=True,padx=22,pady=12)
+
+        footer=tk.Frame(self.customer_sale_frame,bg=self.theme_color,height=96)
+        footer.pack(fill='x');footer.pack_propagate(False)
+        tk.Label(footer,text=('المجموع' if lang=='ar' else 'TOTAL'),bg=self.theme_color,fg='white',font=('Segoe UI',20,'bold')).pack(side='left',padx=28)
+        self.customer_sale_total=tk.Label(footer,text='0.00 '+get_setting('currency','DH'),bg=self.theme_color,fg='white',font=('Segoe UI',36,'bold'))
+        self.customer_sale_total.pack(side='right',padx=28)
+
         w.protocol("WM_DELETE_WINDOW",self.toggle_customer_display)
-        w.lift();w.focus_set();self._load_customer_slides()
+        w.lift();w.focus_set();self._apply_customer_display_mode()
+
+    def _stop_customer_media(self):
+        if self.customer_after_id:
+            try:self.after_cancel(self.customer_after_id)
+            except Exception:pass
+        self.customer_after_id=None
+        if self.customer_video is not None:
+            try:self.customer_video.release()
+            except Exception:pass
+            self.customer_video=None
+
+    def _apply_customer_display_mode(self):
+        if not (self.customer_window and self.customer_window.winfo_exists()):
+            return
+        mode=get_setting('customer_display_mode','promotions')
+        if mode=='prices':
+            self._stop_customer_media()
+            if self.customer_label and self.customer_label.winfo_exists():
+                self.customer_label.pack_forget()
+            if self.customer_sale_frame and self.customer_sale_frame.winfo_exists():
+                self.customer_sale_frame.pack(fill='both',expand=True)
+            self._render_customer_prices()
+        else:
+            if self.customer_sale_frame and self.customer_sale_frame.winfo_exists():
+                self.customer_sale_frame.pack_forget()
+            if self.customer_label and self.customer_label.winfo_exists():
+                self.customer_label.pack(fill='both',expand=True)
+            self._load_customer_slides()
+
+    def _render_customer_prices(self):
+        if not (self.customer_sale_rows and self.customer_sale_rows.winfo_exists()):
+            return
+        for child in self.customer_sale_rows.winfo_children():
+            child.destroy()
+        lang=get_setting('language','fr')
+        currency=get_setting('currency','DH')
+        cart=list(self.customer_cart or [])
+        if not cart:
+            tk.Label(self.customer_sale_rows,text=('شكراً لزيارتكم' if lang=='ar' else 'Merci pour votre visite'),
+                     bg='#F8FAFC',fg='#64748B',font=('Segoe UI',26,'bold')).pack(expand=True)
+        else:
+            visible=cart[-10:]
+            for index,item in enumerate(visible):
+                bg='white' if index%2==0 else '#F1F5F9'
+                row=tk.Frame(self.customer_sale_rows,bg=bg,height=48)
+                row.pack(fill='x',pady=2);row.pack_propagate(False)
+                qty=Decimal(str(item.get('qty',0)))
+                unit=Decimal(str(item.get('unit_price_cents',0)))
+                line_cents=int((qty*unit).quantize(Decimal('1'),rounding=ROUND_HALF_UP))
+                values=(str(item.get('name','')),f"{float(qty):g}",f"{float(unit)/100:.2f} {currency}",f"{line_cents/100:.2f} {currency}")
+                anchors=('w','center','e','e')
+                weights=(5,1,2,2)
+                for value,anchor,weight in zip(values,anchors,weights):
+                    tk.Label(row,text=value,bg=bg,fg='#0F172A',font=('Segoe UI',14,'bold' if anchor=='e' else 'normal'),
+                             anchor=anchor).pack(side='left',fill='both',expand=True,padx=12)
+            if len(cart)>10:
+                tk.Label(self.customer_sale_rows,text=(f"+ {len(cart)-10} منتجات" if lang=='ar' else f"+ {len(cart)-10} article(s)"),
+                         bg='#F8FAFC',fg='#64748B',font=('Segoe UI',11,'bold')).pack(anchor='e',padx=12,pady=4)
+        if self.customer_sale_total and self.customer_sale_total.winfo_exists():
+            self.customer_sale_total.config(text=f"{self.customer_total/100:.2f} {currency}")
 
     def _load_customer_slides(self):
         folder=Path.cwd()/"customer_media";folder.mkdir(exist_ok=True)
@@ -490,12 +573,13 @@ class ToDoApp(tk.Tk):
             self._skip_bad_customer_media()
 
     def update_customer_display(self, cart, total):
-        # Customer screen is intentionally advertising-first: cashier prices,
-        # ticket lines and totals are never mirrored to the public display.
-        if not (self.customer_window and self.customer_window.winfo_exists() and self.customer_label):return
-        # Never interrupt an active promotion with sale text.  The public screen
-        # remains advertising-only by design; show branded text only when empty.
-        if not self.customer_slides:
+        self.customer_cart=list(cart or [])
+        self.customer_total=int(total or 0)
+        if not (self.customer_window and self.customer_window.winfo_exists()):
+            return
+        if get_setting('customer_display_mode','promotions')=='prices':
+            self._render_customer_prices()
+        elif not self.customer_slides:
             self._render_customer_slide()
 
     def lock_cashier(self):
