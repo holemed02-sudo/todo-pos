@@ -63,8 +63,14 @@ class ToDoApp(tk.Tk):
         st.configure('.', font=('Segoe UI',10),background='#F6F7FB',foreground='#1E293B')
         st.configure('TFrame',background='#F6F7FB')
         st.configure('TLabel',background='#F6F7FB')
-        st.configure('TButton',font=('Segoe UI',10),padding=(10,9),background='white',borderwidth=0)
-        st.map('TButton',background=[('active','#DBEAFE')])
+        st.configure('TButton',font=('Segoe UI',10,'bold'),padding=(12,10),background='white',borderwidth=0)
+        st.configure('Soft.TButton',font=('Segoe UI',10,'bold'),padding=(12,10),background='#F1F5F9',foreground='#0F172A')
+        st.configure('Danger.TButton',font=('Segoe UI',10,'bold'),padding=(12,10),background='#DC2626',foreground='white')
+        st.configure('Success.TButton',font=('Segoe UI',10,'bold'),padding=(12,10),background='#15803D',foreground='white')
+        st.map('TButton',background=[('active','#DBEAFE'),('pressed','#BFDBFE')],foreground=[('disabled','#94A3B8')])
+        st.map('Soft.TButton',background=[('active','#E2E8F0'),('pressed','#CBD5E1')])
+        st.map('Danger.TButton',background=[('active','#B91C1C'),('pressed','#991B1B')],foreground=[('active','white'),('pressed','white')])
+        st.map('Success.TButton',background=[('active','#166534'),('pressed','#14532D')],foreground=[('active','white'),('pressed','white')])
         st.configure('Primary.TButton',background='#2563EB',foreground='white',font=('Segoe UI',12,'bold'))
         st.map('Primary.TButton',background=[('active','#1D4ED8')],foreground=[('active','white')])
         st.configure('Sidebar.TFrame',background='#1E293B')
@@ -165,10 +171,10 @@ class ToDoApp(tk.Tk):
         # room for the product table and the cart than with a permanent sidebar.
         self.shell=ttk.Frame(self);self.shell.pack(fill="both",expand=True)
         self.bind_all('<FocusIn>', self.remember_keyboard_target, add='+')
-        bar=tk.Frame(self.shell,bg="#0878C9",height=58)
+        bar=tk.Frame(self.shell,bg="#0878C9",height=64)
         self.nav_bar=bar
         bar.pack(fill="x");bar.pack_propagate(False)
-        tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",17,"bold")).pack(side="left",padx=18)
+        tk.Label(bar,text=get_setting("shop_name","ToDo"),bg="#0878C9",fg="white",font=("Segoe UI",18,"bold")).pack(side="left",padx=(18,14))
         lang=get_setting("language","fr")
         nav_fr=[("🛒 Vente","sale"),("📦 Stock","stock"),("📋 Journal","journal"),("🗂 Gestion","management"),("⚙ Paramètres","settings"),("📊 Statistiques","statistics")]
         nav_ar=[("🛒 البيع","sale"),("📦 المخزون","stock"),("📋 السجل","journal"),("🗂 الإدارة","management"),("⚙ الإعدادات","settings"),("📊 الإحصائيات","statistics")]
@@ -178,9 +184,23 @@ class ToDoApp(tk.Tk):
             if self.user["role"]!="admin" and key in ("settings","journal","management","statistics"):continue
             b=tk.Button(bar,text=txt,bg="#0878C9",fg="white",activebackground="#075B96",activeforeground="white",relief="flat",bd=0,font=("Segoe UI",10,"bold"),padx=10,command=lambda k=key:self.show(k))
             b.pack(side="left",fill="y");self.nav_buttons[key]=b
-        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ Clavier"),bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_keyboard).pack(side="right",padx=4)
-        tk.Button(bar,text=("شاشة الزبون" if lang=="ar" else "Écran client"),bg="#0878C9",fg="white",activebackground="#075B96",relief="flat",bd=0,font=("Segoe UI",9),command=self.toggle_customer_display).pack(side="right",padx=10)
-        tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",font=("Segoe UI",9)).pack(side="right",padx=8)
+        # Touch-friendly controls: explicit, large and high-contrast on POS tablets.
+        tk.Button(bar,text="✕",bg="#DC2626",fg="white",activebackground="#B91C1C",activeforeground="white",
+                  relief="flat",bd=0,font=("Segoe UI",15,"bold"),width=4,cursor="hand2",
+                  command=self.on_close).pack(side="right",fill="y")
+        tk.Button(bar,text="—",bg="#0F5F9A",fg="white",activebackground="#0B4F80",activeforeground="white",
+                  relief="flat",bd=0,font=("Segoe UI",16,"bold"),width=4,cursor="hand2",
+                  command=self.iconify).pack(side="right",fill="y")
+        tk.Button(bar,text=("⌨ لوحة المفاتيح" if lang=="ar" else "⌨ CLAVIER"),bg="#F59E0B",fg="#111827",
+                  activebackground="#D97706",activeforeground="white",relief="flat",bd=0,
+                  font=("Segoe UI",10,"bold"),padx=14,cursor="hand2",
+                  command=self.toggle_keyboard).pack(side="right",fill="y",padx=(6,4))
+        tk.Button(bar,text=("شاشة الزبون" if lang=="ar" else "Écran client"),bg="#0878C9",fg="white",
+                  activebackground="#075B96",activeforeground="white",relief="flat",bd=0,
+                  font=("Segoe UI",9,"bold"),padx=10,cursor="hand2",
+                  command=self.toggle_customer_display).pack(side="right",fill="y",padx=4)
+        tk.Label(bar,text=f"{self.user['display_name']} · {self.user['role']}",bg="#0878C9",fg="white",
+                 font=("Segoe UI",9,"bold")).pack(side="right",padx=8)
         self.content=ttk.Frame(self.shell);self.content.pack(fill="both",expand=True)
         self.apply_theme()
 
