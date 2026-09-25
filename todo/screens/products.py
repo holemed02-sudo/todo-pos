@@ -88,6 +88,7 @@ class ProductEditor(tk.Toplevel):
         self.keyboard_frame = tk.Frame(self, bg='#1E293B', padx=10, pady=10)
         self.keyboard_visible = False
         self._build_embedded_keyboard()
+        self.after_idle(lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
         self.after(100,lambda: self.e_bar.focus_force() if self.e_bar.winfo_exists() else None)
 
     def _is_text_input(self, widget):
