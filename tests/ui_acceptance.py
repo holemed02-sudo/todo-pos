@@ -259,6 +259,18 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     button(settings,'Enregistrer impression').invoke()
     assert get_setting('printer_name')=='Receipt Test'
     assert get_setting('drawer_enabled')=='1' and get_setting('drawer_pin')=='1'
+    # New Logica-compatible switches must persist through the real Settings UI save path.
+    settings.credit_enabled.set(False)
+    settings.closure_enabled.set(False)
+    settings.sans_ticket_enabled.set(False)
+    settings.payment_window_enabled.set(False)
+    settings.customer_enabled.set(False)
+    button(settings,'Enregistrer').invoke();app.update()
+    assert get_setting('credit_enabled')=='0'
+    assert get_setting('closure_enabled')=='0'
+    assert get_setting('sans_ticket_enabled')=='0'
+    assert get_setting('payment_window_enabled')=='0'
+    assert get_setting('customer_display_enabled')=='0'
     print('PASS: UI product/category -> purchase confirmation -> stock 5 -> scan/qty/discount -> visible SOLDER/VALIDER at 1100x640 -> sale 5 DH -> stock 3 -> receipt PDF -> journal',flush=True)
     if os.environ.get('TODO_REVIEW_UI'):
         app.show('sale')
