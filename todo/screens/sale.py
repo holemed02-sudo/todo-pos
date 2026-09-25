@@ -278,7 +278,6 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Supprimer ligne','حذف السطر'),self.remove),
                   (self.tr('Grille de prix','لائحة الأثمان'),self.choose_price_grid),
                   (self.tr('Compter la caisse','حساب الصندوق'),self.cash_tools),
-                  (self.tr('Clôture','إغلاق الصندوق'),lambda:self.cash_tools('close')),
                   (self.tr('Dépenses','المصاريف'),lambda:self.cash_tools('expense')),
                   (self.tr('Rapport','التقارير'),lambda:self.app.show('journal')),
                   (self.tr('Raccourcis','الاختصارات'),self.show_shortcuts),
@@ -289,6 +288,8 @@ class SaleFrame(ttk.Frame):
                   (self.tr('Tiroir','درج النقود'),self.open_drawer),
                   (self.tr('Attente','انتظار'),self.hold),
                   (self.tr("Liste d’attente",'المعلقات'),self.show_held)]
+        if get_setting('closure_enabled','1')=='1':
+            commands.insert(10,(self.tr('Clôture','إغلاق الصندوق'),lambda:self.cash_tools('close')))
         danger_labels={self.tr('Supprimer ligne','حذف السطر'),self.tr('Clôture','إغلاق الصندوق')}
         for index,(label,command) in enumerate(commands):
             style='Danger.TButton' if label in danger_labels else 'Soft.TButton'
