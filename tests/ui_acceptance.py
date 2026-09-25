@@ -167,12 +167,20 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     button(sale,'SOLDER avec').invoke();app.update()
     assert not sale.cart
     assert sale.last_sale_snapshot and sale.ticket.get_children()
-    receipt=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
-    visible(button(receipt,'PDF'))
+    # Checkout stays inline: no automatic receipt popup. Cashier focus returns
+    # to the barcode/search field and the compact blue reminder shows the result.
+    assert not any(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    assert sale.focus_get() is sale.entry
+    reminder=sale.last_sale_summary.cget('text')
+    assert 'PAYÉ' in reminder and 'RENDU' in reminder
     with connect() as c:
-        row=c.execute('SELECT * FROM sales').fetchone()
+        row=dict(c.execute('SELECT * FROM sales').fetchone())
         assert row['total_cents']==500 and row['change_cents']==500
         assert c.execute('SELECT stock_qty FROM products WHERE id=?',(pid,)).fetchone()[0]==3
+    # Receipt/PDF remains available on demand, but is never forced after checkout.
+    sale.show_receipt(row);app.update()
+    receipt=next(w for w in descendants(app) if w.winfo_class()=='Toplevel')
+    visible(button(receipt,'PDF'))
     output=Path(os.environ.get('TODO_TEST_OUTPUT',str(Path(temp.name)/'receipt.pdf')))
     with patch('tkinter.filedialog.asksaveasfilename',return_value=str(output)):
         button(receipt,'PDF').invoke()
