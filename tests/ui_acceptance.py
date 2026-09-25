@@ -151,8 +151,12 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     from database import get_setting
     assert get_setting('theme')=='Vert' and app.theme_color=='#15803D'
     assert sale.cart==saved
-    with patch('tkinter.simpledialog.askstring',side_effect=['TEST supplement','2.50','1']):
-        sale.add_misc()
+    sale.add_misc();app.update()
+    misc=next(w for w in descendants(app) if hasattr(w,'misc_price_var'))
+    misc.misc_name_var.set('TEST supplement')
+    misc.misc_price_var.set('2.50')
+    misc.misc_qty_var.set('1')
+    misc.misc_confirm.invoke();app.update()
     assert sale.cart[-1]['is_misc'] and sale.totals()[1]==850
     sale.remove();assert sale.totals()[1]==600
     with patch('tkinter.simpledialog.askfloat',return_value=1):sale.discount()
