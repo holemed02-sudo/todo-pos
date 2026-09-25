@@ -27,7 +27,7 @@ GROUPS = [
     ],
 ]
 
-CARD_W, CARD_H = 185, 90
+CARD_W, CARD_H = 205, 104
 
 
 def _recolor(w, c):
@@ -57,19 +57,19 @@ class ManagementFrame(ttk.Frame):
 
     def _build(self):
         # header
-        header = tk.Frame(self, bg="#1E293B", height=58)
+        header = tk.Frame(self, bg="#0F172A", height=66)
         header.pack(fill="x")
         header.pack_propagate(False)
-        tk.Label(header, text=self.tr("🗂️  Gestion","🗂️  الإدارة"), bg="#1E293B", fg="white",
-                 font=("Segoe UI", 18, "bold")).pack(side="left", padx=22, pady=10)
+        tk.Label(header, text=self.tr("🗂️  Gestion","🗂️  الإدارة"), bg="#0F172A", fg="white",
+                 font=("Segoe UI", 19, "bold")).pack(side="left", padx=24, pady=12)
 
         # cards area
-        area = tk.Frame(self, bg="#F8FAFC")
+        area = tk.Frame(self, bg="#F6F7FB")
         area.pack(fill="both", expand=True, padx=30, pady=24)
 
         for group in GROUPS:
-            row = tk.Frame(area, bg="#F8FAFC")
-            row.pack(anchor="w", pady=6)
+            row = tk.Frame(area, bg="#F6F7FB")
+            row.pack(anchor="center", pady=8)
             for emoji, label, key, bg, fg in group:
                 self._card(row, emoji, self.tr(label, dict({'Réceptions':'الاستلامات','Sorties':'الإخراجات','Inventaire':'الجرد','Mouvements de stock':'حركات المخزون','Fournisseurs':'الموردون','Règlements fournisseurs':'دفعات الموردين','État crédits fournisseurs':'ديون الموردين','Clients':'الزبائن','Règlements clients':'دفعات الزبائن','État crédits clients':'ديون الزبائن','Dépenses':'المصاريف','Rendez-vous':'المواعيد'}).get(label,label)), key, bg, fg)
 
@@ -88,9 +88,9 @@ class ManagementFrame(ttk.Frame):
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
         tk.Label(inner, text=emoji, bg=actual_bg, fg=actual_fg,
-                 font=("Segoe UI", 22)).pack()
+                 font=("Segoe UI", 25)).pack()
         tk.Label(inner, text=label, bg=actual_bg, fg=actual_fg,
-                 font=("Segoe UI", 9, "bold" if not is_placeholder else "normal"),
+                 font=("Segoe UI", 10, "bold" if not is_placeholder else "normal"),
                  wraplength=CARD_W-16, justify="center").pack(pady=(2, 0))
 
         if is_placeholder:
