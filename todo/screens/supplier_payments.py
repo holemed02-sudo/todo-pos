@@ -153,11 +153,11 @@ class SupplierReglementFrame(ttk.Frame):
 
         toolbar = ttk.Frame(self); toolbar.pack(fill='x', pady=10)
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query)
+        entry = ttk.Entry(toolbar, textvariable=self.query, style='Search.TEntry')
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<KeyRelease>', lambda e: self.refresh())
-        ttk.Button(toolbar, text=self.tr('Règlements','التسديدات'),    command=self.payments).pack(side='left', padx=4)
-        ttk.Button(toolbar, text=self.tr('État crédits','حالة الديون'),  command=self.credit_state).pack(side='left', padx=4)
+        ttk.Button(toolbar, text=self.tr('Règlements','التسديدات'), style='Primary.TButton', command=self.payments).pack(side='left', padx=4)
+        ttk.Button(toolbar, text=self.tr('État crédits','حالة الديون'), style='Soft.TButton', command=self.credit_state).pack(side='left', padx=4)
 
         self.tree = ttk.Treeview(self,
             columns=('name','phone','billed','paid','balance'), show='headings')
