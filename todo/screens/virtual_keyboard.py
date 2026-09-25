@@ -121,23 +121,25 @@ class VirtualKeyboard(tk.Toplevel):
         self.resizable(False, False)
 
         # ── header draggable ───────────────────────────────────────────────
-        self._hdr = tk.Frame(self, bg='#0F172A', height=28, cursor='fleur')
+        self._hdr = tk.Frame(self, bg='#0F172A', height=40, cursor='fleur')
         self._hdr.pack(fill='x')
         tk.Label(self._hdr, text='⌨  Clavier', bg='#0F172A', fg='#94A3B8',
-                 font=('Segoe UI', 9)).pack(side='left', padx=8)
-        tk.Button(self._hdr, text='—', bg='#0F172A', fg='#94A3B8', bd=0,
-                  activebackground='#1E293B',
-                  font=('Segoe UI', 10), command=self._minimize).pack(side='right', padx=2)
-        tk.Button(self._hdr, text='✕', bg='#0F172A', fg='#94A3B8', bd=0,
-                  activebackground='#DC2626', activeforeground='#fff',
-                  font=('Segoe UI', 10), command=self._close).pack(side='right')
+                 font=('Segoe UI', 11, 'bold')).pack(side='left', padx=12, pady=7)
+        tk.Button(self._hdr, text='—', bg='#1E293B', fg='white', bd=0,
+                  activebackground='#334155', activeforeground='white',
+                  font=('Segoe UI', 14, 'bold'), width=4, cursor='hand2',
+                  command=self._minimize).pack(side='right', fill='y')
+        tk.Button(self._hdr, text='✕', bg='#DC2626', fg='white', bd=0,
+                  activebackground='#B91C1C', activeforeground='white',
+                  font=('Segoe UI', 13, 'bold'), width=4, cursor='hand2',
+                  command=self._close).pack(side='right', fill='y')
 
         for w in [self._hdr] + list(self._hdr.winfo_children()):
             w.bind('<ButtonPress-1>', self._drag_start)
             w.bind('<B1-Motion>',     self._drag_move)
 
         # ── key area ──────────────────────────────────────────────────────
-        self._key_frame = tk.Frame(self, bg=_BG, padx=6, pady=6)
+        self._key_frame = tk.Frame(self, bg=_BG, padx=10, pady=10)
         self._key_frame.pack(fill='both', expand=True)
         self._build_page('alpha')
 
@@ -187,7 +189,7 @@ class VirtualKeyboard(tk.Toplevel):
             w.destroy()
         for row_def in _PAGES[page]:
             row_frame = tk.Frame(self._key_frame, bg=_BG)
-            row_frame.pack(fill='x', pady=2)
+            row_frame.pack(fill='x', pady=3)
             for cell in row_def:
                 if isinstance(cell, tuple) and len(cell) == 3:
                     self._make_key(row_frame, *cell)
@@ -200,12 +202,12 @@ class VirtualKeyboard(tk.Toplevel):
             parent, text=norm,
             bg=bg, fg=_KEY_FG,
             activebackground=_KEY_HV, activeforeground=_KEY_FG,
-            font=('Segoe UI', 11), bd=1, relief='flat',
+            font=('Segoe UI', 13, 'bold'), bd=1, relief='flat',
             highlightbackground=_BORDER,
-            padx=ipadx, pady=6, cursor='hand2',
+            padx=max(8, ipadx), pady=10, cursor='hand2',
             command=lambda n=norm, s=shifted: self._press(n, s),
         )
-        btn.pack(side='left', padx=2)
+        btn.pack(side='left', padx=3)
         if rel_w > 1:
             btn.configure(width=max(2, int(rel_w * 2)))
         btn.bind('<Enter>', lambda e, b=btn, h=_KEY_HV: b.configure(bg=h))
@@ -215,7 +217,7 @@ class VirtualKeyboard(tk.Toplevel):
     def _press(self, norm, shifted):
         w = self._get_target()
         if norm == '✕':
-            self.destroy(); return
+            self._close(); return
         if norm == 'Sym':
             self._build_page('sym'); return
         if norm in ('ABC','FR'):
