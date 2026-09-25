@@ -895,13 +895,19 @@ class SaleFrame(ttk.Frame):
             total=self.totals()[1]
             from services.clients import get_client
             client_name=get_client(self.client_id)['name'] if self.client_id is not None else None
-            dialog=PaymentDialog(self,total,self.currency,self.payment,client_name=client_name)
             mode=get_setting('print_mode','ask')
-            dialog.print_ticket.set(print_ticket and mode=='always')
-            self.wait_window(dialog)
-            if dialog.result is None:return
-            self.payment,paid,dialog_print,payments=dialog.result
-            self.set_payment(self.payment)
+            use_payment_window=get_setting('payment_window_enabled','1')=='1' or self.payment in ('MIXED','CREDIT')
+            if use_payment_window:
+                dialog=PaymentDialog(self,total,self.currency,self.payment,client_name=client_name)
+                dialog.print_ticket.set(print_ticket and mode=='always')
+                self.wait_window(dialog)
+                if dialog.result is None:return
+                self.payment,paid,dialog_print,payments=dialog.result
+                self.set_payment(self.payment)
+            else:
+                paid=total
+                dialog_print=(print_ticket and mode=='always')
+                payments=None
             result=complete_sale(session['id'],self.app.user['id'],self.cart,self.payment,paid,self.ticket_discount_cents,self.held_id,client_id=self.client_id,payments=payments,seller_id=self.seller_id)
             # The completed ticket stays visible until the first item of the next sale.
             # Business cart state is cleared immediately so the completed sale cannot be submitted twice.
