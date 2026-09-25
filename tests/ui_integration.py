@@ -45,8 +45,7 @@ with patch('tkinter.messagebox.showerror',fail):
     button(editor,'Enregistrer').invoke();app.update()
     assert set(get_product_categories(pid))=={ids[-1],added}
     app.show('sale');app.update()
-    family=button(app.sale_frame,'🐟 Cats updated')
-    assert family.winfo_viewable()
+    family=button(app.sale_frame,'🐟 Cats updated');assert family.cget('bg')=='#16A34A'
     family.invoke();app.update();assert app.sale_frame.cat.get()=='Cats updated'
     session=open_session(app.user['id'],0)
     sale=complete_sale(session,app.user['id'],[dict(product_id=pid,qty=2,unit_price_cents=1500)],'CASH',2500,discount_cents=500)
