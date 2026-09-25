@@ -28,17 +28,18 @@ class HomeFrame(ttk.Frame):
         # ── top banner ────────────────────────────────────────────────────
         from database import get_setting
         shop = get_setting("shop_name", "ToDo")
-        banner = tk.Frame(self, bg="#0878C9", height=90)
+        banner_color=getattr(self.app,"theme_color","#2563EB")
+        banner = tk.Frame(self, bg=banner_color, height=96)
         banner.pack(fill="x")
         banner.pack_propagate(False)
-        tk.Label(banner, text=shop, bg="#0878C9", fg="white",
+        tk.Label(banner, text=shop, bg=banner_color, fg="white",
                  font=("Segoe UI", 32, "bold")).pack(side="left", padx=30, pady=12)
         tk.Label(banner, text=self.tr("Point de Vente","نقطة البيع"),
-                 bg="#0878C9", fg="#BFDBFE",
+                 bg=banner_color, fg="#DBEAFE",
                  font=("Segoe UI", 11)).pack(side="left", padx=4)
 
         # ── KPI strip ────────────────────────────────────────────────────
-        kpi_bar = tk.Frame(self, bg="#F1F5F9", height=68)
+        kpi_bar = tk.Frame(self, bg="#FFFFFF", height=76)
         kpi_bar.pack(fill="x")
         kpi_bar.pack_propagate(False)
         try:
@@ -52,16 +53,16 @@ class HomeFrame(ttk.Frame):
         except Exception:
             kpis = []
         for label, val in kpis:
-            cell = tk.Frame(kpi_bar, bg="#F1F5F9")
+            cell = tk.Frame(kpi_bar, bg="#FFFFFF")
             cell.pack(side="left", padx=24, pady=8)
-            tk.Label(cell, text=label, bg="#F1F5F9",
+            tk.Label(cell, text=label, bg="#FFFFFF",
                      fg="#64748B", font=("Segoe UI", 9)).pack(anchor="w")
-            tk.Label(cell, text=val, bg="#F1F5F9",
-                     fg="#1E293B", font=("Segoe UI", 13, "bold")).pack(anchor="w")
+            tk.Label(cell, text=val, bg="#FFFFFF",
+                     fg="#0F172A", font=("Segoe UI", 13, "bold")).pack(anchor="w")
         tk.Frame(kpi_bar, bg="#E2E8F0", width=1).pack(side="left", fill="y", pady=12)
 
         # ── Nav cards ────────────────────────────────────────────────────
-        cards_area = tk.Frame(self, bg="#F8FAFC")
+        cards_area = tk.Frame(self, bg="#F6F7FB")
         cards_area.pack(fill="both", expand=True, padx=40, pady=32)
 
         row_frame = None
@@ -69,10 +70,10 @@ class HomeFrame(ttk.Frame):
         for i, (emoji, label, key, bg, fg) in enumerate(NAV_CARDS):
             label = self.tr(label, nav_labels.get(label, label))
             if i % 3 == 0:
-                row_frame = tk.Frame(cards_area, bg="#F8FAFC")
+                row_frame = tk.Frame(cards_area, bg="#F6F7FB")
                 row_frame.pack(anchor="center", pady=8)
 
-            card = tk.Frame(row_frame, bg=bg, width=200, height=140,
+            card = tk.Frame(row_frame, bg=bg, width=220, height=150,
                             cursor="hand2", bd=0, relief="flat")
             card.pack(side="left", padx=10)
             card.pack_propagate(False)
@@ -81,9 +82,9 @@ class HomeFrame(ttk.Frame):
             inner.place(relx=0.5, rely=0.5, anchor="center")
 
             tk.Label(inner, text=emoji, bg=bg, fg=fg,
-                     font=("Segoe UI", 36)).pack()
+                     font=("Segoe UI", 38)).pack()
             tk.Label(inner, text=label, bg=bg, fg=fg,
-                     font=("Segoe UI", 12, "bold")).pack(pady=(4, 0))
+                     font=("Segoe UI", 13, "bold")).pack(pady=(6, 0))
 
             # hover effect
             def _enter(e, f=card, c=bg):
@@ -114,5 +115,5 @@ class HomeFrame(ttk.Frame):
             inner.bind("<Button-1>", lambda e, k=key: self.app.show(k))
 
         # ── exit button ──────────────────────────────────────────────────
-        ttk.Button(cards_area, text=self.tr("⏻  Quitter","⏻  خروج"),
-                   command=self.app.on_close).pack(pady=(16, 0))
+        ttk.Button(cards_area, text=self.tr("⏻  Quitter","⏻  خروج"),style="Danger.TButton",
+                   command=self.app.on_close).pack(pady=(18, 0),ipadx=10)
