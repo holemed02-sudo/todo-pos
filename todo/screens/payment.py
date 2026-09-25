@@ -24,6 +24,7 @@ class PaymentDialog(tk.Toplevel):
         self.print_ticket = tk.BooleanVar(value=False)
         self.cash_parts = {}
         self.cash_count_started = False
+        self._cash_internal_update = False
         self.cash_tendered_cents = total
         tk.Label(self, text=self.tr('TOTAL À PAYER','المجموع'), bg='#2563EB', fg='white',
                  font=('Segoe UI', 13, 'bold')).pack(fill='x', pady=(0, 0))
@@ -114,29 +115,39 @@ class PaymentDialog(tk.Toplevel):
         self.cash_parts[amount]=self.cash_parts.get(amount,0)+1
         self.cash_tendered_cents = current + to_cents(str(amount))
         self._render_cash_parts()
-        self.amount.set(f'{self.cash_tendered_cents / 100:.2f}')
+        self._set_cash_amount(self.cash_tendered_cents)
         self.focus_amount()
 
     def clear_cash(self):
         self.method.set('CASH')
         self.cash_tendered_cents = 0
         self.cash_parts.clear();self.cash_count_started=True;self._render_cash_parts()
-        self.amount.set('0.00')
+        self._set_cash_amount(0)
         self.focus_amount()
 
     def exact(self):
         self.method.set('CASH')
         self.cash_tendered_cents = self.total
         self.cash_parts.clear();self.cash_count_started=False;self._render_cash_parts()
-        self.amount.set(f'{self.total / 100:.2f}')
+        self._set_cash_amount(self.total)
         self.focus_amount()
+
+    def _set_cash_amount(self, cents):
+        self._cash_internal_update=True
+        try:self.amount.set(f'{cents / 100:.2f}')
+        finally:self._cash_internal_update=False
 
     def amount_changed(self, *_):
         if not hasattr(self, 'card_entry') or not hasattr(self, 'confirm_button'):
             return
         if self.method.get() in ('CASH','MIXED'):
             try:
-                self.cash_tendered_cents = to_cents(self.amount.get())
+                entered=to_cents(self.amount.get())
+                self.cash_tendered_cents = entered
+                # A manual edit means the denomination breakdown no longer
+                # represents the entered cash. Keep it only for button-driven counts.
+                if not self._cash_internal_update and self.cash_parts:
+                    self.cash_parts.clear();self.cash_count_started=False;self._render_cash_parts()
             except Exception:
                 pass
         if self.method.get() == 'MIXED':
