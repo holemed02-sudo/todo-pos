@@ -38,8 +38,8 @@ class ClientEditor(EmbeddedTouchKeyboard, tk.Toplevel):
         self.notes.insert('1.0', (client or {}).get('notes', ''))
         ttk.Button(form, text=self.tr('Enregistrer','حفظ'), style='Primary.TButton',
                    command=self.save).grid(row=3, column=1, sticky='ew', padx=12, pady=16)
-        ttk.Button(form, text=self.tr('Annuler','إلغاء'), command=self.destroy).grid(row=3, column=0)
-        ttk.Button(form,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),command=self.toggle_embedded_keyboard).grid(row=4,column=0,columnspan=2,pady=(0,8))
+        ttk.Button(form, text=self.tr('Annuler','إلغاء'), style='Danger.TButton', command=self.destroy).grid(row=3, column=0)
+        ttk.Button(form,text=self.tr('⌨ Clavier','⌨ لوحة المفاتيح'),style='Primary.TButton',command=self.toggle_embedded_keyboard).grid(row=4,column=0,columnspan=2,pady=(0,8),sticky='ew')
         self.init_touch_keyboard(self.first_entry)
 
     def save(self):
@@ -220,17 +220,18 @@ class ClientsFrame(ttk.Frame):
         toolbar = ttk.Frame(self)
         toolbar.pack(fill='x', pady=12)
         self.query = tk.StringVar()
-        entry = ttk.Entry(toolbar, textvariable=self.query)
+        entry = ttk.Entry(toolbar, textvariable=self.query, style='Search.TEntry')
         entry.pack(side='left', fill='x', expand=True)
         entry.bind('<KeyRelease>', lambda e: self.refresh())
 
-        for label, cmd in [
-            ('Nouveau',          lambda: ClientEditor(self, on_saved=self.refresh)),
-            ('Modifier',         self.edit),
-            ('Règlements',       self.payments),
-            ('État crédits',     self.credit_state),
-        ]:
-            ttk.Button(toolbar, text=label, command=cmd).pack(side='left', padx=4)
+        client_actions=[
+            (self.tr('Nouveau','جديد'),lambda: ClientEditor(self, on_saved=self.refresh),'Primary.TButton'),
+            (self.tr('Modifier','تعديل'),self.edit,'Soft.TButton'),
+            (self.tr('Règlements','التسديدات'),self.payments,'Soft.TButton'),
+            (self.tr('État crédits','حالة الديون'),self.credit_state,'Soft.TButton'),
+        ]
+        for label,cmd,style in client_actions:
+            ttk.Button(toolbar,text=label,style=style,command=cmd).pack(side='left',padx=4)
 
         self.tree = ttk.Treeview(self,
             columns=('name', 'phone', 'billed', 'paid', 'balance'),
