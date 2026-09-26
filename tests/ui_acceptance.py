@@ -131,11 +131,14 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(inactive_pid,'INACTIVE123'))
     import_host=__import__('tkinter').Toplevel(app)
     products_import=ProductsFrame(import_host);products_import.pack(fill='both',expand=True);app.update()
+    def accept_import_preview():
+        preview=next(w for w in products_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_import_preview)
     with patch('screens.products.filedialog.askopenfilename',return_value=str(import_path)), \
          patch('screens.products.messagebox.askyesnocancel',side_effect=AssertionError('Inactive barcode must not trigger conflict dialog')):
         products_import.import_excel()
-    preview=next(w for w in products_import.winfo_children() if w.winfo_class()=='Toplevel')
-    button(preview,'Importer 1').invoke();app.update()
+    app.update()
     with connect() as c:
         assert c.execute("SELECT 1 FROM products p JOIN product_barcodes b ON b.product_id=p.id WHERE p.active=1 AND p.name='Imported Active Product' AND b.barcode='INACTIVE123'").fetchone()
     import_host.destroy()
