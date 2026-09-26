@@ -312,19 +312,20 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         c.execute("UPDATE products SET image_path=? WHERE id=?",(imported_rel,image_pid))
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(image_pid,f'TODO-{image_pid:08d}'))
     image_export=Path(temp.name)/'catalogue-image-exchange.xlsx'
-    image_export_host=__import__('tkinter').Toplevel(app)
-    image_products=ProductsFrame(image_export_host);image_products.pack(fill='both',expand=True);app.update()
-    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(image_export)):
-        image_products.export_catalogue()
-    image_export_host.destroy()
-    image_wb=load_workbook(image_export)
-    image_ws=image_wb.active
-    image_headers=[cell.value for cell in image_ws[1]]
-    image_name_col=image_headers.index('article')+1
-    for row_idx in range(image_ws.max_row,1,-1):
-        if image_ws.cell(row_idx,image_name_col).value!='TEST Image Exchange':
-            image_ws.delete_rows(row_idx,1)
-    image_wb.save(image_export);image_wb.close()
+    # Isolate the product before export instead of deleting workbook rows after
+    # export: deleting rows does not reliably move embedded-image anchors.
+    with connect() as c:
+        active_before=[r[0] for r in c.execute("SELECT id FROM products WHERE active=1 AND id<>?",(image_pid,)).fetchall()]
+        c.execute("UPDATE products SET active=0 WHERE active=1 AND id<>?",(image_pid,))
+    try:
+        image_export_host=__import__('tkinter').Toplevel(app)
+        image_products=ProductsFrame(image_export_host);image_products.pack(fill='both',expand=True);app.update()
+        with patch('screens.products.filedialog.asksaveasfilename',return_value=str(image_export)):
+            image_products.export_catalogue()
+        image_export_host.destroy()
+    finally:
+        with connect() as c:
+            c.executemany("UPDATE products SET active=1 WHERE id=?",[(pid,) for pid in active_before])
     with connect() as c:
         c.execute("DELETE FROM products WHERE id=?",(image_pid,))
     image_import_host=__import__('tkinter').Toplevel(app)
