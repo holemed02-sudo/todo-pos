@@ -676,14 +676,18 @@ class SaleFrame(ttk.Frame):
         ttk.Label(w,text=self.tr('Choisissez le produit selon le nom, la photo et le prix.','اختر المنتوج حسب الاسم والصورة والثمن.')).pack(anchor='w',padx=16,pady=(0,10))
         canvas=tk.Canvas(w,highlightthickness=0);scroll=ttk.Scrollbar(w,orient='vertical',command=canvas.yview);inner=ttk.Frame(canvas)
         inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')));canvas.create_window((0,0),window=inner,anchor='nw');canvas.configure(yscrollcommand=scroll.set);canvas.pack(side='left',fill='both',expand=True,padx=(16,0),pady=(0,16));scroll.pack(side='right',fill='y',padx=(0,16),pady=(0,16))
+        try:
+            scan_multiplier=float(self.scan_quantity.get().replace(',','.'))
+        except ValueError:
+            scan_multiplier=1
         with connect() as conn:
-            details=[(r,conn.execute('SELECT stock_qty,image_path FROM products WHERE id=?',(r['id'],)).fetchone(),resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn,self.price_grid_id)) for r in rows]
+            details=[(r,conn.execute('SELECT stock_qty,image_path FROM products WHERE id=?',(r['id'],)).fetchone(),resolve_unit_price(r['id'],r['qty_multiplier']*scan_multiplier,r['barcode_id'],conn,self.price_grid_id)) for r in rows]
         def choose(r):w.destroy();self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
         for i,(r,p,price) in enumerate(details):
             card=tk.Frame(inner,bg='white',bd=1,relief='solid',cursor='hand2');card.grid(row=i//3,column=i%3,padx=7,pady=7,sticky='nsew')
             thumb=self.thumbnail({'id':r['id'],'image_path':p['image_path']},110);pic=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',34));pic.pack(fill='both',expand=True,padx=8,pady=6)
             tk.Label(card,text=r['name'],bg='white',font=('Segoe UI',11,'bold'),wraplength=230).pack(fill='x',padx=8);pack=(self.tr('Pack','علبة')+f" ×{r['qty_multiplier']:g}") if r['qty_multiplier']!=1 else self.tr('Unité','وحدة');tk.Label(card,text=f"{pack} · {self.tr('Stock','المخزون')} {p['stock_qty']:g}",bg='white').pack(fill='x',padx=8)
-            tk.Label(card,text=fmt(line_total(price,r['qty_multiplier']),self.currency),bg='#2563EB',fg='white',font=('Segoe UI',15,'bold'),pady=6).pack(fill='x',pady=(6,0))
+            tk.Label(card,text=fmt(line_total(price,r['qty_multiplier']*scan_multiplier),self.currency),bg='#2563EB',fg='white',font=('Segoe UI',15,'bold'),pady=6).pack(fill='x',pady=(6,0))
             for widget in [card,*card.winfo_children()]:widget.bind('<Button-1>',lambda e,x=r:choose(x))
         for col in range(3):inner.columnconfigure(col,weight=1)
         w.bind('<Escape>',lambda e:(w.destroy(),self.focus_search()))
