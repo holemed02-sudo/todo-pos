@@ -481,9 +481,9 @@ class ProductsFrame(ttk.Frame):
         try:
             from openpyxl import Workbook
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité"])
+            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité","alias","code fournisseur"])
             with connect() as c:
-                rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
+                rows=c.execute("""SELECT p.id,p.sku,p.alias,p.supplier_code,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     WHERE p.active=1
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
@@ -508,9 +508,9 @@ class ProductsFrame(ttk.Frame):
                 exchange_key=f"TODO-{seq:06d}"
                 for code in codes:
                     all_categories=categories_by_product.get(r["id"]) or [r["category"]]
-                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[]))])
+                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[])),r["alias"],r["supplier_code"]])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34,"P":24,"Q":20}.items():ws.column_dimensions[col].width=width
             wb.save(path)
             messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s), stock inclus. Les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج مع المخزون. لم يتم تصدير المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
@@ -522,7 +522,7 @@ class ProductsFrame(ttk.Frame):
             from openpyxl import load_workbook
             wb=load_workbook(path,read_only=True,data_only=True);ws=wb.active
             headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
-            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
+            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'alias':['alias','nom alternatif'],'supplier_code':['code fournisseur','supplier code','supplier_code'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
@@ -563,9 +563,9 @@ class ProductsFrame(ttk.Frame):
                             if not math.isfinite(min_qty) or min_qty<=0 or offer_price<0 or mode not in ('UNIT','BUNDLE'):
                                 raise ValueError(self.tr("offre quantité invalide","عرض الكمية غير صالح"))
                             offers.append((min_qty,offer_price,mode))
-                    sku=str(get('sku') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
+                    sku=str(get('sku') or '').strip();alias=str(get('alias') or '').strip();supplier_code=str(get('supplier_code') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,tuple(offers),product_key))
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,tuple(offers),alias,supplier_code,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé. Corrigez d'abord:\n","تم إلغاء الاستيراد. صحح أولاً:\n")+"\n".join(errors[:15]),parent=self);return
@@ -589,9 +589,9 @@ class ProductsFrame(ttk.Frame):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[];group_fingerprints={};file_group_barcodes={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
-                product_key=meta[-1] if meta else ''
+                bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,product_key=meta
                 if product_key:
-                    fingerprint=(name,cat,buy,sell,stock,alert,meta[-4],meta[-3],meta[-2])
+                    fingerprint=(name,cat,buy,sell,stock,alert,sku,fraction,offers,alias,supplier_code)
                     if product_key in group_fingerprints and group_fingerprints[product_key]!=fingerprint:
                         errors.append(f"Ligne {line}: product key {product_key} contient des données produit incohérentes")
                     else:group_fingerprints[product_key]=fingerprint
@@ -652,7 +652,7 @@ class ProductsFrame(ttk.Frame):
                 imported_groups={}
                 for action,item,target in resolved:
                     _,barcode,name,cat,buy,sell,stock,alert,*meta=item
-                    bar_label,mult,pack_price,sku,fraction,offers,product_key=meta
+                    bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,product_key=meta
                     if action=="skip":skipped+=1;continue
                     catids=[]
                     for cat_name in cat:
@@ -664,7 +664,7 @@ class ProductsFrame(ttk.Frame):
                         if product_key and product_key in imported_groups and imported_groups[product_key]!=pid:
                             raise ValueError(self.tr("Un même product key ne peut pas mettre à jour plusieurs articles existants.","لا يمكن لنفس مفتاح المنتوج تحديث عدة منتجات موجودة."))
                         if product_key:imported_groups[product_key]=pid
-                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
+                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,alias,supplier_code,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,catids)
                         c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
@@ -680,7 +680,7 @@ class ProductsFrame(ttk.Frame):
                         if barcode and not c.execute("SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?",(pid,barcode)).fetchone():
                             c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                         continue
-                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,allow_fraction) VALUES(?,?,?,?,0,?,?,?)",(name,catid,buy,sell,alert,sku,fraction));pid=cur.lastrowid
+                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias,supplier_code,fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,catids)
                     if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
                     if group_key:imported_groups[group_key]=pid
