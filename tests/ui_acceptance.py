@@ -203,6 +203,43 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         families={r[0] for r in c.execute("""SELECT cat.name FROM product_categories pc JOIN categories cat ON cat.id=pc.category_id WHERE pc.product_id=?""",(imported_multi,)).fetchall()}
         assert families=={'Family A','Family B'}, families
     multi_import_host.destroy()
+    # Quantity-pricing offers must survive catalogue exchange exactly.
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('TEST Quantity Offers',1000,1)")
+        offers_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(offers_pid,'OFFERS123'))
+        c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[
+            (offers_pid,2,800,'UNIT'),(offers_pid,3,2500,'BUNDLE')
+        ])
+    offers_export=Path(temp.name)/'catalogue-quantity-offers.xlsx'
+    offers_export_host=__import__('tkinter').Toplevel(app)
+    offers_products=ProductsFrame(offers_export_host);offers_products.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(offers_export)):
+        offers_products.export_catalogue()
+    offers_export_host.destroy()
+    offers_wb=load_workbook(offers_export)
+    offers_ws=offers_wb.active
+    offers_headers=[cell.value for cell in offers_ws[1]]
+    offers_name_col=offers_headers.index('article')+1
+    for row_idx in range(offers_ws.max_row,1,-1):
+        if offers_ws.cell(row_idx,offers_name_col).value!='TEST Quantity Offers':
+            offers_ws.delete_rows(row_idx,1)
+    offers_wb.save(offers_export);offers_wb.close()
+    with connect() as c:
+        c.execute("DELETE FROM products WHERE id=?",(offers_pid,))
+    offers_import_host=__import__('tkinter').Toplevel(app)
+    offers_import=ProductsFrame(offers_import_host);offers_import.pack(fill='both',expand=True);app.update()
+    def accept_offers_preview():
+        preview=next(w for w in offers_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_offers_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(offers_export)):
+        offers_import.import_excel()
+    with connect() as c:
+        imported_offers_pid=c.execute("SELECT id FROM products WHERE active=1 AND name='TEST Quantity Offers'").fetchone()[0]
+        imported_offers=[tuple(r) for r in c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=? ORDER BY min_qty",(imported_offers_pid,)).fetchall()]
+        assert imported_offers==[(2.0,800,'UNIT'),(3.0,2500,'BUNDLE')], imported_offers
+    offers_import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
