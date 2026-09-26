@@ -581,8 +581,6 @@ class SaleFrame(ttk.Frame):
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
-        with connect() as conn:
-            display_prices={r['id']:resolve_unit_price(r['id'],1,None,conn,self.price_grid_id) for r in rows}
         columns=max(1,self.card_canvas.winfo_width()//167)
         for row in rows:
             self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(display_prices[row['id']],''),f"{row['stock_qty']:g}"))
@@ -593,6 +591,9 @@ class SaleFrame(ttk.Frame):
         photo_rows=search_products(*photo_filter,limit=61,images_only=True,offset=self.photo_offset)
         self.photo_more.configure(state='normal' if len(photo_rows)>60 else 'disabled')
         photo_rows=photo_rows[:60]
+        visible_rows={r['id']:r for r in [*rows,*photo_rows]}
+        with connect() as conn:
+            display_prices={pid:resolve_unit_price(pid,1,None,conn,self.price_grid_id) for pid in visible_rows}
         for index,row in enumerate(photo_rows):
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',highlightthickness=1,highlightbackground='#E2E8F0',width=155,height=168,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
