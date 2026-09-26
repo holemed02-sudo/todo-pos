@@ -158,9 +158,11 @@ class CoreTests(unittest.TestCase):
    row=c.execute('SELECT qty,qty_multiplier,pricing_mode,barcode_used FROM sale_items WHERE sale_id=?',(sale['id'],)).fetchone()
   self.assertEqual((row['qty'],row['qty_multiplier'],row['pricing_mode'],row['barcode_used']),(12,6,'UNIT','CARTON6'))
  def test_hold_persists_discount(self):
-  with db.connect() as c:seller=c.execute("INSERT INTO sellers(name) VALUES('Held Seller')").lastrowid
-  hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'Held',200,seller_id=seller)
-  state=resume_held(hid);self.assertEqual(state['discount_cents'],200);self.assertEqual(state['seller_id'],seller);self.assertEqual(len(list_held()),1)
+  with db.connect() as c:
+   seller=c.execute("INSERT INTO sellers(name) VALUES('Held Seller')").lastrowid
+   grid=c.execute("INSERT INTO price_grids(name,active) VALUES('Held Grid',1)").lastrowid
+  hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'Held',200,seller_id=seller,price_grid_id=grid)
+  state=resume_held(hid);self.assertEqual(state['discount_cents'],200);self.assertEqual(state['seller_id'],seller);self.assertEqual(state['price_grid_id'],grid);self.assertEqual(len(list_held()),1)
   sale=complete_sale(self.session,self.uid,state['cart'],'CASH',800,200,hid)
   self.assertEqual(sale['total_cents'],800);self.assertEqual(len(list_held()),0)
   with self.assertRaises(ValueError):complete_sale(self.session,self.uid,state['cart'],'CASH',800,200,hid)
