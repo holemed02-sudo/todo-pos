@@ -439,6 +439,10 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     button(grid_dialog,'TEST PRO').invoke();app.update()
     assert sale.price_grid_id==gid
     assert sale.totals()[1]==500
+    sale.change(1)
+    assert sale.totals()[1]==750
+    sale.change(-1)
+    assert sale.totals()[1]==500
     # Return to the normal grid so later acceptance scenarios are isolated.
     sale.price_grid_id=None;sale.price_grid_name=sale.tr('Normal','عادي')
     sale.cart[0].pop('manual_unit_price',None)

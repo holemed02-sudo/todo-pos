@@ -775,7 +775,7 @@ class SaleFrame(ttk.Frame):
         else:
             if not x.get('allow_fraction',False) and not float(qty).is_integer():
                 messagebox.showerror('ToDo',self.tr('Quantité entière requise.','الكمية يجب أن تكون عدداً صحيحاً.'),parent=self);return
-            try:unit=Decimal(x['unit_price_cents']) if x.get('manual_unit_price') else resolve_unit_price(x['product_id'],qty,x.get('barcode_id'))
+            try:unit=Decimal(x['unit_price_cents']) if x.get('manual_unit_price') else resolve_unit_price(x['product_id'],qty,x.get('barcode_id'),grid_id=self.price_grid_id)
             except ValueError as e:
                 messagebox.showerror('ToDo',str(e),parent=self);return
             x.update(qty=qty,unit_price_cents=str(unit))
