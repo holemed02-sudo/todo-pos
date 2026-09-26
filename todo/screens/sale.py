@@ -677,7 +677,7 @@ class SaleFrame(ttk.Frame):
         canvas=tk.Canvas(w,highlightthickness=0);scroll=ttk.Scrollbar(w,orient='vertical',command=canvas.yview);inner=ttk.Frame(canvas)
         inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')));canvas.create_window((0,0),window=inner,anchor='nw');canvas.configure(yscrollcommand=scroll.set);canvas.pack(side='left',fill='both',expand=True,padx=(16,0),pady=(0,16));scroll.pack(side='right',fill='y',padx=(0,16),pady=(0,16))
         with connect() as conn:
-            details=[(r,conn.execute('SELECT stock_qty,image_path FROM products WHERE id=?',(r['id'],)).fetchone(),resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn)) for r in rows]
+            details=[(r,conn.execute('SELECT stock_qty,image_path FROM products WHERE id=?',(r['id'],)).fetchone(),resolve_unit_price(r['id'],r['qty_multiplier'],r['barcode_id'],conn,self.price_grid_id)) for r in rows]
         def choose(r):w.destroy();self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
         for i,(r,p,price) in enumerate(details):
             card=tk.Frame(inner,bg='white',bd=1,relief='solid',cursor='hand2');card.grid(row=i//3,column=i%3,padx=7,pady=7,sticky='nsew')
