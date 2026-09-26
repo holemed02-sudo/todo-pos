@@ -372,7 +372,7 @@ def migrate(conn):
         'products': {'supplier_code': "TEXT NOT NULL DEFAULT ''", 'alias': "TEXT NOT NULL DEFAULT ''", 'is_misc': 'INTEGER NOT NULL DEFAULT 0'},
         'stock_movements': {'user_id': 'INTEGER REFERENCES users(id)', 'old_qty': 'REAL'},
         'sale_items': {'net_total_cents': 'INTEGER', 'qty_multiplier': 'REAL NOT NULL DEFAULT 1', 'pricing_mode': "TEXT NOT NULL DEFAULT 'UNIT'"},
-        'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0', 'client_id': 'INTEGER REFERENCES clients(id)'},
+        'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0', 'client_id': 'INTEGER REFERENCES clients(id)', 'seller_id': 'INTEGER REFERENCES sellers(id)'},
         'returns': {'refund_paid_cents': 'INTEGER'},
         'client_payments': {'session_id': 'INTEGER REFERENCES cash_sessions(id)', 'user_id': 'INTEGER REFERENCES users(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CASH'"},
         'sales': {'client_id': 'INTEGER REFERENCES clients(id)', 'seller_id': 'INTEGER REFERENCES sellers(id)'},
