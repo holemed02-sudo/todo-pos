@@ -210,6 +210,30 @@ class CoreTests(unittest.TestCase):
   with zipfile.ZipFile(missing,'w',zipfile.ZIP_DEFLATED) as z:z.write(good_db,'todo.db')
   with self.assertRaises(ValueError):backup.restore_full_backup(missing)
 
+ def test_full_backup_failure_rolls_back_database_and_media(self):
+  from unittest.mock import patch
+  backup.BASE=Path(self.temp.name)
+  products=backup.BASE/'assets'/'products';products.mkdir(parents=True)
+  media=backup.BASE/'customer_media';media.mkdir()
+  (products/'photo.jpg').write_bytes(b'before-photo')
+  (media/'promo.mp4').write_bytes(b'before-video')
+  with db.connect() as c:c.execute("UPDATE products SET name='Before failed restore' WHERE id=?",(self.pid,))
+  archive=backup.create_full_backup()
+  with db.connect() as c:c.execute("UPDATE products SET name='Current local' WHERE id=?",(self.pid,))
+  (products/'photo.jpg').write_bytes(b'current-photo')
+  (media/'promo.mp4').write_bytes(b'current-video')
+  original_init=backup.init_db
+  calls={'n':0}
+  def fail_once():
+   calls['n']+=1
+   if calls['n']==1:raise RuntimeError('forced restore failure')
+   return original_init()
+  with patch.object(backup,'init_db',side_effect=fail_once):
+   with self.assertRaises(RuntimeError):backup.restore_full_backup(archive)
+  with db.connect() as c:self.assertEqual(c.execute('SELECT name FROM products WHERE id=?',(self.pid,)).fetchone()[0],'Current local')
+  self.assertEqual((products/'photo.jpg').read_bytes(),b'current-photo')
+  self.assertEqual((media/'promo.mp4').read_bytes(),b'current-video')
+
  def test_restore_and_invalid_backup(self):
   saved=backup.create_backup();self.sell();backup.restore_backup(saved);self.assertEqual(self.stock(),20)
   invalid=Path(self.temp.name)/'bad.db';invalid.write_bytes(b'not sqlite')
