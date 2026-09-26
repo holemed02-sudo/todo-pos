@@ -544,6 +544,7 @@ class ProductsFrame(ttk.Frame):
     def import_excel(self):
         path=filedialog.askopenfilename(parent=self,filetypes=[("Excel","*.xlsx")],title=self.tr("Importer les articles","استيراد المنتجات"))
         if not path:return
+        created_media=[]
         try:
             from openpyxl import load_workbook
             wb=load_workbook(path,data_only=True);ws=wb.active
