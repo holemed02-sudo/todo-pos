@@ -900,7 +900,7 @@ class SaleFrame(ttk.Frame):
         label=simpledialog.askstring(self.tr('Attente','انتظار'),self.tr('Nom ou numéro du ticket:','اسم أو رقم التذكرة:'),parent=self)
         if label is None:return
         try:
-            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id)
+            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id,seller_id=self.seller_id)
             self.clear();self.status.config(text=self.tr('Ticket et remise sauvegardés.','تم حفظ التذكرة والتخفيض.'))
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
@@ -920,6 +920,7 @@ class SaleFrame(ttk.Frame):
             state=resume_held(int(tree.selection()[0]))
             self.cart=state['cart'];self.ticket_discount_cents=state['discount_cents'];self.held_id=state['held_id']
             self.client_id=state.get('client_id');self.update_client_label()
+            self.seller_id=state.get('seller_id');self.update_seller_label()
             self.refresh();w.destroy();self.focus_search()
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
         ttk.Button(w,text=self.tr('Reprendre','استئناف'),command=resume).pack(pady=8)
