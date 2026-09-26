@@ -483,7 +483,7 @@ class ProductsFrame(ttk.Frame):
             from openpyxl import Workbook
             from openpyxl.drawing.image import Image as XLImage
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité","alias","code fournisseur","image"])
+            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité","alias","code fournisseur","image","grilles prix"])
             with connect() as c:
                 rows=c.execute("""SELECT p.id,p.sku,p.alias,p.supplier_code,p.image_path,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
@@ -495,6 +495,14 @@ class ProductsFrame(ttk.Frame):
                     ORDER BY pc.product_id,c.name COLLATE NOCASE""").fetchall()
                 quantity_rows=c.execute("""SELECT product_id,min_qty,unit_price_cents,pricing_mode
                     FROM quantity_prices WHERE active=1 ORDER BY product_id,min_qty""").fetchall()
+                grid_rows=c.execute("""SELECT pg.product_id,g.name,pg.unit_price_cents
+                    FROM product_grid_prices pg JOIN price_grids g ON g.id=pg.grid_id
+                    WHERE g.active=1 ORDER BY pg.product_id,g.name COLLATE NOCASE""").fetchall()
+            grids_by_product={}
+            for grid in grid_rows:
+                grids_by_product.setdefault(grid["product_id"],[]).append(
+                    f'{grid["name"]}@{grid["unit_price_cents"]/100:.2f}'
+                )
             offers_by_product={}
             for offer in quantity_rows:
                 offers_by_product.setdefault(offer["product_id"],[]).append(
@@ -510,7 +518,7 @@ class ProductsFrame(ttk.Frame):
                 exchange_key=f"TODO-{seq:06d}"
                 for code_index,code in enumerate(codes):
                     all_categories=categories_by_product.get(r["id"]) or [r["category"]]
-                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[])),r["alias"],r["supplier_code"],""])
+                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[])),r["alias"],r["supplier_code"],""," | ".join(grids_by_product.get(r["id"],[]))])
                     if code_index==0:
                         image_path=abs_image(r["image_path"])
                         if image_path:
@@ -527,7 +535,7 @@ class ProductsFrame(ttk.Frame):
                             except Exception:
                                 pass
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34,"P":24,"Q":20,"R":14}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34,"P":24,"Q":20,"R":14,"S":34}.items():ws.column_dimensions[col].width=width
             wb.save(path)
             messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s), stock inclus. Les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج مع المخزون. لم يتم تصدير المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
@@ -539,7 +547,7 @@ class ProductsFrame(ttk.Frame):
             from openpyxl import load_workbook
             wb=load_workbook(path,data_only=True);ws=wb.active
             headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
-            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'alias':['alias','nom alternatif'],'supplier_code':['code fournisseur','supplier code','supplier_code'],'image':['image','photo'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
+            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'alias':['alias','nom alternatif'],'supplier_code':['code fournisseur','supplier code','supplier_code'],'image':['image','photo'],'grids':['grilles prix','grilles','price grids'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
@@ -590,13 +598,22 @@ class ProductsFrame(ttk.Frame):
                             if not math.isfinite(min_qty) or min_qty<=0 or offer_price<0 or mode not in ('UNIT','BUNDLE'):
                                 raise ValueError(self.tr("offre quantité invalide","عرض الكمية غير صالح"))
                             offers.append((min_qty,offer_price,mode))
+                    grids=None if idx.get('grids') is None else []
+                    raw_grids='' if grids is None else str(get('grids') or '').strip()
+                    if raw_grids:
+                        for token in raw_grids.split('|'):
+                            parts=[x.strip() for x in token.split('@')]
+                            if len(parts)!=2 or not parts[0]:raise ValueError(self.tr("grille prix invalide","لائحة الأثمان غير صالحة"))
+                            grid_price=to_cents(parts[1])
+                            if grid_price<0:raise ValueError(self.tr("grille prix invalide","لائحة الأثمان غير صالحة"))
+                            grids.append((parts[0],grid_price))
                     sku=str(get('sku') or '').strip()
                     alias=None if idx.get('alias') is None else str(get('alias') or '').strip()
                     supplier_code=None if idx.get('supplier_code') is None else str(get('supplier_code') or '').strip()
                     product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
                     image_data=embedded_images.get(line)
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,None if offers is None else tuple(offers),alias,supplier_code,image_data,product_key))
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,None if offers is None else tuple(offers),alias,supplier_code,None if grids is None else tuple(grids),image_data,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 wb.close()
@@ -621,9 +638,9 @@ class ProductsFrame(ttk.Frame):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[];group_fingerprints={};file_group_barcodes={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
-                bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,image_data,product_key=meta
+                bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,grids,image_data,product_key=meta
                 if product_key:
-                    fingerprint=(name,cat,buy,sell,stock,alert,sku,fraction,offers,alias,supplier_code)
+                    fingerprint=(name,cat,buy,sell,stock,alert,sku,fraction,offers,alias,supplier_code,grids)
                     if product_key in group_fingerprints and group_fingerprints[product_key]!=fingerprint:
                         errors.append(f"Ligne {line}: product key {product_key} contient des données produit incohérentes")
                     else:group_fingerprints[product_key]=fingerprint
@@ -697,7 +714,7 @@ class ProductsFrame(ttk.Frame):
                 imported_groups={}
                 for action,item,target in resolved:
                     _,barcode,name,cat,buy,sell,stock,alert,*meta=item
-                    bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,image_data,product_key=meta
+                    bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,grids,image_data,product_key=meta
                     if action=="skip":skipped+=1;continue
                     catids=[]
                     for cat_name in cat:
@@ -717,6 +734,12 @@ class ProductsFrame(ttk.Frame):
                         if offers is not None:
                             c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
                             if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
+                        if grids is not None:
+                            c.execute("DELETE FROM product_grid_prices WHERE product_id=?",(pid,))
+                            for grid_name,grid_price in grids:
+                                c.execute("INSERT OR IGNORE INTO price_grids(name) VALUES(?)",(grid_name,))
+                                grid_id=c.execute("SELECT id FROM price_grids WHERE name=?",(grid_name,)).fetchone()[0]
+                                c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(pid,grid_id,grid_price))
                         current_stock=float(c.execute("SELECT stock_qty FROM products WHERE id=?",(pid,)).fetchone()[0])
                         if stock is not None and abs(stock-current_stock)>1e-9:
                             apply_stock_movement(c,pid,stock-current_stock,'ADJUSTMENT',buy,'import',pid,'Import Excel — stock compté')
@@ -732,6 +755,11 @@ class ProductsFrame(ttk.Frame):
                     cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,image_path,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias or '',supplier_code or '',imported_image,fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,catids)
                     if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
+                    if grids:
+                        for grid_name,grid_price in grids:
+                            c.execute("INSERT OR IGNORE INTO price_grids(name) VALUES(?)",(grid_name,))
+                            grid_id=c.execute("SELECT id FROM price_grids WHERE name=?",(grid_name,)).fetchone()[0]
+                            c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(pid,grid_id,grid_price))
                     if group_key:imported_groups[group_key]=pid
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                     elif imported_image:c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(pid,_internal_product_barcode(pid)))
