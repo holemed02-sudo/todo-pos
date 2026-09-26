@@ -176,6 +176,16 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with patch('screens.products.filedialog.asksaveasfilename',return_value=str(multi_export)):
         multi_products.export_catalogue()
     multi_export_host.destroy()
+    # Keep only this product in the round-trip file so unrelated existing products
+    # cannot open barcode-conflict dialogs and block the acceptance test.
+    multi_wb=load_workbook(multi_export)
+    multi_ws=multi_wb.active
+    multi_headers=[cell.value for cell in multi_ws[1]]
+    name_col=multi_headers.index('article')+1
+    for row_idx in range(multi_ws.max_row,1,-1):
+        if multi_ws.cell(row_idx,name_col).value!='TEST Multi Family':
+            multi_ws.delete_rows(row_idx,1)
+    multi_wb.save(multi_export);multi_wb.close()
     # Remove the source product/categories so the import proves round-trip preservation.
     with connect() as c:
         c.execute("DELETE FROM products WHERE id=?",(multi_pid,))
