@@ -581,9 +581,11 @@ class SaleFrame(ttk.Frame):
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
+        with connect() as conn:
+            display_prices={r['id']:resolve_unit_price(r['id'],1,None,conn,self.price_grid_id) for r in rows}
         columns=max(1,self.card_canvas.winfo_width()//167)
         for row in rows:
-            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(row['sale_price_cents'],''),f"{row['stock_qty']:g}"))
+            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(display_prices[row['id']],''),f"{row['stock_qty']:g}"))
         photo_filter=(self.query.get(),self.categories[self.cat.get()])
         if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
         # The tactile grid intentionally contains only products with an image.
@@ -597,7 +599,7 @@ class SaleFrame(ttk.Frame):
             thumb=self.thumbnail(row,90)
             picture=tk.Label(card,image=thumb or '',text='' if thumb else '📦',bg='white',font=('Segoe UI',26));picture.pack(fill='both',expand=True)
             tk.Label(card,text=row['name'],bg='white',fg='#0F172A',font=('Segoe UI',9,'bold'),wraplength=140,pady=2).pack()
-            tk.Label(card,text=fmt(row['sale_price_cents'],self.currency),bg='#2563EB',fg='white',font=('Segoe UI',11,'bold'),pady=3).pack(fill='x')
+            tk.Label(card,text=fmt(display_prices.get(row['id'],row['sale_price_cents']),self.currency),bg='#2563EB',fg='white',font=('Segoe UI',11,'bold'),pady=3).pack(fill='x')
             for widget in [card,*card.winfo_children()]:
                 widget.bind('<Button-1>',lambda e,pid=row['id']:self.add_product(pid))
 
