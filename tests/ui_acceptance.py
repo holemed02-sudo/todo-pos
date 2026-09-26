@@ -142,6 +142,24 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with connect() as c:
         assert c.execute("SELECT 1 FROM products p JOIN product_barcodes b ON b.product_id=p.id WHERE p.active=1 AND p.name='Imported Active Product' AND b.barcode='INACTIVE123'").fetchone()
     import_host.destroy()
+    # Legacy catalogues may contain device-local TODO-* pseudo barcodes. Import the
+    # product but never persist that internal id as a real barcode on this device.
+    legacy_path=Path(temp.name)/'catalogue-legacy-internal.xlsx'
+    wb=Workbook();ws=wb.active
+    ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
+    ws.append(["TODO-LEGACY","TODO-00000042","Imported Legacy Internal","Général","1.00","2.00",1,0,"",1,None,"",0]);wb.save(legacy_path);wb.close()
+    legacy_host=__import__('tkinter').Toplevel(app)
+    legacy_import=ProductsFrame(legacy_host);legacy_import.pack(fill='both',expand=True);app.update()
+    def accept_legacy_preview():
+        preview=next(w for w in legacy_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_legacy_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(legacy_path)):
+        legacy_import.import_excel()
+    with connect() as c:
+        legacy_pid=c.execute("SELECT id FROM products WHERE active=1 AND name='Imported Legacy Internal'").fetchone()[0]
+        assert c.execute("SELECT COUNT(*) FROM product_barcodes WHERE product_id=?",(legacy_pid,)).fetchone()[0]==0
+    legacy_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
