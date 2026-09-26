@@ -515,7 +515,11 @@ class ProductsFrame(ttk.Frame):
                         image_path=abs_image(r["image_path"])
                         if image_path:
                             try:
-                                xl_image=XLImage(str(image_path));xl_image.thumbnail((80,80))
+                                xl_image=XLImage(str(image_path))
+                                max_side=80
+                                scale=min(1,max_side/max(float(xl_image.width or 1),float(xl_image.height or 1)))
+                                xl_image.width=max(1,int(float(xl_image.width or 1)*scale))
+                                xl_image.height=max(1,int(float(xl_image.height or 1)*scale))
                                 row_no=ws.max_row
                                 ws.add_image(xl_image,f"R{row_no}")
                                 ws.row_dimensions[row_no].height=64
