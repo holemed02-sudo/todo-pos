@@ -116,10 +116,20 @@ def restore_full_backup(source):
                     shutil.rmtree(target)
             init_db()
         except Exception:
-            # Restore the automatically-created safety snapshot if migration fails.
-            with zipfile.ZipFile(safety,'r') as z:z.extract('todo.db',temp/'rollback')
-            with closing(sqlite3.connect((temp/'rollback'/'todo.db').as_uri()+'?mode=ro',uri=True)) as origin:
+            # Restore the automatically-created safety snapshot completely if migration fails:
+            # database plus all user media, so rollback really returns to the pre-restore state.
+            rollback=temp/'rollback'
+            with zipfile.ZipFile(safety,'r') as z:z.extractall(rollback)
+            with closing(sqlite3.connect((rollback/'todo.db').as_uri()+'?mode=ro',uri=True)) as origin:
                 with connect() as target:origin.backup(target)
+            for rel in ('assets/products','customer_media'):
+                incoming=rollback/rel;target=BASE/rel
+                if incoming.exists():
+                    if target.exists():shutil.rmtree(target)
+                    target.parent.mkdir(parents=True,exist_ok=True)
+                    shutil.copytree(incoming,target)
+                elif target.exists():
+                    shutil.rmtree(target)
             init_db()
             raise
     return safety
