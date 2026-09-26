@@ -609,6 +609,7 @@ class SaleFrame(ttk.Frame):
         if self.cart or self.last_sale_snapshot is None:
             return
         self.last_sale_snapshot=None
+        self.last_sale_discount_cents=0
         self.last_sale_summary.config(
             text=self.tr('DERNIÈRE VENTE  ·  FACTURE —  ·  PAYÉ —  ·  RENDU —',
                          'آخر بيع  ·  الفاتورة —  ·  المؤدى —  ·  الباقي —')
@@ -730,9 +731,11 @@ class SaleFrame(ttk.Frame):
         self.ticket.delete(*self.ticket.get_children())
         sub,total=self.totals()
         display_cart=self.cart if self.cart else (self.last_sale_snapshot or [])
+        display_ticket_discount=self.ticket_discount_cents
         if not self.cart and self.last_sale_snapshot:
             sub=sum(line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in display_cart)
-            total=max(0,sub-self.ticket_discount_cents)
+            display_ticket_discount=self.last_sale_discount_cents
+            total=max(0,sub-display_ticket_discount)
         weights=[line_total(x['unit_price_cents'],x['qty'])-int(x.get('discount_cents',0)) for x in display_cart]
         nets=allocate(total,weights)
         for i,(x,net) in enumerate(zip(display_cart,nets)):
@@ -748,7 +751,7 @@ class SaleFrame(ttk.Frame):
         if self.cart:
             chosen=str(min(index if index is not None else len(self.cart)-1,len(self.cart)-1))
             self.ticket.selection_set(chosen);self.ticket.see(chosen)
-        self.subtotal_label.config(text=f"{self.tr('Sous-total','المجموع الفرعي')} {fmt(sub,self.currency)}  ·  {self.tr('Remise ticket','تخفيض التذكرة')} {fmt(self.ticket_discount_cents,self.currency)}")
+        self.subtotal_label.config(text=f"{self.tr('Sous-total','المجموع الفرعي')} {fmt(sub,self.currency)}  ·  {self.tr('Remise ticket','تخفيض التذكرة')} {fmt(display_ticket_discount,self.currency)}")
         item_count=len(display_cart)
         completed=not self.cart and bool(self.last_sale_snapshot)
         if completed:
@@ -888,7 +891,8 @@ class SaleFrame(ttk.Frame):
     def clear(self,preserve_last_sale=False):
         self._cancel_pending_input_jobs()
         self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.price_grid_id=None;self.price_grid_name=self.tr('Normal','عادي');self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
-        if not preserve_last_sale:self.last_sale_snapshot=None
+        if not preserve_last_sale:
+            self.last_sale_snapshot=None;self.last_sale_discount_cents=0
         self.refresh();self.focus_search()
 
     def cancel(self):
@@ -969,6 +973,7 @@ class SaleFrame(ttk.Frame):
             # The completed ticket stays visible until the first item of the next sale.
             # Business cart state is cleared immediately so the completed sale cannot be submitted twice.
             self.last_sale_snapshot=[dict(line) for line in self.cart]
+            self.last_sale_discount_cents=self.ticket_discount_cents
             self.clear(preserve_last_sale=True)
             self.status.config(text=self.tr(f"Dernière vente : {fmt(total,self.currency)} · Reçu : {fmt(paid,self.currency)} · Monnaie : {fmt(result['change_cents'],self.currency)} · {result['sale_no']}",f"آخر بيع: {fmt(total,self.currency)} · المستلم: {fmt(paid,self.currency)} · الباقي: {fmt(result['change_cents'],self.currency)} · {result['sale_no']}"))
             labels={'CASH':self.tr('ESPÈCES','نقداً'),'CARD':self.tr('CARTE','بطاقة'),
