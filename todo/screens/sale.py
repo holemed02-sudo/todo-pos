@@ -887,7 +887,7 @@ class SaleFrame(ttk.Frame):
 
     def clear(self,preserve_last_sale=False):
         self._cancel_pending_input_jobs()
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.price_grid_id=None;self.price_grid_name=self.tr('Normal','عادي');self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
         if not preserve_last_sale:self.last_sale_snapshot=None
         self.refresh();self.focus_search()
 
@@ -900,7 +900,7 @@ class SaleFrame(ttk.Frame):
         label=simpledialog.askstring(self.tr('Attente','انتظار'),self.tr('Nom ou numéro du ticket:','اسم أو رقم التذكرة:'),parent=self)
         if label is None:return
         try:
-            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id,seller_id=self.seller_id)
+            hold_sale(self.app.user['id'],self.cart,label,self.ticket_discount_cents,self.held_id,client_id=self.client_id,seller_id=self.seller_id,price_grid_id=self.price_grid_id)
             self.clear();self.status.config(text=self.tr('Ticket et remise sauvegardés.','تم حفظ التذكرة والتخفيض.'))
         except Exception as e:messagebox.showerror('ToDo',str(e),parent=self)
 
@@ -921,6 +921,12 @@ class SaleFrame(ttk.Frame):
             self.cart=state['cart'];self.ticket_discount_cents=state['discount_cents'];self.held_id=state['held_id']
             self.client_id=state.get('client_id');self.update_client_label()
             self.seller_id=state.get('seller_id');self.update_seller_label()
+            self.price_grid_id=state.get('price_grid_id')
+            if self.price_grid_id is not None:
+                with connect() as conn:grid=conn.execute('SELECT name FROM price_grids WHERE id=? AND active=1',(self.price_grid_id,)).fetchone()
+                if grid:self.price_grid_name=grid['name']
+                else:self.price_grid_id=None;self.price_grid_name=self.tr('Normal','عادي')
+            else:self.price_grid_name=self.tr('Normal','عادي')
             self.refresh();w.destroy();self.focus_search()
         tree.bind('<Return>',resume);tree.bind('<Double-1>',resume)
         ttk.Button(w,text=self.tr('Reprendre','استئناف'),command=resume).pack(pady=8)
