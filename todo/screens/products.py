@@ -512,9 +512,11 @@ class ProductsFrame(ttk.Frame):
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
-            if idx['name'] is None:raise ValueError(self.tr("Colonne Article/Nom obligatoire.","عمود المنتوج/الاسم إجباري."))
+            if idx['name'] is None:
+                wb.close()
+                raise ValueError(self.tr("Colonne Article/Nom obligatoire.","عمود المنتوج/الاسم إجباري."))
             preview=[];errors=[]
-            for line,row in enumerate(ws.iter_rows(values_only=True),start=2):
+            for line,row in enumerate(ws.iter_rows(min_row=2,values_only=True),start=2):
                 if not any(v not in (None,'') for v in row):continue
                 try:
                     get=lambda k: row[idx[k]] if idx[k] is not None and idx[k]<len(row) else None
@@ -541,8 +543,9 @@ class ProductsFrame(ttk.Frame):
             # Refuse to guess: warn the operator to format barcode cells as Text before importing.
             numeric_barcode_lines=[]
             if idx['barcode'] is not None:
-                for line,row in enumerate(ws.iter_rows(values_only=True),start=2):
+                for line,row in enumerate(ws.iter_rows(min_row=2,values_only=True),start=2):
                     if idx['barcode']<len(row) and isinstance(row[idx['barcode']],(int,float)) and not isinstance(row[idx['barcode']],bool):numeric_barcode_lines.append(line)
+            wb.close()
             if numeric_barcode_lines:
                 sample=", ".join(map(str,numeric_barcode_lines[:10]))
                 if not messagebox.askyesno(self.tr("Import Excel","استيراد Excel"),self.tr(f"Barcode numérique détecté (lignes {sample}).\n\nExcel peut supprimer les zéros au début. Vérifiez le fichier et mettez la colonne Barcode au format Texte si nécessaire.\n\nContinuer quand même ?",f"تم اكتشاف باركود رقمي (الأسطر {sample}).\n\nقد يحذف Excel الأصفار في البداية. تحقق من الملف واجعل عمود Barcode بتنسيق نص عند الحاجة.\n\nهل تريد المتابعة؟"),parent=self):return
@@ -577,6 +580,7 @@ class ProductsFrame(ttk.Frame):
                         conflicts.append(f"Ligne {line}: {barcode} partagé entre plusieurs produits (première ligne {seen[barcode][0]})")
                 else:seen[barcode]=(line,product_key)
             if errors:
+                wb.close()
                 messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé: le fichier contient des groupes produit incohérents ou des barcodes dupliqués dans le même produit.\n","تم إلغاء الاستيراد: الملف يحتوي مجموعات منتوج غير متناسقة أو باركود مكرر داخل نفس المنتوج.\n")+"\n".join(errors[:15]),parent=self);return
             w=tk.Toplevel(self);w.title(self.tr("Aperçu import Excel","معاينة استيراد Excel"));w.geometry("980x560");w.transient(self.winfo_toplevel());w.grab_set()
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
