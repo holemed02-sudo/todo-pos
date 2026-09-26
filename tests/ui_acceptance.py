@@ -109,7 +109,9 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with patch('screens.products.filedialog.asksaveasfilename',return_value=str(export_path)):
         products_frame.export_catalogue()
     from openpyxl import load_workbook
-    exported=list(load_workbook(export_path,read_only=True,data_only=True).active.iter_rows(values_only=True))
+    exported_wb=load_workbook(export_path,read_only=True,data_only=True)
+    exported=list(exported_wb.active.iter_rows(values_only=True))
+    exported_wb.close()
     header=exported[0];barcode_col=header.index('barcode');name_col=header.index('article')
     rows_by_name={}
     for row in exported[1:]:rows_by_name.setdefault(row[name_col],[]).append(row)
@@ -122,7 +124,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     import_path=Path(temp.name)/'catalogue-import-inactive-conflict.xlsx'
     wb=Workbook();ws=wb.active
     ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
-    ws.append(["TODO-000001","INACTIVE123","Imported Active Product","Général",1,2,3,0,"",1,None,"",0]);wb.save(import_path)
+    ws.append(["TODO-000001","INACTIVE123","Imported Active Product","Général","1.00","2.00",3,0,"",1,None,"",0]);wb.save(import_path);wb.close()
     with connect() as c:
         c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('Old Inactive Local',100,0)")
         inactive_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
