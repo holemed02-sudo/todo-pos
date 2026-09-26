@@ -568,7 +568,7 @@ class ProductsFrame(ttk.Frame):
                     supplier_code=None if idx.get('supplier_code') is None else str(get('supplier_code') or '').strip()
                     product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,tuple(offers),alias,supplier_code,product_key))
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,None if offers is None else tuple(offers),alias,supplier_code,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
                 messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé. Corrigez d'abord:\n","تم إلغاء الاستيراد. صحح أولاً:\n")+"\n".join(errors[:15]),parent=self);return
