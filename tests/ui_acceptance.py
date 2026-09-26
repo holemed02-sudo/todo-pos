@@ -298,6 +298,51 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         assert tuple(legacy_meta)==('Keep Alias','KEEP-SUP'), tuple(legacy_meta)
         assert legacy_offers==[(2.0,700,'UNIT')], legacy_offers
     legacy_update_host.destroy()
+    # Image-only products must carry their image through catalogue exchange and
+    # receive a fresh device-local TODO-* barcode after import.
+    from PIL import Image as PILImage
+    image_source=Path(temp.name)/'exchange-photo.png'
+    PILImage.new('RGB',(24,24),'white').save(image_source)
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Image Exchange',600,1,'')")
+        image_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+    from services.images import import_image as import_product_image
+    imported_rel=import_product_image(str(image_source))
+    with connect() as c:
+        c.execute("UPDATE products SET image_path=? WHERE id=?",(imported_rel,image_pid))
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(image_pid,f'TODO-{image_pid:08d}'))
+    image_export=Path(temp.name)/'catalogue-image-exchange.xlsx'
+    image_export_host=__import__('tkinter').Toplevel(app)
+    image_products=ProductsFrame(image_export_host);image_products.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(image_export)):
+        image_products.export_catalogue()
+    image_export_host.destroy()
+    image_wb=load_workbook(image_export)
+    image_ws=image_wb.active
+    image_headers=[cell.value for cell in image_ws[1]]
+    image_name_col=image_headers.index('article')+1
+    for row_idx in range(image_ws.max_row,1,-1):
+        if image_ws.cell(row_idx,image_name_col).value!='TEST Image Exchange':
+            image_ws.delete_rows(row_idx,1)
+    image_wb.save(image_export);image_wb.close()
+    with connect() as c:
+        c.execute("DELETE FROM products WHERE id=?",(image_pid,))
+    image_import_host=__import__('tkinter').Toplevel(app)
+    image_import=ProductsFrame(image_import_host);image_import.pack(fill='both',expand=True);app.update()
+    def accept_image_preview():
+        preview=next(w for w in image_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_image_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(image_export)):
+        image_import.import_excel()
+    with connect() as c:
+        image_row=c.execute("SELECT id,image_path FROM products WHERE active=1 AND name='TEST Image Exchange'").fetchone()
+        assert image_row and image_row['image_path'], image_row
+        image_barcode=c.execute("SELECT barcode FROM product_barcodes WHERE product_id=?",(image_row['id'],)).fetchone()
+        assert image_barcode and image_barcode['barcode']==f"TODO-{image_row['id']:08d}", image_barcode
+    from services.images import abs_image as absolute_product_image
+    assert absolute_product_image(image_row['image_path']).exists()
+    image_import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
