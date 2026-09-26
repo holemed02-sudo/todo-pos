@@ -175,6 +175,17 @@ class CoreTests(unittest.TestCase):
   sale=self.sell();close_session(self.session,11000)
   with self.assertRaises(ValueError):self.sell()
   with self.assertRaises(ValueError):create_return(sale['id'],self.session,self.uid,[(self.item(sale),1)])
+ def test_return_old_sale_from_new_session_and_cashier(self):
+  sale=self.sell();item=self.item(sale);close_session(self.session,11000)
+  with db.connect() as c:
+   cashier=c.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES('return_cashier','Return Cashier',?,'cashier')",(hash_pin('2468'),)).lastrowid
+  current_user.set(cashier)
+  new_session=open_session(cashier,5000)
+  result=create_return(sale['id'],new_session,cashier,[(item,1)])
+  self.assertEqual(result['total_cents'],1000);self.assertEqual(self.stock(),20)
+  with db.connect() as c:
+   row=c.execute('SELECT session_id,cashier_user_id FROM returns WHERE id=?',(result['id'],)).fetchone()
+   self.assertEqual(row['session_id'],new_session);self.assertEqual(row['cashier_user_id'],cashier)
  def test_backup_live_wal(self):
   keeper=db.connect()
   try:
