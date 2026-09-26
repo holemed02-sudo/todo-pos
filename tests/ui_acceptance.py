@@ -117,6 +117,26 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     assert any(row[barcode_col]=='REGULAR123' for row in rows_by_name['TEST Photo Regular']), 'Real barcode must remain in catalogue export'
     assert 'TEST Inactive Export' not in rows_by_name, 'Inactive products must stay out of shop-to-shop catalogue export'
     export_window.destroy()
+    # Inactive local barcodes must not block shop-to-shop import as conflicts.
+    from openpyxl import Workbook
+    import_path=Path(temp.name)/'catalogue-import-inactive-conflict.xlsx'
+    wb=Workbook();ws=wb.active
+    ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
+    ws.append(["TODO-000001","INACTIVE123","Imported Active Product","Général",1,2,3,0,"",1,None,"",0]);wb.save(import_path)
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('Old Inactive Local',100,0)")
+        inactive_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(inactive_pid,'INACTIVE123'))
+    import_host=__import__('tkinter').Toplevel(app)
+    products_import=ProductsFrame(import_host);products_import.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(import_path)), \
+         patch('screens.products.messagebox.askyesnocancel',side_effect=AssertionError('Inactive barcode must not trigger conflict dialog')):
+        products_import.import_excel()
+    preview=next(w for w in products_import.winfo_children() if w.winfo_class()=='Toplevel')
+    button(preview,'Importer 1').invoke();app.update()
+    with connect() as c:
+        assert c.execute("SELECT 1 FROM products p JOIN product_barcodes b ON b.product_id=p.id WHERE p.active=1 AND p.name='Imported Active Product' AND b.barcode='INACTIVE123'").fetchone()
+    import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
