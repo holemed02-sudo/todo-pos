@@ -101,6 +101,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Regular',500,1,'missing-test-image-2.jpg')")
         photo_regular_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_regular_pid,'REGULAR123'))
+        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('TEST Inactive Export',999,0)")
     # Shop-to-shop catalogue export must never leak device-local TODO-* barcodes.
     export_window=__import__('tkinter').Toplevel(app)
     products_frame=ProductsFrame(export_window);products_frame.pack(fill='both',expand=True)
@@ -114,6 +115,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     for row in exported[1:]:rows_by_name.setdefault(row[name_col],[]).append(row)
     assert rows_by_name['TEST Photo Internal'][0][barcode_col] in (None,''), 'TODO-* internal barcode must not be exported'
     assert any(row[barcode_col]=='REGULAR123' for row in rows_by_name['TEST Photo Regular']), 'Real barcode must remain in catalogue export'
+    assert 'TEST Inactive Export' not in rows_by_name, 'Inactive products must stay out of shop-to-shop catalogue export'
     export_window.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
