@@ -240,6 +240,39 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         imported_offers=[tuple(r) for r in c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=? ORDER BY min_qty",(imported_offers_pid,)).fetchall()]
         assert imported_offers==[(2.0,800,'UNIT'),(3.0,2500,'BUNDLE')], imported_offers
     offers_import_host.destroy()
+    # Search metadata (alias + supplier code) must survive catalogue exchange.
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active,sku,alias,supplier_code) VALUES('TEST Search Metadata',500,1,'META-SKU','Alias Unique','SUP-XYZ')")
+        meta_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(meta_pid,'META123'))
+    meta_export=Path(temp.name)/'catalogue-search-metadata.xlsx'
+    meta_export_host=__import__('tkinter').Toplevel(app)
+    meta_products=ProductsFrame(meta_export_host);meta_products.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(meta_export)):
+        meta_products.export_catalogue()
+    meta_export_host.destroy()
+    meta_wb=load_workbook(meta_export)
+    meta_ws=meta_wb.active
+    meta_headers=[cell.value for cell in meta_ws[1]]
+    meta_name_col=meta_headers.index('article')+1
+    for row_idx in range(meta_ws.max_row,1,-1):
+        if meta_ws.cell(row_idx,meta_name_col).value!='TEST Search Metadata':
+            meta_ws.delete_rows(row_idx,1)
+    meta_wb.save(meta_export);meta_wb.close()
+    with connect() as c:
+        c.execute("DELETE FROM products WHERE id=?",(meta_pid,))
+    meta_import_host=__import__('tkinter').Toplevel(app)
+    meta_import=ProductsFrame(meta_import_host);meta_import.pack(fill='both',expand=True);app.update()
+    def accept_meta_preview():
+        preview=next(w for w in meta_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_meta_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(meta_export)):
+        meta_import.import_excel()
+    with connect() as c:
+        meta_row=c.execute("SELECT sku,alias,supplier_code FROM products WHERE active=1 AND name='TEST Search Metadata'").fetchone()
+        assert tuple(meta_row)==('META-SKU','Alias Unique','SUP-XYZ'), tuple(meta_row)
+    meta_import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
