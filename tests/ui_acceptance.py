@@ -273,6 +273,31 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         meta_row=c.execute("SELECT sku,alias,supplier_code FROM products WHERE active=1 AND name='TEST Search Metadata'").fetchone()
         assert tuple(meta_row)==('META-SKU','Alias Unique','SUP-XYZ'), tuple(meta_row)
     meta_import_host.destroy()
+    # Legacy catalogue updates must not erase metadata added by newer versions.
+    with connect() as c:
+        c.execute("INSERT INTO products(name,sale_price_cents,active,sku,alias,supplier_code) VALUES('TEST Legacy Preserve',900,1,'LEG-SKU','Keep Alias','KEEP-SUP')")
+        legacy_preserve_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(legacy_preserve_pid,'LEGPRES123'))
+        c.execute("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",(legacy_preserve_pid,2,700,'UNIT'))
+    legacy_update_path=Path(temp.name)/'catalogue-legacy-preserve.xlsx'
+    wb=Workbook();ws=wb.active
+    ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
+    ws.append(["LEGACY-PRES","LEGPRES123","TEST Legacy Preserve","Général","0.00","9.00",0,0,"",1,None,"LEG-SKU",0]);wb.save(legacy_update_path);wb.close()
+    legacy_update_host=__import__('tkinter').Toplevel(app)
+    legacy_update=ProductsFrame(legacy_update_host);legacy_update.pack(fill='both',expand=True);app.update()
+    def accept_legacy_update_preview():
+        preview=next(w for w in legacy_update.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_legacy_update_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(legacy_update_path)), \
+         patch('screens.products.messagebox.askyesnocancel',return_value=True):
+        legacy_update.import_excel()
+    with connect() as c:
+        legacy_meta=c.execute("SELECT alias,supplier_code FROM products WHERE id=?",(legacy_preserve_pid,)).fetchone()
+        legacy_offers=[tuple(r) for r in c.execute("SELECT min_qty,unit_price_cents,pricing_mode FROM quantity_prices WHERE product_id=?",(legacy_preserve_pid,)).fetchall()]
+        assert tuple(legacy_meta)==('Keep Alias','KEEP-SUP'), tuple(legacy_meta)
+        assert legacy_offers==[(2.0,700,'UNIT')], legacy_offers
+    legacy_update_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
