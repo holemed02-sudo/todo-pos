@@ -479,6 +479,7 @@ class ProductsFrame(ttk.Frame):
     def export_catalogue(self):
         path=filedialog.asksaveasfilename(parent=self,defaultextension=".xlsx",filetypes=[("Excel","*.xlsx")],title=self.tr("Exporter le catalogue","تصدير الكتالوج"))
         if not path:return
+        created_media=[]
         try:
             from openpyxl import Workbook
             from openpyxl.drawing.image import Image as XLImage
@@ -703,7 +704,9 @@ class ProductsFrame(ttk.Frame):
                 try:
                     with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as temp_file:
                         temp_file.write(data);temp_path=temp_file.name
-                    return import_image(temp_path)
+                    rel=import_image(temp_path)
+                    if rel:created_media.append(rel)
+                    return rel
                 finally:
                     if temp_path:
                         try:os.unlink(temp_path)
@@ -767,7 +770,14 @@ class ProductsFrame(ttk.Frame):
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
             messagebox.showinfo(self.tr("Import Excel","استيراد Excel"),self.tr(f"{imported} ajouté(s), {updated} mis à jour, {skipped} ignoré(s).",f"تمت إضافة {imported}، تحديث {updated}، وتجاهل {skipped}."),parent=self);self.refresh()
-        except Exception as e:messagebox.showerror(self.tr("Import Excel","استيراد Excel"),str(e),parent=self)
+        except Exception as e:
+            for rel in created_media:
+                try:
+                    media_path=abs_image(rel)
+                    if media_path:media_path.unlink()
+                except OSError:
+                    pass
+            messagebox.showerror(self.tr("Import Excel","استيراد Excel"),str(e),parent=self)
 
     def sel(self):
         s=self.t.selection();return int(self.t.item(s[0],"values")[0]) if s else None
