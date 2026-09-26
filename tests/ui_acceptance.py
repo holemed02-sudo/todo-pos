@@ -481,6 +481,14 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     with patch('tkinter.simpledialog.askfloat',return_value=1):sale.discount()
     assert sale.totals()[1]==500
     for label in ['SOLDER avec','SOLDER sans','Fonctions']:visible(button(sale,label))
+    mixed_dialog=PaymentDialog(sale,500)
+    mixed_dialog.choose_method('MIXED')
+    mixed_dialog.amount.set('1.00')
+    mixed_dialog.card_amount.set('1.00')
+    mixed_dialog.confirm()
+    app.update()
+    assert mixed_dialog.winfo_exists() and mixed_dialog.result is None
+    mixed_dialog.destroy()
     def finish_payment():
         dialog=next(w for w in descendants(app) if isinstance(w,PaymentDialog))
         visible(dialog.confirm_button)
