@@ -7,7 +7,7 @@ temp=tempfile.TemporaryDirectory()
 os.environ['TODO_DB_PATH']=str(Path(temp.name)/'ui.db')
 from app import ToDoApp
 from database import connect
-from screens.products import ProductEditor
+from screens.products import ProductEditor, ProductsFrame
 from screens.payment import PaymentDialog
 from services.cash import open_session
 from services.receipts import export_receipt_pdf
@@ -101,6 +101,20 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         c.execute("INSERT INTO products(name,sale_price_cents,active,image_path) VALUES('TEST Photo Regular',500,1,'missing-test-image-2.jpg')")
         photo_regular_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(photo_regular_pid,'REGULAR123'))
+    # Shop-to-shop catalogue export must never leak device-local TODO-* barcodes.
+    export_window=__import__('tkinter').Toplevel(app)
+    products_frame=ProductsFrame(export_window);products_frame.pack(fill='both',expand=True)
+    export_path=Path(temp.name)/'catalogue-exchange.xlsx'
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(export_path)):
+        products_frame.export_catalogue()
+    from openpyxl import load_workbook
+    exported=list(load_workbook(export_path,read_only=True,data_only=True).active.iter_rows(values_only=True))
+    header=exported[0];barcode_col=header.index('barcode');name_col=header.index('article')
+    rows_by_name={}
+    for row in exported[1:]:rows_by_name.setdefault(row[name_col],[]).append(row)
+    assert rows_by_name['TEST Photo Internal'][0][barcode_col] in (None,''), 'TODO-* internal barcode must not be exported'
+    assert any(row[barcode_col]=='REGULAR123' for row in rows_by_name['TEST Photo Regular']), 'Real barcode must remain in catalogue export'
+    export_window.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
