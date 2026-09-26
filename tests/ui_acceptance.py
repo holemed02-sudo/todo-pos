@@ -160,6 +160,39 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         legacy_pid=c.execute("SELECT id FROM products WHERE active=1 AND name='Imported Legacy Internal'").fetchone()[0]
         assert c.execute("SELECT COUNT(*) FROM product_barcodes WHERE product_id=?",(legacy_pid,)).fetchone()[0]==0
     legacy_host.destroy()
+    # Multi-category catalogue exchange must preserve every family, not only the primary one.
+    with connect() as c:
+        c.execute("INSERT OR IGNORE INTO categories(name) VALUES('Family A')")
+        family_a=c.execute("SELECT id FROM categories WHERE name='Family A'").fetchone()[0]
+        c.execute("INSERT OR IGNORE INTO categories(name) VALUES('Family B')")
+        family_b=c.execute("SELECT id FROM categories WHERE name='Family B'").fetchone()[0]
+        c.execute("INSERT INTO products(name,sale_price_cents,active,category_id) VALUES('TEST Multi Family',700,1,?)",(family_a,))
+        multi_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.executemany("INSERT INTO product_categories(product_id,category_id) VALUES(?,?)",[(multi_pid,family_a),(multi_pid,family_b)])
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(multi_pid,'MULTIFAM123'))
+    multi_export=Path(temp.name)/'catalogue-multi-family.xlsx'
+    multi_export_host=__import__('tkinter').Toplevel(app)
+    multi_products=ProductsFrame(multi_export_host);multi_products.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(multi_export)):
+        multi_products.export_catalogue()
+    multi_export_host.destroy()
+    # Remove the source product/categories so the import proves round-trip preservation.
+    with connect() as c:
+        c.execute("DELETE FROM products WHERE id=?",(multi_pid,))
+        c.execute("DELETE FROM categories WHERE id IN (?,?)",(family_a,family_b))
+    multi_import_host=__import__('tkinter').Toplevel(app)
+    multi_import=ProductsFrame(multi_import_host);multi_import.pack(fill='both',expand=True);app.update()
+    def accept_multi_preview():
+        preview=next(w for w in multi_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer').invoke()
+    app.after(150,accept_multi_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(multi_export)):
+        multi_import.import_excel()
+    with connect() as c:
+        imported_multi=c.execute("SELECT id FROM products WHERE active=1 AND name='TEST Multi Family'").fetchone()[0]
+        families={r[0] for r in c.execute("""SELECT cat.name FROM product_categories pc JOIN categories cat ON cat.id=pc.category_id WHERE pc.product_id=?""",(imported_multi,)).fetchall()}
+        assert families=={'Family A','Family B'}, families
+    multi_import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
