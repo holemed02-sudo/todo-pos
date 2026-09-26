@@ -481,22 +481,29 @@ class ProductsFrame(ttk.Frame):
         try:
             from openpyxl import Workbook
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction"])
+            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles"])
             with connect() as c:
                 rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     WHERE p.active=1
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
                 barcode_rows=c.execute("SELECT product_id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE barcode NOT LIKE 'TODO-%' ORDER BY product_id,id").fetchall()
+                category_rows=c.execute("""SELECT pc.product_id,c.name FROM product_categories pc
+                    JOIN categories c ON c.id=pc.category_id
+                    ORDER BY pc.product_id,c.name COLLATE NOCASE""").fetchall()
+            categories_by_product={}
+            for category_row in category_rows:categories_by_product.setdefault(category_row["product_id"],[]).append(category_row["name"])
             barcodes_by_product={}
             for code in barcode_rows:barcodes_by_product.setdefault(code["product_id"],[]).append(code)
             for seq,r in enumerate(rows,start=1):
                 codes=barcodes_by_product.get(r["id"]) or [{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
                 # product key is an exchange-file grouping token only; it is deliberately not a database id.
                 exchange_key=f"TODO-{seq:06d}"
-                for code in codes:ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]])
+                for code in codes:
+                    all_categories=categories_by_product.get(r["id"]) or [r["category"]]
+                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)])
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32}.items():ws.column_dimensions[col].width=width
             wb.save(path)
             messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s), stock inclus. Les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج مع المخزون. لم يتم تصدير المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
@@ -508,7 +515,7 @@ class ProductsFrame(ttk.Frame):
             from openpyxl import load_workbook
             wb=load_workbook(path,read_only=True,data_only=True);ws=wb.active
             headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
-            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
+            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
@@ -533,7 +540,10 @@ class ProductsFrame(ttk.Frame):
                     # Never import it from another catalogue as a real/scannable barcode.
                     if barcode.upper().startswith('TODO-'):barcode=''
                     if not name:raise ValueError(self.tr("nom vide","الاسم فارغ"))
-                    buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock_raw=get('stock');stock=None if stock_raw in (None,'') else float(stock_raw);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
+                    buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock_raw=get('stock');stock=None if stock_raw in (None,'') else float(stock_raw);alert=float(get('alert') or 0)
+                    raw_categories=get('categories') if idx.get('categories') is not None else get('category')
+                    cat_names=[x.strip() for x in str(raw_categories or 'Général').split('|') if x.strip()]
+                    cat=tuple(dict.fromkeys(cat_names or ['Général']))
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
                     pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
                     sku=str(get('sku') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
@@ -589,7 +599,7 @@ class ProductsFrame(ttk.Frame):
             tree=ttk.Treeview(w,columns=("line","barcode","name","cat","buy","sell","stock","alert"),show="headings")
             for key,title,width in [("line",self.tr("Ligne","السطر"),55),("barcode",self.tr("Barcode","الباركود"),145),("name",self.tr("Article","المنتوج"),220),("cat",self.tr("Famille","العائلة"),120),("buy",self.tr("Achat","الشراء"),75),("sell",self.tr("Vente","البيع"),75),("stock",self.tr("Stock","المخزون"),70),("alert",self.tr("Alerte","التنبيه"),70)]:tree.heading(key,text=title);tree.column(key,width=width,anchor="center")
             tree.pack(fill="both",expand=True,padx=10,pady=10)
-            for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2],row[3],f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",("" if row[6] is None else f"{row[6]:g}"),f"{row[7]:g}"))
+            for row in preview[:500]:tree.insert("","end",values=(row[0],row[1],row[2]," | ".join(row[3]),f"{row[4]/100:.2f}",f"{row[5]/100:.2f}",("" if row[6] is None else f"{row[6]:g}"),f"{row[7]:g}"))
             warning=ttk.Label(w,text=(self.tr(f"⚠ {len(conflicts)} barcode(s) partagé(s) détecté(s). Ils seront conservés et demanderont un choix à la vente.",f"⚠ تم اكتشاف {len(conflicts)} باركود مشترك. سيتم الاحتفاظ بها وسيطلب الاختيار عند البيع.") if conflicts else self.tr("✓ Aucun barcode partagé détecté.","✓ لم يتم اكتشاف أي باركود مشترك.")),foreground="#B45309" if conflicts else "#15803D",wraplength=930)
             warning.pack(anchor="w",padx=12)
             if conflicts:ttk.Label(w,text="\n".join(conflicts[:6]),wraplength=930).pack(anchor="w",padx=12,pady=4)
@@ -627,7 +637,11 @@ class ProductsFrame(ttk.Frame):
                     _,barcode,name,cat,buy,sell,stock,alert,*meta=item
                     bar_label,mult,pack_price,sku,fraction,product_key=meta
                     if action=="skip":skipped+=1;continue
-                    c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat,));catid=c.execute("SELECT id FROM categories WHERE name=?",(cat,)).fetchone()[0]
+                    catids=[]
+                    for cat_name in cat:
+                        c.execute("INSERT OR IGNORE INTO categories(name) VALUES(?)",(cat_name,))
+                        catids.append(c.execute("SELECT id FROM categories WHERE name=?",(cat_name,)).fetchone()[0])
+                    catid=catids[0]
                     if action=="replace":
                         pid=target["id"]
                         if product_key and product_key in imported_groups and imported_groups[product_key]!=pid:
@@ -635,7 +649,7 @@ class ProductsFrame(ttk.Frame):
                         if product_key:imported_groups[product_key]=pid
                         c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
-                        set_product_categories(c,pid,[catid])
+                        set_product_categories(c,pid,catids)
                         current_stock=float(c.execute("SELECT stock_qty FROM products WHERE id=?",(pid,)).fetchone()[0])
                         if stock is not None and abs(stock-current_stock)>1e-9:
                             apply_stock_movement(c,pid,stock-current_stock,'ADJUSTMENT',buy,'import',pid,'Import Excel — stock compté')
@@ -648,7 +662,7 @@ class ProductsFrame(ttk.Frame):
                             c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                         continue
                     cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,allow_fraction) VALUES(?,?,?,?,0,?,?,?)",(name,catid,buy,sell,alert,sku,fraction));pid=cur.lastrowid
-                    set_product_categories(c,pid,[catid])
+                    set_product_categories(c,pid,catids)
                     if group_key:imported_groups[group_key]=pid
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                     if stock is not None and abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
