@@ -114,7 +114,7 @@ def complete_sale(session_id,user_id,cart,payment_method,paid_cents,discount_cen
         audit(conn,'SALE',sid,no,user_id)
         return dict(id=sid,sale_no=no,subtotal_cents=subtotal,discount_cents=discount,total_cents=total,paid_cents=paid,change_cents=change)
 
-def hold_sale(user_id,cart,label='',discount_cents=0,held_id=None,client_id=None,seller_id=None,price_grid_id=None):
+def hold_sale(user_id,cart,label='',discount_cents=0,held_id=None,client_id=None,seller_id=None,price_grid_id=None,payment_method='CASH'):
     if not cart:raise ValueError('Ticket vide')
     payload=json.dumps(cart,ensure_ascii=False,default=str)
     with connect() as conn:
@@ -126,9 +126,9 @@ def hold_sale(user_id,cart,label='',discount_cents=0,held_id=None,client_id=None
         if client_id is not None and not conn.execute('SELECT id FROM clients WHERE id=? AND active=1',(client_id,)).fetchone():
             raise ValueError('Client introuvable.')
         if held_id is None:
-            held_id=conn.execute('INSERT INTO held_sales(label,cashier_user_id,payload_json,discount_cents,client_id,seller_id,price_grid_id) VALUES(?,?,?,?,?,?,?)',(label or 'Ticket en attente',user_id,payload,int(discount_cents),client_id,seller_id,price_grid_id)).lastrowid
+            held_id=conn.execute('INSERT INTO held_sales(label,cashier_user_id,payload_json,discount_cents,client_id,seller_id,price_grid_id,payment_method) VALUES(?,?,?,?,?,?,?,?)',(label or 'Ticket en attente',user_id,payload,int(discount_cents),client_id,seller_id,price_grid_id,payment_method)).lastrowid
         else:
-            cur=conn.execute('UPDATE held_sales SET label=?,payload_json=?,discount_cents=?,client_id=?,seller_id=?,price_grid_id=? WHERE id=? AND cashier_user_id=?',(label or 'Ticket en attente',payload,int(discount_cents),client_id,seller_id,price_grid_id,held_id,user_id))
+            cur=conn.execute('UPDATE held_sales SET label=?,payload_json=?,discount_cents=?,client_id=?,seller_id=?,price_grid_id=?,payment_method=? WHERE id=? AND cashier_user_id=?',(label or 'Ticket en attente',payload,int(discount_cents),client_id,seller_id,price_grid_id,payment_method,held_id,user_id))
             if cur.rowcount!=1:raise ValueError('Ticket en attente introuvable')
         audit(conn,'HOLD',held_id,user_id=user_id)
         return held_id
@@ -151,7 +151,7 @@ def resume_held(held_id):
                 line['unit_price_cents']=str(price['base_unit_price_cents'])
                 line['qty_multiplier']=price['qty_multiplier']
                 line.pop('pricing_mode',None)
-        return dict(cart=cart,discount_cents=row['discount_cents'],held_id=row['id'],client_id=row['client_id'],seller_id=row['seller_id'],price_grid_id=row['price_grid_id'])
+        return dict(cart=cart,discount_cents=row['discount_cents'],held_id=row['id'],client_id=row['client_id'],seller_id=row['seller_id'],price_grid_id=row['price_grid_id'],payment_method=row['payment_method'])
 
 def create_return(sale_id,session_id,user_id,items,reason='',refund_method='CASH'):
     if not items:raise ValueError('Aucun article à retourner')

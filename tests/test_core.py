@@ -161,8 +161,8 @@ class CoreTests(unittest.TestCase):
   with db.connect() as c:
    seller=c.execute("INSERT INTO sellers(name) VALUES('Held Seller')").lastrowid
    grid=c.execute("INSERT INTO price_grids(name,active) VALUES('Held Grid',1)").lastrowid
-  hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'Held',200,seller_id=seller,price_grid_id=grid)
-  state=resume_held(hid);self.assertEqual(state['discount_cents'],200);self.assertEqual(state['seller_id'],seller);self.assertEqual(state['price_grid_id'],grid);self.assertEqual(len(list_held()),1)
+  hid=hold_sale(self.uid,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'Held',200,seller_id=seller,price_grid_id=grid,payment_method='CARD')
+  state=resume_held(hid);self.assertEqual(state['discount_cents'],200);self.assertEqual(state['seller_id'],seller);self.assertEqual(state['price_grid_id'],grid);self.assertEqual(state['payment_method'],'CARD');self.assertEqual(len(list_held()),1)
   sale=complete_sale(self.session,self.uid,state['cart'],'CASH',800,200,hid)
   self.assertEqual(sale['total_cents'],800);self.assertEqual(len(list_held()),0)
   with self.assertRaises(ValueError):complete_sale(self.session,self.uid,state['cart'],'CASH',800,200,hid)
