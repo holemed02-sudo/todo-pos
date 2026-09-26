@@ -581,9 +581,6 @@ class SaleFrame(ttk.Frame):
         self.products.delete(*self.products.get_children())
         for child in self.card_inner.winfo_children():child.destroy()
         self.product_rows={str(r['id']):r for r in rows}
-        columns=max(1,self.card_canvas.winfo_width()//167)
-        for row in rows:
-            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(display_prices[row['id']],''),f"{row['stock_qty']:g}"))
         photo_filter=(self.query.get(),self.categories[self.cat.get()])
         if photo_filter!=self.photo_filter:self.photo_offset=0;self.photo_filter=photo_filter
         # The tactile grid intentionally contains only products with an image.
@@ -594,6 +591,9 @@ class SaleFrame(ttk.Frame):
         visible_rows={r['id']:r for r in [*rows,*photo_rows]}
         with connect() as conn:
             display_prices={pid:resolve_unit_price(pid,1,None,conn,self.price_grid_id) for pid in visible_rows}
+        columns=max(1,self.card_canvas.winfo_width()//167)
+        for row in rows:
+            self.products.insert('', 'end',iid=str(row['id']),text=row['name'],image=self.thumbnail(row),values=(fmt(display_prices[row['id']],''),f"{row['stock_qty']:g}"))
         for index,row in enumerate(photo_rows):
             card=tk.Frame(self.card_inner,bg='white',bd=1,relief='solid',highlightthickness=1,highlightbackground='#E2E8F0',width=155,height=168,cursor='hand2')
             card.grid(row=index//columns,column=index%columns,padx=6,pady=6);card.grid_propagate(False)
