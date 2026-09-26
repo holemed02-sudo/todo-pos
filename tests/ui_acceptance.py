@@ -168,7 +168,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         family_b=c.execute("SELECT id FROM categories WHERE name='Family B'").fetchone()[0]
         c.execute("INSERT INTO products(name,sale_price_cents,active,category_id) VALUES('TEST Multi Family',700,1,?)",(family_a,))
         multi_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
-        c.executemany("INSERT INTO product_categories(product_id,category_id) VALUES(?,?)",[(multi_pid,family_a),(multi_pid,family_b)])
+        c.executemany("INSERT OR IGNORE INTO product_categories(product_id,category_id) VALUES(?,?)",[(multi_pid,family_a),(multi_pid,family_b)])
         c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(multi_pid,'MULTIFAM123'))
     multi_export=Path(temp.name)/'catalogue-multi-family.xlsx'
     multi_export_host=__import__('tkinter').Toplevel(app)
