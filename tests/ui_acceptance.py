@@ -114,7 +114,7 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     sale.change(1)
     # Invoke reference menu actions while preserving the current ticket.
     sale.functions();app.update()
-    menu=next(w for w in descendants(app) if w.winfo_class()=='Toplevel' and ('Fonctions' in str(w.title()) or 'الوظائف' in str(w.title())))
+    menu=next(w for w in app.winfo_children() if w.winfo_class()=='Toplevel' and ('Fonctions' in str(w.title()) or 'الوظائف' in str(w.title())))
     for label in ['Duplicata','Modifier quantité','Modifier prix','Supprimer','Grille de prix','Clôture','Dépenses','Rapport','Raccourcis']:
         visible(button(menu,label))
     with patch('tkinter.simpledialog.askstring',return_value='4.00'):
