@@ -529,6 +529,9 @@ class ProductsFrame(ttk.Frame):
                         if not math.isfinite(raw_barcode) or not raw_barcode.is_integer():raise ValueError(self.tr("barcode numérique invalide","باركود رقمي غير صالح"))
                         barcode=str(int(raw_barcode))
                     else:barcode=str(raw_barcode).strip()
+                    # TODO-* is reserved for device-local image-only product ids.
+                    # Never import it from another catalogue as a real/scannable barcode.
+                    if barcode.upper().startswith('TODO-'):barcode=''
                     if not name:raise ValueError(self.tr("nom vide","الاسم فارغ"))
                     buy=to_cents(get('buy') or 0);sell=to_cents(get('sell') or 0);stock_raw=get('stock');stock=None if stock_raw in (None,'') else float(stock_raw);alert=float(get('alert') or 0);cat=str(get('category') or 'Général').strip() or 'Général'
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
