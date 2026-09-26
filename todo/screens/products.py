@@ -480,10 +480,11 @@ class ProductsFrame(ttk.Frame):
         if not path:return
         try:
             from openpyxl import Workbook
+            from openpyxl.drawing.image import Image as XLImage
             wb=Workbook();ws=wb.active;ws.title="Catalogue"
-            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité","alias","code fournisseur"])
+            ws.append(["product key","barcode","article","famille","prix achat","prix vente","stock","alerte","barcode label","multiplicateur","prix pack","sku","fraction","familles","offres quantité","alias","code fournisseur","image"])
             with connect() as c:
-                rows=c.execute("""SELECT p.id,p.sku,p.alias,p.supplier_code,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
+                rows=c.execute("""SELECT p.id,p.sku,p.alias,p.supplier_code,p.image_path,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     WHERE p.active=1
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
@@ -506,11 +507,22 @@ class ProductsFrame(ttk.Frame):
                 codes=barcodes_by_product.get(r["id"]) or [{"barcode":"","label":"","qty_multiplier":1,"price_override_cents":None}]
                 # product key is an exchange-file grouping token only; it is deliberately not a database id.
                 exchange_key=f"TODO-{seq:06d}"
-                for code in codes:
+                for code_index,code in enumerate(codes):
                     all_categories=categories_by_product.get(r["id"]) or [r["category"]]
-                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[])),r["alias"],r["supplier_code"]])
+                    ws.append([exchange_key,code["barcode"],r["name"],r["category"],r["purchase_price_cents"]/100,r["sale_price_cents"]/100,r["stock_qty"],r["alert_qty"],code["label"],code["qty_multiplier"],None if code["price_override_cents"] is None else code["price_override_cents"]/100,r["sku"],r["allow_fraction"]," | ".join(all_categories)," | ".join(offers_by_product.get(r["id"],[])),r["alias"],r["supplier_code"],""])
+                    if code_index==0:
+                        image_path=abs_image(r["image_path"])
+                        if image_path:
+                            try:
+                                xl_image=XLImage(str(image_path));xl_image.thumbnail((80,80))
+                                row_no=ws.max_row
+                                ws.add_image(xl_image,f"R{row_no}")
+                                ws.row_dimensions[row_no].height=64
+                                ws.cell(row_no,18).value="embedded"
+                            except Exception:
+                                pass
             ws.freeze_panes="A2";ws.auto_filter.ref=ws.dimensions
-            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34,"P":24,"Q":20}.items():ws.column_dimensions[col].width=width
+            for col,width in {"A":12,"B":20,"C":34,"D":22,"E":14,"F":14,"G":12,"H":12,"I":18,"J":14,"K":14,"L":18,"M":10,"N":32,"O":34,"P":24,"Q":20,"R":14}.items():ws.column_dimensions[col].width=width
             wb.save(path)
             messagebox.showinfo(self.tr("Export catalogue","تصدير الكتالوج"),self.tr(f"{len(rows)} article(s) exporté(s), stock inclus. Les ventes et les clients ne sont pas exportés.",f"تم تصدير {len(rows)} منتوج مع المخزون. لم يتم تصدير المبيعات أو الزبائن."),parent=self)
         except Exception as e:messagebox.showerror(self.tr("Export catalogue","تصدير الكتالوج"),str(e),parent=self)
