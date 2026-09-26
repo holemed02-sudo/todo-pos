@@ -15,8 +15,11 @@ def return_number():
     return 'R-'+datetime.now().strftime('%Y%m%d-%H%M%S')+'-'+uuid4().hex[:12].upper()
 
 def validate_session(conn,session_id,user_id):
-    if not conn.execute("SELECT id FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone():
+    session=conn.execute("SELECT id,user_id FROM cash_sessions WHERE id=? AND status='OPEN'",(session_id,)).fetchone()
+    if not session:
         raise ValueError('Ouvrez la caisse avant cette opération.')
+    if int(session['user_id'])!=int(user_id):
+        raise PermissionError('Cette caisse appartient à un autre utilisateur.')
     if not conn.execute('SELECT id FROM users WHERE id=? AND active=1',(user_id,)).fetchone():
         raise ValueError('Utilisateur invalide')
     if current_user.get() is not None and current_user.get()!=user_id:

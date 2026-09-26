@@ -290,6 +290,12 @@ class CoreTests(unittest.TestCase):
   current_user.set(uid)
   with self.assertRaises(PermissionError):
    with db.connect() as c:apply_stock_movement(c,self.pid,1,'ADJUSTMENT',note='Test')
+ def test_sale_rejects_cash_session_owned_by_another_cashier(self):
+  with db.connect() as c:cashier=c.execute("INSERT INTO users(username,display_name,pin_hash,role) VALUES('sale_cashier','Sale Cashier',?,'cashier')",(hash_pin('1357'),)).lastrowid
+  current_user.set(cashier)
+  with self.assertRaises(PermissionError):
+   complete_sale(self.session,cashier,[dict(product_id=self.pid,qty=1,unit_price_cents=1000)],'CASH',1000)
+  with db.connect() as c:self.assertEqual(c.execute('SELECT COUNT(*) FROM sales').fetchone()[0],0)
  def test_purchase(self):
   receive_purchase(None,'INV-1',[dict(product_id=self.pid,qty=3,unit_cost_cents=400)]);self.assertEqual(self.stock(),23)
  def test_purchase_rejects_duplicate_supplier_invoice_atomically(self):
