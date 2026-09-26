@@ -4,6 +4,7 @@ from database import connect, get_setting
 from services.inventory import apply_stock_movement
 from services.security import require_admin, audit
 import math
+import os, tempfile
 from services.money import to_cents
 from services.images import import_image, abs_image
 from screens.common import labeled_entry
@@ -532,12 +533,22 @@ class ProductsFrame(ttk.Frame):
         if not path:return
         try:
             from openpyxl import load_workbook
-            wb=load_workbook(path,read_only=True,data_only=True);ws=wb.active
+            wb=load_workbook(path,data_only=True);ws=wb.active
             headers=[str(x.value or '').strip().lower() for x in next(ws.iter_rows())]
-            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'alias':['alias','nom alternatif'],'supplier_code':['code fournisseur','supplier code','supplier_code'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
+            aliases={'product_key':['product key','product_key'],'barcode':['barcode','code barre','code-barres'],'name':['article','nom','name'],'category':['famille','categorie','catégorie'],'categories':['familles','categories','catégories'],'offers':['offres quantité','offres quantite','quantity offers'],'alias':['alias','nom alternatif'],'supplier_code':['code fournisseur','supplier code','supplier_code'],'image':['image','photo'],'buy':['achat','prix achat'],'sell':['vente','prix vente'],'stock':['stock'],'alert':['alerte','alert'],'bar_label':['barcode label'],'mult':['multiplicateur'],'pack_price':['prix pack'],'sku':['sku'],'fraction':['fraction']}
             idx={}
             for key,names in aliases.items():
                 idx[key]=next((headers.index(n) for n in names if n in headers),None)
+            embedded_images={}
+            if idx.get('image') is not None:
+                for xl_image in getattr(ws,'_images',[]):
+                    try:
+                        anchor=xl_image.anchor._from
+                        if anchor.col==idx['image']:
+                            fmt=(getattr(xl_image,'format',None) or 'png').lower()
+                            embedded_images[anchor.row+1]=(xl_image._data(),fmt)
+                    except Exception:
+                        pass
             if idx['name'] is None:
                 wb.close()
                 raise ValueError(self.tr("Colonne Article/Nom obligatoire.","عمود المنتوج/الاسم إجباري."))
@@ -580,9 +591,11 @@ class ProductsFrame(ttk.Frame):
                     supplier_code=None if idx.get('supplier_code') is None else str(get('supplier_code') or '').strip()
                     product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
-                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,None if offers is None else tuple(offers),alias,supplier_code,product_key))
+                    image_data=embedded_images.get(line)
+                    preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,None if offers is None else tuple(offers),alias,supplier_code,image_data,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
             if errors:
+                wb.close()
                 messagebox.showerror(self.tr("Import Excel","استيراد Excel"),self.tr("Import annulé. Corrigez d'abord:\n","تم إلغاء الاستيراد. صحح أولاً:\n")+"\n".join(errors[:15]),parent=self);return
             # Excel permanently drops leading zeroes when a barcode cell is stored as a number.
             # Refuse to guess: warn the operator to format barcode cells as Text before importing.
@@ -604,7 +617,7 @@ class ProductsFrame(ttk.Frame):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[];group_fingerprints={};file_group_barcodes={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
-                bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,product_key=meta
+                bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,image_data,product_key=meta
                 if product_key:
                     fingerprint=(name,cat,buy,sell,stock,alert,sku,fraction,offers,alias,supplier_code)
                     if product_key in group_fingerprints and group_fingerprints[product_key]!=fingerprint:
@@ -661,13 +674,26 @@ class ProductsFrame(ttk.Frame):
                     self.tr(f"Barcode {barcode}\n\nExistant: {current}\nImporté: {name} ({sell/100:.2f})\n\nOui = mettre à jour le premier article existant\nNon = ajouter comme barcode partagé\nAnnuler = ignorer cette ligne",
                             f"الباركود {barcode}\n\nالموجود: {current}\nالمستورَد: {name} ({sell/100:.2f})\n\nنعم = تحديث أول منتوج موجود\nلا = إضافة منتوج جديد بنفس الباركود\nإلغاء = تجاهل هذا السطر"),parent=self)
                 resolved.append(("replace" if answer is True else ("shared" if answer is False else "skip"),item,matches[0]))
+            def save_embedded_image(payload):
+                if not payload:return ""
+                data,fmt=payload
+                suffix='.jpg' if fmt in ('jpg','jpeg') else ('.'+fmt if fmt else '.png')
+                temp_path=None
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as temp_file:
+                        temp_file.write(data);temp_path=temp_file.name
+                    return import_image(temp_path)
+                finally:
+                    if temp_path:
+                        try:os.unlink(temp_path)
+                        except OSError:pass
             with connect() as c:
                 c.execute("BEGIN IMMEDIATE");require_admin(c)
                 imported=updated=skipped=0
                 imported_groups={}
                 for action,item,target in resolved:
                     _,barcode,name,cat,buy,sell,stock,alert,*meta=item
-                    bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,product_key=meta
+                    bar_label,mult,pack_price,sku,fraction,offers,alias,supplier_code,image_data,product_key=meta
                     if action=="skip":skipped+=1;continue
                     catids=[]
                     for cat_name in cat:
@@ -679,8 +705,9 @@ class ProductsFrame(ttk.Frame):
                         if product_key and product_key in imported_groups and imported_groups[product_key]!=pid:
                             raise ValueError(self.tr("Un même product key ne peut pas mettre à jour plusieurs articles existants.","لا يمكن لنفس مفتاح المنتوج تحديث عدة منتجات موجودة."))
                         if product_key:imported_groups[product_key]=pid
-                        current_meta=c.execute("SELECT alias,supplier_code FROM products WHERE id=?",(pid,)).fetchone()
-                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,current_meta["alias"] if alias is None else alias,current_meta["supplier_code"] if supplier_code is None else supplier_code,fraction,pid))
+                        current_meta=c.execute("SELECT alias,supplier_code,image_path FROM products WHERE id=?",(pid,)).fetchone()
+                        imported_image=save_embedded_image(image_data) if image_data else current_meta["image_path"]
+                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,alias=?,supplier_code=?,image_path=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,current_meta["alias"] if alias is None else alias,current_meta["supplier_code"] if supplier_code is None else supplier_code,imported_image,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,catids)
                         if offers is not None:
@@ -697,11 +724,13 @@ class ProductsFrame(ttk.Frame):
                         if barcode and not c.execute("SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?",(pid,barcode)).fetchone():
                             c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                         continue
-                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias or '',supplier_code or '',fraction));pid=cur.lastrowid
+                    imported_image=save_embedded_image(image_data) if image_data else ''
+                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,image_path,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias or '',supplier_code or '',imported_image,fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,catids)
                     if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
                     if group_key:imported_groups[group_key]=pid
                     if barcode:c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
+                    elif imported_image:c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(pid,_internal_product_barcode(pid)))
                     if stock is not None and abs(stock)>1e-9:apply_stock_movement(c,pid,stock,'OPENING',buy,'import',pid,'Import Excel — stock initial')
                     audit(c,'PRODUCT_IMPORT',pid);imported+=1
                 c.commit()
