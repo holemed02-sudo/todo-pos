@@ -212,15 +212,18 @@ class PaymentDialog(tk.Toplevel):
     def confirm(self):
         try:
             paid = self.paid_cents()
-            credit=self.method.get()=='CREDIT' and self.client_name is not None
-            if (credit and not 0<=paid<=self.total) or (not credit and paid<self.total):
+            method=self.method.get()
+            credit=method=='CREDIT' and self.client_name is not None
+            mixed=method=='MIXED'
+            invalid=(credit and not 0<=paid<=self.total) or (mixed and paid!=self.total) or (not credit and not mixed and paid<self.total)
+            if invalid:
                 self.update_amount()
                 return
         except Exception:
             self.update_amount()
             return
         payments = None
-        if self.method.get() == 'MIXED':
+        if method == 'MIXED':
             payments = [('CASH', to_cents(self.amount.get())), ('CARD', to_cents(self.card_amount.get()))]
-        self.result = (self.method.get(), paid, self.print_ticket.get(), payments)
+        self.result = (method, paid, self.print_ticket.get(), payments)
         self.destroy()
