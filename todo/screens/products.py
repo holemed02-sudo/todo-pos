@@ -486,7 +486,7 @@ class ProductsFrame(ttk.Frame):
                 rows=c.execute("""SELECT p.id,p.sku,p.name,COALESCE(c.name,'Général') category,p.purchase_price_cents,p.sale_price_cents,p.stock_qty,p.alert_qty,p.allow_fraction
                     FROM products p LEFT JOIN categories c ON c.id=p.category_id
                     ORDER BY p.name COLLATE NOCASE""").fetchall()
-                barcode_rows=c.execute("SELECT product_id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes ORDER BY product_id,id").fetchall()
+                barcode_rows=c.execute("SELECT product_id,barcode,label,qty_multiplier,price_override_cents FROM product_barcodes WHERE barcode NOT LIKE 'TODO-%' ORDER BY product_id,id").fetchall()
             barcodes_by_product={}
             for code in barcode_rows:barcodes_by_product.setdefault(code["product_id"],[]).append(code)
             for seq,r in enumerate(rows,start=1):
