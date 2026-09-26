@@ -229,9 +229,17 @@ class SaleFrame(ttk.Frame):
         if self.winfo_viewable() and event.widget.winfo_toplevel()==self.app:
             command();return 'break'
 
+    def _cancel_pending_input_jobs(self):
+        for attr in ('search_job','scan_submit_job'):
+            job=getattr(self,attr,None)
+            if not job:
+                continue
+            try:self.after_cancel(job)
+            except Exception:pass
+            setattr(self,attr,None)
+
     def destroy(self):
-        if self.search_job:
-            self.after_cancel(self.search_job)
+        self._cancel_pending_input_jobs()
         for sequence,binding in self.bindings:
             self.app.unbind(sequence,binding)
         super().destroy()
@@ -598,12 +606,7 @@ class SaleFrame(ttk.Frame):
         self.render_products()
 
     def confirm_search(self,event=None):
-        if self.scan_submit_job:
-            try:self.after_cancel(self.scan_submit_job)
-            except Exception:pass
-            self.scan_submit_job=None
-        if self.search_job:
-            self.after_cancel(self.search_job);self.search_job=None
+        self._cancel_pending_input_jobs()
         code=self.query.get().strip()
         if not code:return 'break'
         rows=scan_barcode(code)
@@ -872,6 +875,7 @@ class SaleFrame(ttk.Frame):
         self.focus_search()
 
     def clear(self,preserve_last_sale=False):
+        self._cancel_pending_input_jobs()
         self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
         if not preserve_last_sale:self.last_sale_snapshot=None
         self.refresh();self.focus_search()
