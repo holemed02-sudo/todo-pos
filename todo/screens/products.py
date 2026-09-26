@@ -553,8 +553,8 @@ class ProductsFrame(ttk.Frame):
                     cat=tuple(dict.fromkeys(cat_names or ['Général']))
                     bar_label=str(get('bar_label') or '').strip();mult=float(get('mult') or 1)
                     pack_price=to_cents(get('pack_price')) if get('pack_price') not in (None,'') else None
-                    offers=[]
-                    raw_offers=str(get('offers') or '').strip()
+                    offers=None if idx.get('offers') is None else []
+                    raw_offers='' if offers is None else str(get('offers') or '').strip()
                     if raw_offers:
                         for token in raw_offers.split('|'):
                             parts=[x.strip() for x in token.split('@')]
@@ -563,7 +563,10 @@ class ProductsFrame(ttk.Frame):
                             if not math.isfinite(min_qty) or min_qty<=0 or offer_price<0 or mode not in ('UNIT','BUNDLE'):
                                 raise ValueError(self.tr("offre quantité invalide","عرض الكمية غير صالح"))
                             offers.append((min_qty,offer_price,mode))
-                    sku=str(get('sku') or '').strip();alias=str(get('alias') or '').strip();supplier_code=str(get('supplier_code') or '').strip();product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
+                    sku=str(get('sku') or '').strip()
+                    alias=None if idx.get('alias') is None else str(get('alias') or '').strip()
+                    supplier_code=None if idx.get('supplier_code') is None else str(get('supplier_code') or '').strip()
+                    product_key=str(get('product_key') or '').strip();fv=get('fraction');fraction=1 if str(fv).strip().lower() in ('1','true','oui','yes','نعم') else 0
                     if buy<0 or sell<0 or alert<0 or (stock is not None and not math.isfinite(stock)) or not math.isfinite(mult) or mult<=0 or (pack_price is not None and pack_price<0):raise ValueError(self.tr("valeurs invalides","قيم غير صالحة"))
                     preview.append((line,barcode,name,cat,buy,sell,stock,alert,bar_label,mult,pack_price,sku,fraction,tuple(offers),alias,supplier_code,product_key))
                 except Exception as e:errors.append(f"Ligne {line}: {e}")
@@ -664,11 +667,13 @@ class ProductsFrame(ttk.Frame):
                         if product_key and product_key in imported_groups and imported_groups[product_key]!=pid:
                             raise ValueError(self.tr("Un même product key ne peut pas mettre à jour plusieurs articles existants.","لا يمكن لنفس مفتاح المنتوج تحديث عدة منتجات موجودة."))
                         if product_key:imported_groups[product_key]=pid
-                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,alias,supplier_code,fraction,pid))
+                        current_meta=c.execute("SELECT alias,supplier_code FROM products WHERE id=?",(pid,)).fetchone()
+                        c.execute("UPDATE products SET name=?,category_id=?,purchase_price_cents=?,sale_price_cents=?,alert_qty=?,sku=?,alias=?,supplier_code=?,allow_fraction=? WHERE id=?",(name,catid,buy,sell,alert,sku,current_meta["alias"] if alias is None else alias,current_meta["supplier_code"] if supplier_code is None else supplier_code,fraction,pid))
                         if barcode:c.execute("UPDATE product_barcodes SET label=?,qty_multiplier=?,price_override_cents=? WHERE product_id=? AND barcode=?",(bar_label,mult,pack_price,pid,barcode))
                         set_product_categories(c,pid,catids)
-                        c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
-                        if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
+                        if offers is not None:
+                            c.execute("DELETE FROM quantity_prices WHERE product_id=?",(pid,))
+                            if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
                         current_stock=float(c.execute("SELECT stock_qty FROM products WHERE id=?",(pid,)).fetchone()[0])
                         if stock is not None and abs(stock-current_stock)>1e-9:
                             apply_stock_movement(c,pid,stock-current_stock,'ADJUSTMENT',buy,'import',pid,'Import Excel — stock compté')
@@ -680,7 +685,7 @@ class ProductsFrame(ttk.Frame):
                         if barcode and not c.execute("SELECT 1 FROM product_barcodes WHERE product_id=? AND barcode=?",(pid,barcode)).fetchone():
                             c.execute("INSERT INTO product_barcodes(product_id,barcode,label,qty_multiplier,price_override_cents) VALUES(?,?,?,?,?)",(pid,barcode,bar_label,mult,pack_price))
                         continue
-                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias,supplier_code,fraction));pid=cur.lastrowid
+                    cur=c.execute("INSERT INTO products(name,category_id,purchase_price_cents,sale_price_cents,stock_qty,alert_qty,sku,alias,supplier_code,allow_fraction) VALUES(?,?,?,?,0,?,?,?,?,?)",(name,catid,buy,sell,alert,sku,alias or '',supplier_code or '',fraction));pid=cur.lastrowid
                     set_product_categories(c,pid,catids)
                     if offers:c.executemany("INSERT INTO quantity_prices(product_id,min_qty,unit_price_cents,pricing_mode) VALUES(?,?,?,?)",[(pid,q,p,m) for q,p,m in offers])
                     if group_key:imported_groups[group_key]=pid
