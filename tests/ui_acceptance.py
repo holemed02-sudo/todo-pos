@@ -344,6 +344,45 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     from services.images import abs_image as absolute_product_image
     assert absolute_product_image(image_row['image_path']).exists()
     image_import_host.destroy()
+    # Price-grid assignments must survive catalogue exchange by grid name.
+    with connect() as c:
+        c.execute("INSERT OR IGNORE INTO price_grids(name,active) VALUES('TEST Wholesale',1)")
+        grid_id=c.execute("SELECT id FROM price_grids WHERE name='TEST Wholesale'").fetchone()[0]
+        c.execute("INSERT INTO products(name,sale_price_cents,active) VALUES('TEST Grid Exchange',1200,1)")
+        grid_pid=c.execute("SELECT last_insert_rowid()").fetchone()[0]
+        c.execute("INSERT INTO product_barcodes(product_id,barcode,qty_multiplier) VALUES(?,?,1)",(grid_pid,'GRID123'))
+        c.execute("INSERT INTO product_grid_prices(product_id,grid_id,unit_price_cents) VALUES(?,?,?)",(grid_pid,grid_id,950))
+    grid_export=Path(temp.name)/'catalogue-grid-exchange.xlsx'
+    grid_export_host=__import__('tkinter').Toplevel(app)
+    grid_products=ProductsFrame(grid_export_host);grid_products.pack(fill='both',expand=True);app.update()
+    with patch('screens.products.filedialog.asksaveasfilename',return_value=str(grid_export)):
+        grid_products.export_catalogue()
+    grid_export_host.destroy()
+    grid_wb=load_workbook(grid_export)
+    grid_ws=grid_wb.active
+    grid_headers=[cell.value for cell in grid_ws[1]]
+    grid_name_col=grid_headers.index('article')+1
+    for row_idx in range(grid_ws.max_row,1,-1):
+        if grid_ws.cell(row_idx,grid_name_col).value!='TEST Grid Exchange':
+            grid_ws.delete_rows(row_idx,1)
+    grid_wb.save(grid_export);grid_wb.close()
+    with connect() as c:
+        c.execute("DELETE FROM products WHERE id=?",(grid_pid,))
+        c.execute("DELETE FROM price_grids WHERE id=?",(grid_id,))
+    grid_import_host=__import__('tkinter').Toplevel(app)
+    grid_import=ProductsFrame(grid_import_host);grid_import.pack(fill='both',expand=True);app.update()
+    def accept_grid_preview():
+        preview=next(w for w in grid_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_grid_preview)
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(grid_export)):
+        grid_import.import_excel()
+    with connect() as c:
+        imported_grid_pid=c.execute("SELECT id FROM products WHERE active=1 AND name='TEST Grid Exchange'").fetchone()[0]
+        imported_grid=c.execute("""SELECT g.name,pg.unit_price_cents FROM product_grid_prices pg
+            JOIN price_grids g ON g.id=pg.grid_id WHERE pg.product_id=?""",(imported_grid_pid,)).fetchone()
+        assert tuple(imported_grid)==('TEST Wholesale',950), tuple(imported_grid)
+    grid_import_host.destroy()
     sale.render_products();app.update()
     tactile_names=[w.cget('text') for w in descendants(sale.card_inner) if w.winfo_class()=='Label']
     assert 'TEST - Rice' not in tactile_names, 'Products without images must stay out of tactile grid'
