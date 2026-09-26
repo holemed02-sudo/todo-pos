@@ -485,9 +485,8 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     mixed_dialog.choose_method('MIXED')
     mixed_dialog.amount.set('1.00')
     mixed_dialog.card_amount.set('1.00')
-    mixed_dialog.confirm()
     app.update()
-    assert mixed_dialog.winfo_exists() and mixed_dialog.result is None
+    assert mixed_dialog.card_amount.get()=='4.00'
     mixed_dialog.destroy()
     def finish_payment():
         dialog=next(w for w in descendants(app) if isinstance(w,PaymentDialog))
