@@ -344,6 +344,30 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
     from services.images import abs_image as absolute_product_image
     assert absolute_product_image(image_row['image_path']).exists()
     image_import_host.destroy()
+    # A failed catalogue import must roll back both SQLite changes and any image
+    # file extracted before the failure.
+    import services.images as product_images
+    media_before=set(p.name for p in product_images.IMGDIR.glob('*')) if product_images.IMGDIR.exists() else set()
+    with connect() as c:
+        image_products_before=c.execute("SELECT COUNT(*) FROM products WHERE name='TEST Image Exchange'").fetchone()[0]
+    rollback_host=__import__('tkinter').Toplevel(app)
+    rollback_import=ProductsFrame(rollback_host);rollback_import.pack(fill='both',expand=True);app.update()
+    def accept_rollback_preview():
+        preview=next(w for w in rollback_import.winfo_children() if w.winfo_class()=='Toplevel')
+        button(preview,'Importer 1').invoke()
+    app.after(150,accept_rollback_preview)
+    rollback_errors=[]
+    with patch('screens.products.filedialog.askopenfilename',return_value=str(image_export)), \
+         patch('screens.products.audit',side_effect=RuntimeError('forced catalogue rollback')), \
+         patch('screens.products.messagebox.showerror',side_effect=lambda title,message,**kwargs: rollback_errors.append(str(message))):
+        rollback_import.import_excel()
+    with connect() as c:
+        image_products_after=c.execute("SELECT COUNT(*) FROM products WHERE name='TEST Image Exchange'").fetchone()[0]
+    media_after=set(p.name for p in product_images.IMGDIR.glob('*')) if product_images.IMGDIR.exists() else set()
+    assert image_products_after==image_products_before, (image_products_before,image_products_after)
+    assert media_after==media_before, (media_before,media_after)
+    assert rollback_errors and 'forced catalogue rollback' in rollback_errors[-1], rollback_errors
+    rollback_host.destroy()
     # Price-grid assignments must survive catalogue exchange by grid name.
     with connect() as c:
         c.execute("INSERT OR IGNORE INTO price_grids(name,active) VALUES('TEST Wholesale',1)")
