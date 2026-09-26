@@ -605,17 +605,29 @@ class SaleFrame(ttk.Frame):
         self.cat.set(name)
         self.render_products()
 
+    def _begin_new_sale(self):
+        if self.cart or self.last_sale_snapshot is None:
+            return
+        self.last_sale_snapshot=None
+        self.last_sale_summary.config(
+            text=self.tr('DERNIÈRE VENTE  ·  FACTURE —  ·  PAYÉ —  ·  RENDU —',
+                         'آخر بيع  ·  الفاتورة —  ·  المؤدى —  ·  الباقي —')
+        )
+        self.refresh()
+
     def confirm_search(self,event=None):
         self._cancel_pending_input_jobs()
         code=self.query.get().strip()
         if not code:return 'break'
+        scanner_like=len(code)>=4 and not any(ch.isspace() for ch in code)
+        if scanner_like:
+            self._begin_new_sale()
         rows=scan_barcode(code)
         if len(rows)==1:
             r=rows[0];self.add_product(r['id'],r['barcode_id'],r['qty_multiplier'],r['barcode'])
         elif len(rows)>1:self.pick_barcode(rows)
         else:
             # Barcode-like scanner input must never silently become a name search.
-            scanner_like=len(code)>=4 and not any(ch.isspace() for ch in code)
             if scanner_like:
                 self.unknown_product(code)
             else:
@@ -681,8 +693,7 @@ class SaleFrame(ttk.Frame):
 
     def add_product(self,pid,barcode_id=None,qty=1,barcode=''):
         try:
-            if not self.cart and self.last_sale_snapshot is not None:
-                self.last_sale_snapshot=None;self.refresh()
+            self._begin_new_sale()
             qty=float(qty)*float(self.scan_quantity.get().replace(',','.'))
             if not math.isfinite(float(qty)) or float(qty)<=0:
                 raise ValueError(self.tr('Quantité invalide','الكمية غير صالحة'))
