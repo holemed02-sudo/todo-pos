@@ -509,6 +509,12 @@ with patch('tkinter.messagebox.showerror',fail), patch('tkinter.messagebox.showw
         button(receipt,'PDF').invoke()
     assert output.read_bytes().startswith(b'%PDF-')
     receipt.destroy()
+    # Cashier reset must clear pending scanner/search callbacks before the next sale.
+    sale.scan_submit_job=sale.after(60000,sale.focus_search)
+    sale.search_job=sale.after(60000,sale.render_products)
+    sale.clear(preserve_last_sale=True)
+    assert sale.scan_submit_job is None and sale.search_job is None
+    assert sale.last_sale_snapshot and sale.ticket.get_children()
     # Logica-compatible behavior: completed ticket remains visible until the next article.
     sale.query.set('TEST123');sale.confirm_search();app.update()
     assert sale.cart and sale.last_sale_snapshot is None
