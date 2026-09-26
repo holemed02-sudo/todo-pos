@@ -890,7 +890,7 @@ class SaleFrame(ttk.Frame):
 
     def clear(self,preserve_last_sale=False):
         self._cancel_pending_input_jobs()
-        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.price_grid_id=None;self.price_grid_name=self.tr('Normal','عادي');self.payment='CASH';self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
+        self.cart=[];self.ticket_discount_cents=0;self.held_id=None;self.client_id=None;self.seller_id=None;self.price_grid_id=None;self.price_grid_name=self.tr('Normal','عادي');self.payment='CASH';self.query.set('');self.scan_quantity.set('1');self.payment_label.config(text=self.tr('Paiement : Espèces','الأداء: نقداً'),bg='#DCFCE7',fg='#166534');self.update_client_label();self.update_seller_label()
         if not preserve_last_sale:
             self.last_sale_snapshot=None;self.last_sale_discount_cents=0
         self.refresh();self.focus_search()
