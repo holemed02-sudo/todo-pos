@@ -27,6 +27,8 @@ class SupplierPaymentsWindow(tk.Toplevel):
         self.lbl_balance.pack(side='left')
         ttk.Button(top, text=self.tr('+ Ajouter règlement','+ إضافة تسديد'), style='Primary.TButton',
                    command=self._add).pack(side='right')
+        self.payment_method=tk.StringVar(value='CASH')
+        ttk.Combobox(top,textvariable=self.payment_method,values=('CASH','CARD'),state='readonly',width=8).pack(side='right',padx=8)
 
         paned = ttk.Panedwindow(self, orient='horizontal')
         paned.pack(fill='both', expand=True, padx=16, pady=10)
@@ -88,7 +90,7 @@ class SupplierPaymentsWindow(tk.Toplevel):
         if amount_str is None: return
         note = simpledialog.askstring(self.tr('Règlement','تسديد'), self.tr('Note (facultatif) :','ملاحظة (اختيارية):'), parent=self) or ''
         try:
-            add_supplier_payment(self.supplier['id'], to_cents(amount_str), note, purchase_id)
+            add_supplier_payment(self.supplier['id'], to_cents(amount_str), note, purchase_id, self.payment_method.get())
             self._refresh()
         except (ValueError, PermissionError) as e:
             messagebox.showerror(self.tr('Règlement','تسديد'), str(e), parent=self)

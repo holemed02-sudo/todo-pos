@@ -298,6 +298,9 @@ CREATE TABLE IF NOT EXISTS supplier_payments (
     purchase_id INTEGER,
     amount_cents INTEGER NOT NULL,
     note        TEXT NOT NULL DEFAULT '',
+    payment_method TEXT NOT NULL DEFAULT 'CARD',
+    session_id  INTEGER REFERENCES cash_sessions(id),
+    user_id     INTEGER REFERENCES users(id),
     created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
     FOREIGN KEY(purchase_id) REFERENCES purchases(id)
@@ -375,6 +378,7 @@ def migrate(conn):
         'held_sales': {'discount_cents': 'INTEGER NOT NULL DEFAULT 0', 'client_id': 'INTEGER REFERENCES clients(id)', 'seller_id': 'INTEGER REFERENCES sellers(id)', 'price_grid_id': 'INTEGER REFERENCES price_grids(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CASH'"},
         'returns': {'refund_paid_cents': 'INTEGER'},
         'client_payments': {'session_id': 'INTEGER REFERENCES cash_sessions(id)', 'user_id': 'INTEGER REFERENCES users(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CASH'"},
+        'supplier_payments': {'session_id': 'INTEGER REFERENCES cash_sessions(id)', 'user_id': 'INTEGER REFERENCES users(id)', 'payment_method': "TEXT NOT NULL DEFAULT 'CARD'"},
         'sales': {'client_id': 'INTEGER REFERENCES clients(id)', 'seller_id': 'INTEGER REFERENCES sellers(id)'},
         'categories': {'color': "TEXT NOT NULL DEFAULT '#2563EB'", 'icon': "TEXT NOT NULL DEFAULT ''"},
     }

@@ -3,7 +3,7 @@ from database import connect
 from services.security import require_admin, audit
 from services.inventory import apply_stock_movement
 
-def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=0):
+def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=0, payment_method="CARD"):
     if not lines:
         raise ValueError("Réception vide")
     with connect() as conn:
@@ -22,8 +22,11 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
             normalized.append((pid,qty,cost))
         total = sum(int(round(qty * cost)) for pid,qty,cost in normalized)
         paid_cents = int(paid_cents or 0)
+        payment_method = str(payment_method).upper()
         if paid_cents < 0 or paid_cents > total:
             raise ValueError("Règlement fournisseur invalide")
+        if payment_method not in ('CASH','CARD'):
+            raise ValueError("Mode de paiement invalide")
         if supplier_id:
             supplier=conn.execute("SELECT 1 FROM suppliers WHERE id=? AND active=1",(supplier_id,)).fetchone()
             if not supplier:
@@ -49,9 +52,20 @@ def receive_purchase(supplier_id, supplier_invoice, lines, notes="", paid_cents=
             conn.execute("UPDATE products SET purchase_price_cents=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(cost,pid))
             apply_stock_movement(conn,pid,qty,"PURCHASE",cost,"purchase",pid_purchase,invoice)
         if paid_cents:
+            session_id = user_id = None
+            if payment_method == 'CASH':
+                from services.cash import get_open_session
+                from services.security import current_user
+                session = get_open_session()
+                user_id = current_user.get()
+                if not session:
+                    raise ValueError("Ouvrez la caisse avant un règlement fournisseur en espèces.")
+                if user_id is None or int(session['user_id']) != int(user_id):
+                    raise PermissionError("Cette caisse appartient à un autre utilisateur.")
+                session_id = int(session['id'])
             payment_id=conn.execute(
-                "INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)",
-                (supplier_id,pid_purchase,paid_cents,"Règlement à la réception")
+                "INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note,payment_method,session_id,user_id) VALUES(?,?,?,?,?,?,?)",
+                (supplier_id,pid_purchase,paid_cents,"Règlement à la réception",payment_method,session_id,user_id)
             ).lastrowid
             audit(conn,"SUPPLIER_PAYMENT",payment_id,str(paid_cents))
         audit(conn,"PURCHASE_RECEIVE",pid_purchase,str(total))

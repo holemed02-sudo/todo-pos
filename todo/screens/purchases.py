@@ -39,6 +39,8 @@ class PurchasesFrame(ttk.Frame):
         self.total_label=ttk.Label(line_actions,text=self.tr("Total : 0.00 DH","المجموع: 0.00 DH"),font=("Segoe UI",12,"bold"));self.total_label.pack(side="right")
         self.paid=tk.StringVar(value="0")
         ttk.Entry(line_actions,textvariable=self.paid,width=10).pack(side="right",padx=5)
+        self.payment_method=tk.StringVar(value='CASH')
+        ttk.Combobox(line_actions,textvariable=self.payment_method,values=('CASH','CARD'),state='readonly',width=7).pack(side='right',padx=5)
         ttk.Label(line_actions,text=self.tr("Payé maintenant (DH)","المؤدى الآن (درهم)")).pack(side="right")
     def refresh_suppliers(self, selected=None):
         self.suppliers=list_suppliers()
@@ -103,6 +105,6 @@ class PurchasesFrame(ttk.Frame):
                 supplier_id=rows[0]['id'] if rows else save_supplier(sname)
                 self.refresh_suppliers(supplier_id)
             paid=to_cents(self.paid.get() or "0")
-            pid,total=receive_purchase(supplier_id,self.invoice.get().strip(),self.lines,paid_cents=paid)
+            pid,total=receive_purchase(supplier_id,self.invoice.get().strip(),self.lines,paid_cents=paid,payment_method=self.payment_method.get())
             messagebox.showinfo("ToDo",f"{self.tr('Réception','استلام')} #{pid}\\n{self.tr('Total','المجموع')}: {fmt(total)}",parent=self);self.lines=[];self.paid.set("0");self.refresh_lines();self.search()
         except Exception as e:messagebox.showerror("ToDo",str(e),parent=self)

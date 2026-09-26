@@ -54,6 +54,7 @@ def session_totals(conn, session_id):
         (session_id,)
     ).fetchone()["v"]
     cash_in += conn.execute("SELECT COALESCE(SUM(amount_cents),0) FROM client_payments WHERE session_id=? AND payment_method='CASH'",(session_id,)).fetchone()[0]
+    cash_out += conn.execute("SELECT COALESCE(SUM(amount_cents),0) FROM supplier_payments WHERE session_id=? AND payment_method='CASH'",(session_id,)).fetchone()[0]
     return dict(cash_sales=int(cash_sales), cash_returns=int(cash_returns),
                 expenses=int(expenses), cash_in=int(cash_in), cash_out=int(cash_out))
 

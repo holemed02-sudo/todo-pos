@@ -3,7 +3,7 @@ from database import connect
 from services.security import audit, require_admin
 
 
-def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
+def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None, payment_method='CARD'):
     """Record a supplier payment and keep invoice balances coherent.
 
     If purchase_id is omitted, the amount is allocated to the supplier's
@@ -11,8 +11,11 @@ def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
     balance.
     """
     amount = int(amount_cents)
+    payment_method = str(payment_method).upper()
     if amount <= 0:
         raise ValueError('Montant invalide.')
+    if payment_method not in ('CASH','CARD'):
+        raise ValueError('Mode de paiement invalide.')
     with connect() as conn:
         conn.execute('BEGIN IMMEDIATE')
         require_admin(conn)
@@ -55,11 +58,22 @@ def add_supplier_payment(supplier_id, amount_cents, note='', purchase_id=None):
             if left or not allocations:
                 raise ValueError("Aucune facture impayée à régler.")
 
+        session_id = user_id = None
+        if payment_method == 'CASH':
+            from services.cash import get_open_session
+            from services.security import current_user
+            session = get_open_session()
+            user_id = current_user.get()
+            if not session:
+                raise ValueError('Ouvrez la caisse avant un règlement fournisseur en espèces.')
+            if user_id is None or int(session['user_id']) != int(user_id):
+                raise PermissionError('Cette caisse appartient à un autre utilisateur.')
+            session_id = int(session['id'])
         payment_ids = []
         for pid, part in allocations:
             payment_id = conn.execute(
-                'INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note) VALUES(?,?,?,?)',
-                (supplier_id, pid, part, note.strip())).lastrowid
+                'INSERT INTO supplier_payments(supplier_id,purchase_id,amount_cents,note,payment_method,session_id,user_id) VALUES(?,?,?,?,?,?,?)',
+                (supplier_id, pid, part, note.strip(), payment_method, session_id, user_id)).lastrowid
             audit(conn, 'SUPPLIER_PAYMENT', payment_id, str(part))
             payment_ids.append(payment_id)
         return payment_ids[0] if len(payment_ids) == 1 else payment_ids

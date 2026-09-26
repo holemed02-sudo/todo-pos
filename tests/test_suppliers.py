@@ -8,6 +8,7 @@ from services.bootstrap import ensure_defaults
 from services.security import current_user
 from services.suppliers import save_supplier, list_suppliers
 from services.supplier_payments import add_supplier_payment, supplier_purchases
+from services.cash import open_session, close_session
 
 
 class SupplierTests(unittest.TestCase):
@@ -19,6 +20,7 @@ class SupplierTests(unittest.TestCase):
         ensure_defaults()
         with database.connect() as conn:
             uid = conn.execute('SELECT id FROM users').fetchone()[0]
+        self.uid = uid
         self.token = current_user.set(uid)
 
     def tearDown(self):
@@ -92,3 +94,23 @@ class SupplierTests(unittest.TestCase):
         self.assertEqual(rows[0]['paid'], 0)
         with database.connect() as conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM supplier_payments WHERE supplier_id=?",(sid,)).fetchone()[0],0)
+
+    def test_cash_supplier_payment_reduces_expected_drawer_cash(self):
+        sid = save_supplier('Cash Supplier')
+        with database.connect() as conn:
+            pid = conn.execute("INSERT INTO purchases(supplier_id,total_cents) VALUES(?,?)",(sid,1000)).lastrowid
+        session = open_session(self.uid, 2000)
+        add_supplier_payment(sid, 500, purchase_id=pid, payment_method='CASH')
+        expected, diff, totals = close_session(session, 1500)
+        self.assertEqual((expected, diff), (1500, 0))
+        self.assertEqual(totals['cash_out'], 500)
+
+    def test_card_supplier_payment_does_not_reduce_drawer_cash(self):
+        sid = save_supplier('Card Supplier')
+        with database.connect() as conn:
+            pid = conn.execute("INSERT INTO purchases(supplier_id,total_cents) VALUES(?,?)",(sid,1000)).lastrowid
+        session = open_session(self.uid, 2000)
+        add_supplier_payment(sid, 500, purchase_id=pid, payment_method='CARD')
+        expected, diff, totals = close_session(session, 2000)
+        self.assertEqual((expected, diff), (2000, 0))
+        self.assertEqual(totals['cash_out'], 0)
