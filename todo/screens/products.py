@@ -552,7 +552,7 @@ class ProductsFrame(ttk.Frame):
                 existing={}
                 for r in c.execute("""SELECT b.barcode,p.id,p.name,p.purchase_price_cents,p.sale_price_cents
                                      FROM product_barcodes b JOIN products p ON p.id=b.product_id
-                                     WHERE b.barcode<>'' ORDER BY p.name"""):
+                                     WHERE b.barcode<>'' AND p.active=1 ORDER BY p.name"""):
                     existing.setdefault(r["barcode"],[]).append(dict(r))
             seen={};conflicts=[];group_fingerprints={};file_group_barcodes={}
             for line,barcode,name,cat,buy,sell,stock,alert,*meta in preview:
